@@ -22,6 +22,23 @@ const STUDENT_DOCUMENTS = [
   ['other', 'Other Supporting Document'],
 ];
 
+function renderBalanceBreakdownRows(rows = []) {
+  const visibleRows = rows.filter((item) => Number(item.balanceAmount || 0) > 0);
+  if (!visibleRows.length) return '<p style="margin:2px 0; color:#16a34a; font-weight:700">No fee-head balance pending.</p>';
+  return `
+    <table style="width:100%; border-collapse:collapse; margin-top:4px; font-size:8.5px">
+      <tbody>
+        ${visibleRows.map((item) => `
+          <tr>
+            <td style="padding:1px 0">${item.name}</td>
+            <td style="padding:1px 0; text-align:right; font-family:monospace; color:#b45309">INR ${Number(item.balanceAmount || 0).toFixed(2)}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
 // Deterministic pseudo-barcode from the admission number
 function Barcode({ code }) {
   const bars = String(code).split('').flatMap((ch) => {
@@ -149,6 +166,7 @@ export default function Students() {
       const previousYearArrears = r.previousYearArrears !== undefined ? r.previousYearArrears : Math.max(0, totalDemand - standardDemand);
       const currentGradeFeeRate = r.currentGradeFeeRate !== undefined ? r.currentGradeFeeRate : Math.min(totalDemand, standardDemand);
       const totalPaidLifetime = r.totalPaidLifetime !== undefined ? r.totalPaidLifetime : (totalDemand - r.balance);
+      const balanceBreakdownHtml = renderBalanceBreakdownRows(r.balanceBreakdown || []);
 
       return `
         <div class="receipt-copy">
@@ -243,6 +261,10 @@ export default function Students() {
                   <p style="margin:0">Total Paid (Lifetime): <span style="font-family:monospace; color:#16a34a; font-weight:700">INR ${Number(totalPaidLifetime).toFixed(2)}</span></p>
                   <p style="margin:2px 0 0; border-top:1px solid #cbd5e1; padding-top:1px; font-weight:700; color:#b45309">Remaining Balance Outstanding: <span style="font-family:monospace">INR ${Number(r.balance || 0).toFixed(2)}</span></p>
                 </div>
+              </div>
+              <div style="border-top:1px solid #e2e8f0; margin-top:5px; padding-top:4px">
+                <p style="margin:0 0 2px; font-size:8px; text-transform:uppercase; color:#94a3b8; font-weight:700; letter-spacing:0.5px">Remaining Balance Breakdown</p>
+                ${balanceBreakdownHtml}
               </div>
             </div>
           </div>

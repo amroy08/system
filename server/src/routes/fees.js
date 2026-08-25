@@ -6,6 +6,7 @@ import { enqueueEmailEvent } from '../utils/emailOutbox.js';
 import { summarizeStudentFees } from '../utils/studentFees.js';
 import {
   allocateFeePayment,
+  buildRemainingBalanceBreakdown,
   resolveStudentFeeComponents,
   summarizeComponentPayments,
 } from '../utils/feeAllocation.js';
@@ -284,10 +285,11 @@ router.post('/', allowRoles(...STAFF), async (req, res) => {
   const applicableItems = await calculateFeeStructureItems(student, klass);
   const componentSummaries = summarizeComponentPayments(applicableItems, paid);
   const { items } = allocateFeePayment(amountPaid, componentSummaries);
+  const status = balanceAfter <= 0 ? 'paid' : amountPaid > 0 ? 'partial' : 'unpaid';
+  const balanceBreakdown = buildRemainingBalanceBreakdown(applicableItems, [...paid, { items, amountPaid, status }], balanceAfter);
 
   const subTotal = amountPaid;
   const amountDue = amountPaid + lateFee - discount;
-  const status = balanceAfter <= 0 ? 'paid' : amountPaid > 0 ? 'partial' : 'unpaid';
 
   const arrearItem = applicableItems.find(i => i.name === 'Arrear Fees (Previous Balance)');
   const previousYearArrears = arrearItem ? arrearItem.amount : 0;
@@ -303,7 +305,7 @@ router.post('/', allowRoles(...STAFF), async (req, res) => {
     className: klass ? `${klass.name} ${klass.section} (${klass.academicYear})` : '',
     academicYear: klass?.academicYear || '',
     date: b.date || new Date().toISOString().slice(0, 10),
-    items, subTotal, lateFee, discount, amountDue, amountPaid, balance: balanceAfter,
+    items, balanceBreakdown, subTotal, lateFee, discount, amountDue, amountPaid, balance: balanceAfter,
     previousYearArrears,
     currentGradeFeeRate,
     totalDemand,

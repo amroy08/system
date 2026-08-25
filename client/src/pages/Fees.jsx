@@ -41,6 +41,23 @@ function buildSplitPreview(items = [], amountPaid = 0) {
   return rows;
 }
 
+function renderBalanceBreakdownRows(rows = []) {
+  const visibleRows = rows.filter((item) => Number(item.balanceAmount || 0) > 0);
+  if (!visibleRows.length) return '<p style="margin:2px 0; color:#16a34a; font-weight:700">No fee-head balance pending.</p>';
+  return `
+    <table style="width:100%; border-collapse:collapse; margin-top:4px; font-size:8.5px">
+      <tbody>
+        ${visibleRows.map((item) => `
+          <tr>
+            <td style="padding:1px 0">${item.name}</td>
+            <td style="padding:1px 0; text-align:right; font-family:monospace; color:#b45309">INR ${Number(item.balanceAmount || 0).toFixed(2)}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
 export default function Fees() {
   const { notify, settings, user } = useApp();
   const { students = [], classes = [] } = useLookups(['students', 'classes']);
@@ -284,6 +301,7 @@ export default function Fees() {
       const previousYearArrears = data.previousYearArrears !== undefined ? data.previousYearArrears : Math.max(0, totalDemand - standardDemand);
       const currentGradeFeeRate = data.currentGradeFeeRate !== undefined ? data.currentGradeFeeRate : Math.min(totalDemand, standardDemand);
       const totalPaidLifetime = data.totalPaidLifetime !== undefined ? data.totalPaidLifetime : (totalDemand - data.balance);
+      const balanceBreakdownHtml = renderBalanceBreakdownRows(data.balanceBreakdown || []);
 
       return `
         <div class="receipt-copy">
@@ -378,6 +396,10 @@ export default function Fees() {
                   <p style="margin:0">Total Paid (Lifetime): <span style="font-family:monospace; color:#16a34a; font-weight:700">INR ${Number(totalPaidLifetime).toFixed(2)}</span></p>
                   <p style="margin:2px 0 0; border-top:1px solid #cbd5e1; padding-top:1px; font-weight:700; color:#b45309">Remaining Balance Outstanding: <span style="font-family:monospace">INR ${Number(data.balance || 0).toFixed(2)}</span></p>
                 </div>
+              </div>
+              <div style="border-top:1px solid #e2e8f0; margin-top:5px; padding-top:4px">
+                <p style="margin:0 0 2px; font-size:8px; text-transform:uppercase; color:#94a3b8; font-weight:700; letter-spacing:0.5px">Remaining Balance Breakdown</p>
+                ${balanceBreakdownHtml}
               </div>
             </div>
           </div>
@@ -923,6 +945,26 @@ export default function Fees() {
                   <tr><td style={{ textAlign: 'right' }}><b>BALANCE DUE</b></td><td style={{ textAlign: 'right', color: modal.data.balance > 0 ? '#dc2626' : '#16a34a' }}><b>{(modal.data.balance || 0).toLocaleString()}</b></td></tr>
                 </tbody>
               </table>
+              {(modal.data.balanceBreakdown || []).some((item) => Number(item.balanceAmount || 0) > 0) && (
+                <table className="lines" style={{ marginTop: 14 }}>
+                  <thead>
+                    <tr>
+                      <th>Remaining Balance Breakdown</th>
+                      <th style={{ textAlign: 'right' }}>Balance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(modal.data.balanceBreakdown || [])
+                      .filter((item) => Number(item.balanceAmount || 0) > 0)
+                      .map((item, idx) => (
+                        <tr key={idx}>
+                          <td>{item.name}</td>
+                          <td style={{ textAlign: 'right', color: '#b45309' }}>{Number(item.balanceAmount || 0).toLocaleString()}</td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              )}
               <table style={{ marginTop: 14 }}>
                 <tbody>
                   <tr>

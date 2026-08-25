@@ -14,7 +14,7 @@ export function feeHeadRank(name = '') {
   if (value.includes('admission')) return 10;
   if (value.includes('monthly') || value.includes('tuition')) return 20;
   if (value.includes('term') || value.includes('exam')) return 30;
-  if (value === 'ms fee' || value.includes('m.s') || value.includes('activity') || value.includes('misc')) return 40;
+  if (value.includes('ms fee') || value.includes('m.s') || value.includes('activity') || value.includes('misc')) return 40;
   if (value.includes('kit')) return 50;
   if (value.includes('transport')) return 60;
   return 90;
@@ -113,4 +113,42 @@ export function allocateFeePayment(amountPaid, componentSummaries = []) {
   }
 
   return { items, preview };
+}
+
+export function buildRemainingBalanceBreakdown(components = [], receipts = [], balance = 0) {
+  const summaries = summarizeComponentPayments(components, receipts)
+    .map((component) => ({
+      name: component.name,
+      frequency: component.frequency,
+      amount: component.amount,
+      paidAmount: component.paidAmount,
+      balanceAmount: component.outstandingAmount,
+    }))
+    .filter((component) => component.balanceAmount > 0);
+
+  let target = Math.max(0, number(balance));
+  let sum = summaries.reduce((total, component) => total + component.balanceAmount, 0);
+
+  if (sum > target) {
+    let reduction = sum - target;
+    for (let index = summaries.length - 1; index >= 0 && reduction > 0; index -= 1) {
+      const amount = Math.min(summaries[index].balanceAmount, reduction);
+      summaries[index].balanceAmount -= amount;
+      reduction -= amount;
+    }
+  }
+
+  const adjusted = summaries.filter((component) => component.balanceAmount > 0);
+  sum = adjusted.reduce((total, component) => total + component.balanceAmount, 0);
+  if (target > sum) {
+    adjusted.push({
+      name: 'Late Fee / Adjustments',
+      frequency: 'adjustment',
+      amount: target - sum,
+      paidAmount: 0,
+      balanceAmount: target - sum,
+    });
+  }
+
+  return adjusted;
 }

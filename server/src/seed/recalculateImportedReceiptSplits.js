@@ -3,6 +3,7 @@ import { initDb, closeDb, col } from '../db/index.js';
 import { createBackup } from '../utils/backupService.js';
 import {
   allocateFeePayment,
+  buildRemainingBalanceBreakdown,
   resolveStudentFeeComponents,
   summarizeComponentPayments,
 } from '../utils/feeAllocation.js';
@@ -17,9 +18,10 @@ function receiptTime(receipt) {
   return String(receipt.date || receipt.createdAt || receipt.receiptNo || '');
 }
 
-function isImportedReceipt(receipt) {
+function shouldRecalculateReceipt(receipt) {
   return String(receipt.idempotencyKey || '').startsWith('legacy-replace:')
-    || String(receipt.remarks || '').includes('Imported opening payment from legacy ERP');
+    || String(receipt.remarks || '').includes('Imported opening payment from legacy ERP')
+    || !Array.isArray(receipt.balanceBreakdown);
 }
 
 async function main() {
@@ -43,7 +45,7 @@ async function main() {
       studentReceipts.sort((a, b) => receiptTime(a).localeCompare(receiptTime(b)));
     }
 
-    const targets = receipts.filter(isImportedReceipt);
+    const targets = receipts.filter(shouldRecalculateReceipt);
     const updates = [];
     for (const receipt of targets) {
       const student = studentsById.get(receipt.studentId);
@@ -55,11 +57,13 @@ async function main() {
       const componentSummaries = summarizeComponentPayments(components, previousReceipts);
       const { items } = allocateFeePayment(receipt.amountPaid, componentSummaries);
       const summaryAfterReceipt = summarizeStudentFees(student, [...previousReceipts, { ...receipt, items }]);
+      const balanceBreakdown = buildRemainingBalanceBreakdown(components, [...previousReceipts, { ...receipt, items }], summaryAfterReceipt.balance);
       const previousYearArrears = components.find((item) => item.name === 'Arrear Fees (Previous Balance)')?.amount || 0;
       updates.push({
         receipt,
         changes: {
           items,
+          balanceBreakdown,
           previousYearArrears,
           currentGradeFeeRate: Math.max(0, Number(student.totalDemand || 0) - previousYearArrears),
           totalDemand: Number(student.totalDemand || 0),
@@ -69,10 +73,13 @@ async function main() {
       });
     }
 
-    const changed = updates.filter(({ receipt, changes }) => JSON.stringify(receipt.items || []) !== JSON.stringify(changes.items));
+    const changed = updates.filter(({ receipt, changes }) => {
+      return JSON.stringify(receipt.items || []) !== JSON.stringify(changes.items)
+        || JSON.stringify(receipt.balanceBreakdown || []) !== JSON.stringify(changes.balanceBreakdown);
+    });
     console.log(JSON.stringify({
       mode: apply ? 'apply' : 'dry-run',
-      importedReceiptsChecked: targets.length,
+      receiptsChecked: targets.length,
       receiptsToUpdate: changed.length,
       samples: changed.slice(0, 8).map(({ receipt, changes }) => ({
         receiptNo: receipt.receiptNo,
@@ -80,6 +87,7 @@ async function main() {
         amountPaid: receipt.amountPaid,
         before: receipt.items || [],
         after: changes.items,
+        balanceBreakdown: changes.balanceBreakdown,
         balance: changes.balance,
       })),
     }, null, 2));

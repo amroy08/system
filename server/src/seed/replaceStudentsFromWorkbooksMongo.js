@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import { ADMISSION_CATEGORY } from '../utils/feeStructure.js';
 import {
   allocateFeePayment,
+  buildRemainingBalanceBreakdown,
   resolveStudentFeeComponents,
   summarizeComponentPayments,
 } from '../utils/feeAllocation.js';
@@ -293,6 +294,11 @@ async function main() {
       const feeComponents = resolveStudentFeeComponents({ student, klass, structures: feeStructures });
       const componentSummaries = summarizeComponentPayments(feeComponents, []);
       const allocation = allocateFeePayment(received, componentSummaries);
+      const balanceBreakdown = buildRemainingBalanceBreakdown(
+        feeComponents,
+        [{ items: allocation.items, amountPaid: received, status: balance <= 0 ? 'paid' : 'partial' }],
+        balance
+      );
       const receipt = {
         _id: nanoid(12),
         receiptNo: nextReceiptNo(receiptDocs.length),
@@ -303,6 +309,7 @@ async function main() {
         academicYear: klass.academicYear || student.academicYear,
         date: paymentDate(record['Last paid']),
         items: allocation.items,
+        balanceBreakdown,
         subTotal: received,
         lateFee: 0,
         discount: 0,
