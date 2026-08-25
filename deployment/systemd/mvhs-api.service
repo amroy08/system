@@ -1,0 +1,33 @@
+[Unit]
+Description=M.V HIGH SCHOOL Management API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mvhs
+Group=mvhs
+WorkingDirectory=/opt/mvhs/current/server
+EnvironmentFile=/etc/mvhs/server.env
+ExecStart=/usr/bin/node src/index.js
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=15
+KillSignal=SIGTERM
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+ReadWritePaths=/var/lib/mvhs
+UMask=0077
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

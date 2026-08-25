@@ -1,0 +1,30 @@
+sequenceDiagram
+    autonumber
+    actor L as Librarian (Clerk/Admin)
+    participant B as React Client
+    participant A as Express API
+    participant D as Data Store
+
+    L->>B: Search book & select student
+    B->>A: POST /api/library/issues
+    A->>D: Check availableCopies > 0
+    D-->>A: Book available
+    A->>D: insertOne(bookIssues) + decrement copies
+    D-->>A: Issue record (dueDate = +14 days)
+    A-->>B: 201 {issue}
+    B-->>L: Confirmation with due date
+
+    Note over A,D: Daily: overdue = today > dueDate,<br/>fine accrues per day late
+
+    L->>B: Process return
+    B->>A: POST /api/library/issues/:id/return
+    A->>D: Read issue record
+    D-->>A: Issue with dueDate
+    A->>A: fine = daysLate x finePerDay
+    A->>D: Update issue (returned, fine)
+    A->>D: increment availableCopies
+    alt Fine > 0
+        A->>D: insertOne(dailyAccounts, fine income)
+    end
+    A-->>B: 200 {returned, fine}
+    B-->>L: Show fine collected

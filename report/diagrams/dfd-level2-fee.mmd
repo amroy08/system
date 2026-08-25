@@ -1,0 +1,30 @@
+flowchart TB
+    CLERK(["Clerk / Admin"])
+    PARENT(["Parent / Student"])
+
+    P61[["6.1<br/>Compute<br/>Dues"]]
+    P62[["6.2<br/>Record<br/>Payment"]]
+    P63[["6.3<br/>Generate<br/>Receipt"]]
+    P64[["6.4<br/>Post to Daily<br/>Accounts"]]
+    P65[["6.5<br/>Outstanding<br/>Report"]]
+
+    DS[("D2: Students")]
+    DF[("D9: Fee Structures")]
+    DR[("D6: Receipts")]
+    DA[("D10: Daily Accounts")]
+
+    PARENT -- "Fee Enquiry" --> P61
+    DS -- "Class, Transport,<br/>Admission Date" --> P61
+    DF -- "Fee Heads & Amounts" --> P61
+    P61 -- "Monthly Due =<br/>Tuition + Transport +<br/>Late - Discount" --> P62
+
+    CLERK -- "Payment Mode,<br/>Amount, Months" --> P62
+    P62 -- "Payment Record" --> DR
+    P62 --> P63
+    P63 -- "Receipt No (Seq),<br/>Print / Email" --> PARENT
+    P62 -- "Income Entry" --> P64
+    P64 --> DA
+
+    DR -- "Paid Months" --> P65
+    DS -- "Active Students" --> P65
+    P65 -- "Outstanding Balances" --> CLERK

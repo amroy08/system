@@ -1,0 +1,23 @@
+flowchart LR
+    ADMIN(["Admin"])
+    CLERK(["Clerk /<br/>Supervisor"])
+    TEACHER(["Teacher"])
+    STUDENT(["Student"])
+    PARENT(["Parent"])
+
+    SMS[["0.0<br/>School<br/>Management<br/>System"]]
+
+    ADMIN -- "Settings, Publish Results,<br/>Payroll, User Management" --> SMS
+    SMS -- "Dashboards, Reports,<br/>Analytics, Alerts" --> ADMIN
+
+    CLERK -- "Admissions, Fees,<br/>Inventory, Library" --> SMS
+    SMS -- "Receipts, Registers,<br/>Stock Reports" --> CLERK
+
+    TEACHER -- "Attendance, Marks,<br/>Lesson Plans, Logbook" --> SMS
+    SMS -- "Timetable, Class Lists,<br/>Salary Slips" --> TEACHER
+
+    STUDENT -- "Helpdesk Tickets,<br/>Profile Queries" --> SMS
+    SMS -- "Results, Attendance,<br/>Hall Tickets, Library Dues" --> STUDENT
+
+    PARENT -- "Fee Payments,<br/>PTM Bookings" --> SMS
+    SMS -- "Children Reports,<br/>Notices, Fee Dues" --> PARENT

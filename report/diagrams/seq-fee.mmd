@@ -1,0 +1,25 @@
+sequenceDiagram
+    autonumber
+    actor C as Clerk
+    participant B as React Client
+    participant A as Express API
+    participant D as Data Store
+
+    C->>B: Select student & months
+    B->>A: GET /api/fees/dues/:studentId
+    A->>D: Read student, feeStructures, receipts
+    D-->>A: Class fees, transport, paid months
+    A->>A: Due = Tuition + Transport + Late - Discount
+    A-->>B: 200 {breakdown, totalDue}
+    B-->>C: Show computed dues
+
+    C->>B: Enter amount, payment mode, Save
+    B->>A: POST /api/fees/receipts
+    A->>D: nextSeq('receipt')
+    D-->>A: Sequence number
+    A->>D: insertOne(receipts)
+    A->>D: insertOne(dailyAccounts, income entry)
+    D-->>A: Saved documents
+    A-->>B: 201 {receipt}
+    B-->>C: Show printable receipt
+    C->>B: Print / Email receipt

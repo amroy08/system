@@ -1,0 +1,53 @@
+flowchart LR
+    USERS(["Users<br/>(All Roles)"])
+
+    P1[["1.0<br/>Authentication<br/>& RBAC"]]
+    P2[["2.0<br/>Admission<br/>Management"]]
+    P3[["3.0<br/>Academic<br/>Management"]]
+    P4[["4.0<br/>Attendance<br/>Management"]]
+    P5[["5.0<br/>Examination<br/>& Results"]]
+    P6[["6.0<br/>Fee & Finance<br/>Management"]]
+    P7[["7.0<br/>Library<br/>Management"]]
+    P8[["8.0<br/>Payroll<br/>Management"]]
+
+    D1[("D1: Users")]
+    D2[("D2: Admissions /<br/>Students")]
+    D3[("D3: Classes /<br/>Subjects / Timetable")]
+    D4[("D4: Attendance")]
+    D5[("D5: Exams / Marks")]
+    D6[("D6: Receipts /<br/>Daily Accounts")]
+    D7[("D7: Books /<br/>Book Issues")]
+    D8[("D8: Salary Slips")]
+
+    USERS -- "Credentials" --> P1
+    P1 -- "JWT Token + Role" --> USERS
+    P1 <--> D1
+
+    USERS -- "Application Data" --> P2
+    P2 -- "Admission No,<br/>Enrollment" --> USERS
+    P2 <--> D2
+    P2 -- "Create Login" --> D1
+
+    USERS -- "Class / Subject Setup" --> P3
+    P3 <--> D3
+
+    USERS -- "Daily Marking" --> P4
+    P4 <--> D4
+    P4 -- "Student Roll Lists" --> D2
+
+    USERS -- "Marks Entry / Publish" --> P5
+    P5 <--> D5
+    P5 -- "Report Cards,<br/>Hall Tickets" --> USERS
+
+    USERS -- "Payment Details" --> P6
+    P6 -- "Receipt PDF" --> USERS
+    P6 <--> D6
+    P6 -- "Dues Lookup" --> D2
+
+    USERS -- "Issue / Return" --> P7
+    P7 <--> D7
+    P7 -- "Fine Posting" --> D6
+
+    USERS -- "Generate / Pay Slip" --> P8
+    P8 <--> D8
+    P8 -- "Expense Posting" --> D6

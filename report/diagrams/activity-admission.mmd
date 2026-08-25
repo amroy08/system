@@ -1,0 +1,19 @@
+flowchart TB
+    START(("Start")) --> A["Applicant submits<br/>registration form"]
+    A --> B["Clerk reviews<br/>application"]
+    B --> C{"Decision?"}
+    C -- "Reject" --> D["Record rejection<br/>reason"]
+    D --> E["Status = REJECTED<br/>(reason viewable)"]
+    E --> STOP1(("End"))
+    C -- "Approve" --> F["Status = ADMITTED"]
+    F --> G["Enroll to Class:<br/>assign class & section"]
+    G --> H["Assign roll number,<br/>admission date"]
+    H --> I["Generate student login<br/>(email + password)"]
+    I --> J{"Transport<br/>required?"}
+    J -- "Yes" --> K["Assign transport route<br/>(adds transport fee)"]
+    J -- "No" --> L["Skip transport"]
+    K --> M["Link / create parent record"]
+    L --> M
+    M --> N["Confirm admission"]
+    N --> O["Student ACTIVE:<br/>appears in attendance,<br/>fees, exams"]
+    O --> STOP2(("End"))

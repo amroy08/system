@@ -1,0 +1,50 @@
+flowchart LR
+    ADMIN(["Admin"])
+    CLERK(["Clerk /<br/>Supervisor"])
+    TEACHER(["Teacher"])
+    STUDENT(["Student"])
+    PARENT(["Parent"])
+
+    subgraph SMS["School Management System"]
+        UC1(["Login / Authenticate"])
+        UC2(["Manage Admissions"])
+        UC3(["Manage Students & Classes"])
+        UC4(["Mark Attendance"])
+        UC5(["Enter & Submit Marks"])
+        UC6(["Publish Exam Results"])
+        UC7(["Collect Fees & Print Receipts"])
+        UC8(["Manage Assets & Inventory"])
+        UC9(["Issue / Return Library Books"])
+        UC10(["Generate Salary Slips"])
+        UC11(["View Results & Hall Tickets"])
+        UC12(["View Children Data & Pay Fees"])
+        UC13(["Manage Notices & Timetable"])
+        UC14(["Raise Helpdesk Tickets"])
+        UC15(["Configure Settings & Theme"])
+    end
+
+    ADMIN --> UC1
+    ADMIN --> UC6
+    ADMIN --> UC10
+    ADMIN --> UC15
+    ADMIN --> UC2
+    ADMIN --> UC13
+
+    CLERK --> UC1
+    CLERK --> UC2
+    CLERK --> UC3
+    CLERK --> UC7
+    CLERK --> UC8
+    CLERK --> UC9
+
+    TEACHER --> UC1
+    TEACHER --> UC4
+    TEACHER --> UC5
+    TEACHER --> UC14
+
+    STUDENT --> UC1
+    STUDENT --> UC11
+    STUDENT --> UC14
+
+    PARENT --> UC1
+    PARENT --> UC12

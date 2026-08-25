@@ -1,0 +1,9 @@
+# Ignored credentials
+deployment/server.env
+
+# Dependencies
+node_modules/
+
+# OS specific files
+.DS_Store
+Thumbs.db

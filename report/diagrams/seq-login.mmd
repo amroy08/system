@@ -1,0 +1,30 @@
+sequenceDiagram
+    autonumber
+    actor U as User (Any Role)
+    participant B as React Client
+    participant A as Express API
+    participant M as Auth Middleware
+    participant D as Data Store
+
+    U->>B: Enter email & password
+    B->>A: POST /api/auth/login
+    A->>D: findOne(users, {email})
+    D-->>A: User document
+    A->>A: bcrypt.compare(password, hash)
+    alt Credentials valid
+        A->>A: Sign JWT (id, role, 8h expiry)
+        A-->>B: 200 {token, user}
+        B->>B: Store token, set Axios header
+        B-->>U: Redirect to role dashboard
+    else Credentials invalid
+        A-->>B: 401 {error}
+        B-->>U: Show error notification
+    end
+
+    Note over B,M: Every subsequent request
+    B->>A: GET /api/... (Bearer token)
+    A->>M: verify JWT + role check (RBAC)
+    M-->>A: req.user attached
+    A->>D: Query scoped by role
+    D-->>A: Data
+    A-->>B: 200 JSON response

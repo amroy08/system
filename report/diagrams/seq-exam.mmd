@@ -1,0 +1,31 @@
+sequenceDiagram
+    autonumber
+    actor T as Teacher
+    actor AD as Admin
+    participant B as React Client
+    participant A as Express API
+    participant D as Data Store
+
+    T->>B: Open Marks Entry (exam, class, subject)
+    B->>A: GET /api/exams/:id/sheet
+    A->>D: Read students + existing marks
+    D-->>A: Roll list with marks
+    A-->>B: 200 {sheet}
+
+    T->>B: Enter marks, Save Draft
+    B->>A: PUT /api/exams/sheet (status: draft)
+    A->>D: upsert marks
+    A-->>B: 200 saved
+
+    T->>B: Submit sheet
+    B->>A: PUT /api/exams/sheet (status: submitted)
+    A->>D: update sheetStatus
+    A-->>B: 200 locked for teacher
+
+    AD->>B: Review submitted sheets
+    B->>A: POST /api/exams/:id/publish
+    A->>D: set exam status = published
+    D-->>A: OK
+    A-->>B: 200 published
+
+    Note over B,D: Students & parents can now view results,<br/>download report cards and hall tickets

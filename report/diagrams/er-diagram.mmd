@@ -1,0 +1,179 @@
+erDiagram
+    USERS {
+        string _id PK
+        string name
+        string email
+        string passwordHash
+        string role
+        string linkedStudentId FK
+        string linkedParentId FK
+    }
+    ADMISSIONS {
+        string _id PK
+        string admissionNo
+        string applicantName
+        string classApplied
+        string academicYear
+        string status
+        string rejectReason
+    }
+    STUDENTS {
+        string _id PK
+        string admissionNo
+        string name
+        string classId FK
+        string parentId FK
+        int rollNo
+        date dob
+        string house
+        string transportRoute
+        string medicalNotes
+        string status
+    }
+    PARENTS {
+        string _id PK
+        string name
+        string phone
+        string email
+        string occupation
+    }
+    CLASSES {
+        string _id PK
+        string className
+        string section
+        string academicYear
+        int capacity
+        string room
+        string classTeacherId FK
+    }
+    SUBJECTS {
+        string _id PK
+        string code
+        string name
+        int maxMarks
+        int passMarks
+        string classId FK
+    }
+    TEACHERS {
+        string _id PK
+        string name
+        string email
+        string phone
+        float baseSalary
+        string qualification
+    }
+    ATTENDANCE {
+        string _id PK
+        string studentId FK
+        string classId FK
+        date attDate
+        string status
+    }
+    EXAMS {
+        string _id PK
+        string name
+        string classId FK
+        date startDate
+        string status
+    }
+    MARKS {
+        string _id PK
+        string examId FK
+        string studentId FK
+        string subjectId FK
+        float marksObtained
+        string sheetStatus
+    }
+    RECEIPTS {
+        string _id PK
+        string receiptNo
+        string studentId FK
+        float amount
+        string payMode
+        string months
+        date paidOn
+    }
+    FEE_STRUCTURES {
+        string _id PK
+        string classId FK
+        string head
+        float amount
+        string frequency
+    }
+    DAILY_ACCOUNTS {
+        string _id PK
+        date entryDate
+        string type
+        string category
+        float amount
+        string refNo
+    }
+    BOOKS {
+        string _id PK
+        string accNo
+        string title
+        string author
+        string isbn
+        string category
+        int copies
+        int availableCopies
+        string coverImage
+    }
+    BOOK_ISSUES {
+        string _id PK
+        string bookId FK
+        string studentId FK
+        date issueDate
+        date dueDate
+        date returnDate
+        float fine
+        string status
+    }
+    SALARY_SLIPS {
+        string _id PK
+        string slipNo
+        string teacherId FK
+        string month
+        float gross
+        float deductions
+        float netPay
+        string status
+    }
+    NOTICES {
+        string _id PK
+        string title
+        string body
+        string audience
+        date publishedOn
+    }
+    TIMETABLE {
+        string _id PK
+        string classId FK
+        string day
+        int period
+        string subjectId FK
+        string teacherId FK
+    }
+
+    PARENTS ||--o{ STUDENTS : "has children"
+    CLASSES ||--o{ STUDENTS : "enrolls"
+    ADMISSIONS ||--o| STUDENTS : "converts to"
+    USERS ||--o| STUDENTS : "login for"
+    USERS ||--o| PARENTS : "login for"
+    CLASSES ||--o{ SUBJECTS : "offers"
+    TEACHERS ||--o{ CLASSES : "class teacher of"
+    STUDENTS ||--o{ ATTENDANCE : "marked in"
+    CLASSES ||--o{ EXAMS : "scheduled for"
+    EXAMS ||--o{ MARKS : "contains"
+    STUDENTS ||--o{ MARKS : "scores"
+    SUBJECTS ||--o{ MARKS : "evaluated in"
+    STUDENTS ||--o{ RECEIPTS : "pays via"
+    CLASSES ||--o{ FEE_STRUCTURES : "billed by"
+    RECEIPTS ||--o| DAILY_ACCOUNTS : "posts income"
+    SALARY_SLIPS ||--o| DAILY_ACCOUNTS : "posts expense"
+    BOOKS ||--o{ BOOK_ISSUES : "issued as"
+    STUDENTS ||--o{ BOOK_ISSUES : "borrows"
+    TEACHERS ||--o{ SALARY_SLIPS : "receives"
+    CLASSES ||--o{ TIMETABLE : "follows"
+    TEACHERS ||--o{ TIMETABLE : "teaches in"
+    SUBJECTS ||--o{ TIMETABLE : "slotted in"

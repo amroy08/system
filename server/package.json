@@ -1,0 +1,41 @@
+{
+  "name": "sms-server",
+  "version": "1.0.0",
+  "description": "School Management System API (file-based DB, switchable to MongoDB)",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon --ignore data/ src/index.js",
+    "start": "node src/index.js",
+    "seed": "node src/seed/seed.js",
+    "clear-db": "node src/seed/clear_db.js",
+    "migrate:mongo:dry-run": "node src/seed/migrateFileToMongo.js",
+    "migrate:mongo": "node src/seed/migrateFileToMongo.js --execute",
+    "migrate:mongo:verify": "node src/seed/migrateFileToMongo.js --verify",
+    "migrate:uploads": "node src/seed/migrateUploadsToS3.js --execute",
+    "restore:staging": "node src/seed/restoreMongoBackupToStaging.js",
+    "backup:fetch-offsite": "node src/seed/fetchOffsiteBackup.js",
+    "security:audit-credentials": "node src/seed/auditLegacyCredentials.js",
+    "security:remediate-credentials": "node src/seed/remediateLegacyCredentials.js",
+    "security:rotate-admin": "node src/seed/rotateAdminPassword.js",
+    "production:check": "node src/seed/productionReadiness.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1107.0",
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^8.6.2",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongodb": "^6.8.0",
+    "nanoid": "^5.0.7",
+    "nodemailer": "^9.0.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}

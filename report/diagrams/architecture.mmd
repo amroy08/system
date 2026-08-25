@@ -1,0 +1,29 @@
+flowchart TB
+    subgraph CLIENT["Presentation Layer (React 18 SPA)"]
+        UI["React Components<br/>(Pages, Layouts, UI Kit)"]
+        RT["React Router v6"]
+        CTX["App Context<br/>(Auth, Settings, Theme)"]
+        AX["Axios API Client<br/>(JWT Interceptors)"]
+        UI --> RT
+        UI --> CTX
+        CTX --> AX
+    end
+
+    subgraph SERVER["Application Layer (Node.js + Express)"]
+        MW["Middleware<br/>(CORS, JSON, Auth JWT, RBAC)"]
+        ROUTES["REST API Routes<br/>(30+ route modules)"]
+        BL["Business Logic<br/>(CRUD Factory, Validators,<br/>Fee Engine, Fine Calculator)"]
+        MW --> ROUTES
+        ROUTES --> BL
+    end
+
+    subgraph DATA["Data Layer (Swappable Store)"]
+        DAL["Unified DB Interface<br/>(db/index.js)"]
+        FS["File Store<br/>(JSON files)"]
+        MG["MongoDB Store<br/>(Local / Atlas Cloud)"]
+        DAL --> FS
+        DAL --> MG
+    end
+
+    AX -- "HTTP/HTTPS REST + JWT" --> MW
+    BL --> DAL

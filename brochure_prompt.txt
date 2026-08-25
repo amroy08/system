@@ -1,0 +1,84 @@
+You are a professional copywriter and design specialist. Write a comprehensive, detailed 4-to-5 page marketing brochure for a state-of-the-art "School Management ERP System" developed and operated as a service by Foundry4 (https://www.foundry4.in/). 
+
+Tone: Professional, high-end, secure, and modern. 
+
+---
+
+### PAGE 1: TITLE PAGE & INTRODUCTION
+- **Cover Title:** Next-Generation School Management ERP System
+- **Subtitle:** Connecting Administration, Staff, and Families through a Unified, Frosted-Glass Digital Ecosystem by Foundry4.
+- **Introduction:** Describe the core vision of this ERP. It is a cloud-ready, responsive platform built with a modern glassmorphism design system. It focuses on making school administration transparent, reducing manual paperwork by 90%, and ensuring immediate communication between teachers and parents. Highlight that Foundry4 delivers this solution as a fully-managed SaaS (Software as a Service) offering, complete with custom setups, 24/7 technical operations, and regular updates.
+
+---
+
+### PAGE 2: ACADEMICS & DAILY OPERATIONS MODULES
+Provide a detailed breakdown of the following key features:
+1. **Intelligent Weekly Timetable & Substitution Manager:**
+   - Visual grid showing period allocations for all classes.
+   - Dynamic teacher substitution handling: quickly re-assign free periods to substitute teachers when a staff member is absent.
+   - One-click print-ready scheduling export.
+2. **Attendance & Student Tracking:**
+   - Real-time digital attendance register.
+   - Immediate parent notifications on absence.
+   - Detailed attendance logs and metrics.
+3. **Lesson Planning & Teaching Logbooks:**
+   - Dedicated dashboard for teachers to structure lesson plans, log daily topics covered, and track syllabus completion.
+   - Supervisor access to review teacher logs.
+4. **Homework & circulars dispatch:**
+   - Assign homework and attach digital circulars (PDFs, docs) matching specific classes, sections, and wings.
+
+---
+
+### PAGE 3: FINANCE, BILLING & FEE COLLECTION MODULES
+Provide a detailed breakdown of the following features:
+1. **Intelligent Fee Collection Desk:**
+   - Global student name search that aggregates annual demands, waivers, arrears, and payment history in under a second.
+   - Quick-action modal to record Cash, Check, or Bank Transfer payments and generate digital receipts.
+2. **Automated WhatsApp Dues Reminder Queue:**
+   - Real-time aggregation of fee defaulters.
+   - Personalization filters (by Class, Dues Threshold like >$5000, >$10000).
+   - Dynamic preparation of personalized WhatsApp reminder messages (including total arrears, GR numbers, and parent names) with one-click direct browser dispatch.
+3. **Daily Accounting & Ledger Logs:**
+   - Log daily school income (from fees, donations) and expenses (salaries, supplies) to generate instant net balance reports.
+4. **Staff Payroll & Salary System:**
+   - Integrated payroll calculations with earnings, allowances, and tax/deductions panels.
+
+---
+
+### PAGE 4: PORTALS & THE UNIFIED FAMILY EXPERIENCE
+Provide a detailed breakdown of the student/parent experience:
+1. **Sibling Account Switcher:**
+   - Allows parents with multiple children in the school to switch dashboards dynamically.
+   - Instantly updates fee receipts, notice boards, calendar events, and grades without logging out.
+2. **Family Announcements & School Circulars:**
+   - Dedicated notices board presenting circulars filtered by class/wing.
+   - Circular attachment portal allowing parents to download consent slips or syllabus sheets.
+3. **Helpdesk & Ticket Management:**
+   - Parents and staff can raise help tickets (support issues, complaints) with live status tracking.
+
+---
+
+### PAGE 5: SECURITY, ADMINISTRATION & INTEGRATION
+Provide a detailed description of backend configurations:
+1. **Role-Based Access Control Matrix (RBAC):**
+   - **Admin:** Master controls over system setups, backups, and configurations.
+   - **Supervisor/Clerk:** Access to timetables, fee collections, and notices dispatch.
+   - **Teacher:** Access to attendance, grading, logbooks, and student directories.
+   - **Parent/Student:** Access to personal timetables, notices, grades, and dues.
+2. **Automated Data Backup & Recovery:**
+   - Cloud synchronization support (e.g. MongoDB Atlas / file backups).
+   - Automated system restore points.
+3. **Tech Stack & Customization:**
+   - Highly responsive React frontend, Node.js backend, and database drivers.
+   - Designed to run efficiently on mobile viewports for professional on-the-go management.
+   
+---
+
+### PAGE 6: THE FOUNDRY4 SERVICE PROMISE (SaaS & Customization)
+Highlight the service-level features provided by Foundry4:
+1. **Fully Tailored Implementation:** Mention that Foundry4 maps each school's unique academic calendar, wings, subjects, and specific fee categories during onboarding.
+2. **Dedicated Operations & Maintenance:** Highlight 24/7 cloud server supervision, SSL security enforcement, and database health auditing.
+3. **Contact Details & Brand Footer:**
+   - **Company Name:** Foundry4
+   - **Website:** https://www.foundry4.in/
+   - **Services:** Custom ERP Development, Cloud Hosting, Maintenance & Support.

@@ -1,0 +1,133 @@
+classDiagram
+    class User {
+        +String id
+        +String name
+        +String email
+        -String passwordHash
+        +Role role
+        +login(email, password) Token
+        +verifyToken(token) User
+        +hasRole(roles) bool
+    }
+
+    class Student {
+        +String admissionNo
+        +String name
+        +Date dob
+        +String house
+        +String transportRoute
+        +String medicalNotes
+        +Status status
+        +getAttendanceReport(from, to)
+        +getFeeDues() Money
+        +getResults(examId)
+    }
+
+    class Parent {
+        +String name
+        +String phone
+        +String email
+        +getChildren() List~Student~
+        +payFees(receipt)
+    }
+
+    class SchoolClass {
+        +String className
+        +String section
+        +String academicYear
+        +int capacity
+        +getTimetable()
+        +getStudents() List~Student~
+    }
+
+    class Subject {
+        +String code
+        +String name
+        +int maxMarks
+        +int passMarks
+    }
+
+    class Teacher {
+        +String name
+        +float baseSalary
+        +markAttendance(classId, date)
+        +enterMarks(examId, marks)
+        +getAssignments()
+    }
+
+    class Exam {
+        +String name
+        +Date startDate
+        +ExamStatus status
+        +publishResults()
+        +generateHallTickets()
+    }
+
+    class MarkSheet {
+        +String examId
+        +String subjectId
+        +SheetStatus status
+        +saveDraft(marks)
+        +submit()
+        +lock()
+    }
+
+    class FeeReceipt {
+        +String receiptNo
+        +float amount
+        +String payMode
+        +computeDue() Money
+        +print()
+        +email()
+    }
+
+    class Book {
+        +String accNo
+        +String title
+        +String author
+        +int copies
+        +int availableCopies
+        +isAvailable() bool
+    }
+
+    class BookIssue {
+        +Date issueDate
+        +Date dueDate
+        +Date returnDate
+        +float fine
+        +calculateFine() Money
+        +processReturn()
+    }
+
+    class SalarySlip {
+        +String slipNo
+        +String month
+        +float gross
+        +float netPay
+        +computeNet() Money
+        +markPaid()
+    }
+
+    class DailyAccount {
+        +Date entryDate
+        +EntryType type
+        +float amount
+        +postIncome()
+        +postExpense()
+    }
+
+    User <|-- Student : role student
+    User <|-- Parent : role parent
+    User <|-- Teacher : role teacher
+    Parent "1" o-- "many" Student : children
+    SchoolClass "1" o-- "many" Student : enrolls
+    SchoolClass "1" o-- "many" Subject : offers
+    Teacher "1" --> "many" SchoolClass : teaches
+    Exam "1" *-- "many" MarkSheet : consists of
+    MarkSheet "many" --> "1" Subject : for
+    Student "1" --> "many" FeeReceipt : pays
+    FeeReceipt "1" --> "1" DailyAccount : posts
+    SalarySlip "1" --> "1" DailyAccount : posts
+    Teacher "1" --> "many" SalarySlip : receives
+    Book "1" o-- "many" BookIssue : issued
+    Student "1" --> "many" BookIssue : borrows
