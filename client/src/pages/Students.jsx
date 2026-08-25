@@ -39,6 +39,24 @@ function renderBalanceBreakdownRows(rows = []) {
   `;
 }
 
+function receiptReferenceLabel(mode = '') {
+  const normalized = String(mode || '').toLowerCase();
+  if (normalized === 'upi') return 'UPI Reference / UTR';
+  if (normalized === 'check') return 'Cheque Number';
+  if (normalized === 'online') return 'Transaction ID / Reference';
+  if (normalized === 'card') return 'Card Reference';
+  return 'Reference Number';
+}
+
+function escapeReceiptText(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
 // Deterministic pseudo-barcode from the admission number
 function Barcode({ code }) {
   const bars = String(code).split('').flatMap((ch) => {
@@ -232,9 +250,10 @@ export default function Students() {
             </div>
 
             <div style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:10px">
-              <div>
+              <div style="max-width:280px; line-height:1.35">
                 <p style="margin:0"><b>Transaction Mode:</b> ${String(r.mode || '').toUpperCase()}</p>
-                ${r.reference ? `<p style="margin:0"><b>Ref No:</b> ${r.reference}</p>` : ''}
+                ${r.reference ? `<p style="margin:0"><b>${receiptReferenceLabel(r.mode)}:</b> ${escapeReceiptText(r.reference)}</p>` : ''}
+                ${r.remarks ? `<p style="margin:0"><b>Remarks:</b> ${escapeReceiptText(r.remarks)}</p>` : ''}
               </div>
               <div style="width:200px; text-align:right; line-height:1.4">
                 <div style="display:flex; justify-content:space-between; color:#475569">

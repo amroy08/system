@@ -58,6 +58,24 @@ function renderBalanceBreakdownRows(rows = []) {
   `;
 }
 
+function receiptReferenceLabel(mode = '') {
+  const normalized = String(mode || '').toLowerCase();
+  if (normalized === 'upi') return 'UPI Reference / UTR';
+  if (normalized === 'check') return 'Cheque Number';
+  if (normalized === 'online') return 'Transaction ID / Reference';
+  if (normalized === 'card') return 'Card Reference';
+  return 'Reference Number';
+}
+
+function escapeReceiptText(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
 export default function Fees() {
   const { notify, settings, user } = useApp();
   const { students = [], classes = [] } = useLookups(['students', 'classes']);
@@ -414,9 +432,10 @@ export default function Fees() {
             </div>
 
             <div style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:10px">
-              <div>
+              <div style="max-width:280px; line-height:1.35">
                 <p style="margin:0"><b>Transaction Mode:</b> ${String(data.mode || '').toUpperCase()}</p>
-                ${data.reference ? `<p style="margin:0"><b>Ref No:</b> ${data.reference}</p>` : ''}
+                ${data.reference ? `<p style="margin:0"><b>${receiptReferenceLabel(data.mode)}:</b> ${escapeReceiptText(data.reference)}</p>` : ''}
+                ${data.remarks ? `<p style="margin:0"><b>Remarks:</b> ${escapeReceiptText(data.remarks)}</p>` : ''}
               </div>
               <div style="width:200px; text-align:right; line-height:1.4">
                 <div style="display:flex; justify-content:space-between; color:#475569">
@@ -1044,6 +1063,11 @@ export default function Fees() {
                     <td><b>Status:</b> <span style={{ color: modal.data.status === 'paid' ? '#16a34a' : '#d97706', fontWeight: 700 }}>{String(modal.data.status || '').toUpperCase()}</span></td>
                     <td style={{ textAlign: 'right' }}><b>Collected by:</b> {modal.data.collectedBy}</td>
                   </tr>
+                  {modal.data.reference && (
+                    <tr>
+                      <td colSpan={3}><b>{receiptReferenceLabel(modal.data.mode)}:</b> {modal.data.reference}</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
               {modal.data.remarks && <p style={{ marginTop: 10 }}><b>Remarks:</b> {modal.data.remarks}</p>}
