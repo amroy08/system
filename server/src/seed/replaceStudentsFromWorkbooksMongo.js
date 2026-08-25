@@ -5,6 +5,11 @@ import { MongoClient } from 'mongodb';
 import { nanoid } from 'nanoid';
 import { fileURLToPath } from 'url';
 import { ADMISSION_CATEGORY } from '../utils/feeStructure.js';
+import {
+  allocateFeePayment,
+  resolveStudentFeeComponents,
+  summarizeComponentPayments,
+} from '../utils/feeAllocation.js';
 
 dotenv.config();
 
@@ -170,6 +175,7 @@ async function main() {
   await client.connect();
   const db = client.db(process.env.MONGO_DB_NAME);
   const classes = await db.collection('classes').find({}).toArray();
+  const feeStructures = await db.collection('feeStructures').find({ status: 'active' }).toArray();
   const classByLabel = new Map(classes.map((item) => [normalize(classLabel(item)), item]));
   const missingClasses = [...new Set(validRows.map(({ record }) => {
     const parsed = parseSourceClass(record.Class);
@@ -284,6 +290,9 @@ async function main() {
     const received = number(record.Received);
     if (received > 0) {
       const balance = Math.max(0, number(record.Outstsnding));
+      const feeComponents = resolveStudentFeeComponents({ student, klass, structures: feeStructures });
+      const componentSummaries = summarizeComponentPayments(feeComponents, []);
+      const allocation = allocateFeePayment(received, componentSummaries);
       const receipt = {
         _id: nanoid(12),
         receiptNo: nextReceiptNo(receiptDocs.length),
@@ -293,7 +302,7 @@ async function main() {
         className: `${klass.name} ${klass.section} (${klass.academicYear || student.academicYear})`,
         academicYear: klass.academicYear || student.academicYear,
         date: paymentDate(record['Last paid']),
-        items: [{ description: 'Imported opening fee payment from legacy ERP', amount: received }],
+        items: allocation.items,
         subTotal: received,
         lateFee: 0,
         discount: 0,

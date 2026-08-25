@@ -13,6 +13,34 @@ function createPaymentForm() {
   };
 }
 
+function buildSplitPreview(items = [], amountPaid = 0) {
+  let remaining = Number(amountPaid) || 0;
+  const rows = [];
+  for (const item of items) {
+    const outstanding = Math.max(0, Number(item.outstandingAmount ?? item.amount) || 0);
+    const allocation = remaining > 0 ? Math.min(remaining, outstanding) : 0;
+    remaining -= allocation;
+    rows.push({
+      ...item,
+      outstandingAmount: outstanding,
+      allocationAmount: allocation,
+      remainingAfterPayment: Math.max(0, outstanding - allocation),
+    });
+  }
+  if (remaining > 0) {
+    rows.push({
+      name: 'School Fees Payment',
+      frequency: 'extra',
+      amount: remaining,
+      paidAmount: 0,
+      outstandingAmount: remaining,
+      allocationAmount: remaining,
+      remainingAfterPayment: 0,
+    });
+  }
+  return rows;
+}
+
 export default function Fees() {
   const { notify, settings, user } = useApp();
   const { students = [], classes = [] } = useLookups(['students', 'classes']);
@@ -93,12 +121,20 @@ export default function Fees() {
     if (!studentId) { setComputed(null); return; }
     api.get(`/fees/compute/${studentId}`).then(({ data }) => {
       setComputed(data);
-      setPay((p) => ({
-        ...p,
-        items: data.items.filter((i) => i.frequency === 'monthly').map((i) => ({ description: i.name, amount: i.amount })),
-      }));
     });
   }, [studentId]);
+
+  const paymentSplitPreview = useMemo(
+    () => buildSplitPreview(computed?.items || [], pay.amountPaid),
+    [computed, pay.amountPaid]
+  );
+
+  const projectedBalance = useMemo(() => Math.max(0, (
+    Number(computed?.balance || 0)
+    + (Number(pay.lateFee) || 0)
+    - (Number(pay.discount) || 0)
+    - (Number(pay.amountPaid) || 0)
+  )), [computed, pay.amountPaid, pay.lateFee, pay.discount]);
 
   const counts = useMemo(() => ({
     all: rows.length,
@@ -732,6 +768,8 @@ export default function Fees() {
                         <th style={{ textAlign: 'left', paddingBottom: 6 }}>Fee Component</th>
                         <th style={{ textAlign: 'center', paddingBottom: 6 }}>Frequency</th>
                         <th style={{ textAlign: 'right', paddingBottom: 6 }}>Total Due</th>
+                        <th style={{ textAlign: 'right', paddingBottom: 6 }}>Paid</th>
+                        <th style={{ textAlign: 'right', paddingBottom: 6 }}>Balance</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -743,7 +781,9 @@ export default function Fees() {
                               {item.frequency}
                             </span>
                           </td>
-                          <td style={{ padding: '6px 0', textAlign: 'right', fontFamily: 'monospace', fontWeight: '700' }}>{cur}{item.amount.toLocaleString()}</td>
+                          <td style={{ padding: '6px 0', textAlign: 'right', fontFamily: 'monospace', fontWeight: '700' }}>{cur}{Number(item.amount || 0).toLocaleString()}</td>
+                          <td style={{ padding: '6px 0', textAlign: 'right', fontFamily: 'monospace', color: '#16a34a' }}>{cur}{Number(item.paidAmount || 0).toLocaleString()}</td>
+                          <td style={{ padding: '6px 0', textAlign: 'right', fontFamily: 'monospace', color: Number(item.outstandingAmount || 0) > 0 ? '#dc2626' : '#16a34a' }}>{cur}{Number(item.outstandingAmount || 0).toLocaleString()}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -757,14 +797,32 @@ export default function Fees() {
                 <div className="full" style={{ background: 'var(--bg)', borderRadius: 8, padding: '10px 14px', fontSize: 14, textAlign: 'center', border: '1px solid var(--border)' }}>
                   Remaining Outstanding Balance after payment: &nbsp;
                   <b style={{ color: 'var(--primary)', fontSize: 16 }}>
-                    {cur}
-                    {(
-                      computed.balance + 
-                      (Number(pay.lateFee) || 0) - 
-                      (Number(pay.discount) || 0) - 
-                      (Number(pay.amountPaid) || 0)
-                    ).toLocaleString()}
+                    {cur}{projectedBalance.toLocaleString()}
                   </b>
+                </div>
+
+                <div className="form-section">Auto Split Preview</div>
+                <div className="full" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginBottom: 12 }}>
+                  <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--border)', fontWeight: '700', color: 'var(--txt-muted)' }}>
+                        <th style={{ textAlign: 'left', paddingBottom: 6 }}>Fee Head</th>
+                        <th style={{ textAlign: 'right', paddingBottom: 6 }}>Already Paid</th>
+                        <th style={{ textAlign: 'right', paddingBottom: 6 }}>This Payment</th>
+                        <th style={{ textAlign: 'right', paddingBottom: 6 }}>Remaining</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paymentSplitPreview.map((item, idx) => (
+                        <tr key={`${item.name}-${idx}`} style={{ borderBottom: idx === paymentSplitPreview.length - 1 ? 'none' : '1px solid var(--border-light)' }}>
+                          <td style={{ padding: '6px 0', fontWeight: 600 }}>{item.name}</td>
+                          <td style={{ padding: '6px 0', textAlign: 'right', fontFamily: 'monospace' }}>{cur}{Number(item.paidAmount || 0).toLocaleString()}</td>
+                          <td style={{ padding: '6px 0', textAlign: 'right', fontFamily: 'monospace', color: Number(item.allocationAmount || 0) > 0 ? '#2563eb' : 'var(--txt-muted)', fontWeight: 700 }}>{cur}{Number(item.allocationAmount || 0).toLocaleString()}</td>
+                          <td style={{ padding: '6px 0', textAlign: 'right', fontFamily: 'monospace', color: Number(item.remainingAfterPayment || 0) > 0 ? '#dc2626' : '#16a34a' }}>{cur}{Number(item.remainingAfterPayment || 0).toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
 
                 <Field label="Payment Mode">

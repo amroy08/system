@@ -4,7 +4,11 @@ import { authRequired, allowRoles, STAFF } from '../middleware/auth.js';
 import { resolveEmailRecipients } from '../utils/emailRecipients.js';
 import { enqueueEmailEvent } from '../utils/emailOutbox.js';
 import { summarizeStudentFees } from '../utils/studentFees.js';
-import { normalizeAdmissionCategory, resolveFeeAssignment } from '../utils/feeStructure.js';
+import {
+  allocateFeePayment,
+  resolveStudentFeeComponents,
+  summarizeComponentPayments,
+} from '../utils/feeAllocation.js';
 import { toWhatsAppNumber } from '../utils/whatsapp.js';
 import { acquireKeyedLock } from '../utils/keyedLock.js';
 import { sendInternalError } from '../utils/httpErrors.js';
@@ -69,30 +73,9 @@ async function ensureRefundLedger(receipt) {
   return refund;
 }
 
-// Helper to calculate applicable fee structure items based on class name and category
 async function calculateFeeStructureItems(student, klass) {
-  const snapshots = student.feeAssignments || [];
-  const latestSnapshot = snapshots[snapshots.length - 1];
-  let computedItems = (latestSnapshot?.components || []).map(({ name, frequency, amount }) => ({ name, frequency, amount }));
-  if (!computedItems.length && klass) {
-    const category = normalizeAdmissionCategory(student.admissionCategory, student.medicalNotes);
-    const structures = await col('feeStructures').find({ status: 'active' });
-    computedItems = resolveFeeAssignment(structures, klass, category).components
-      .map(({ name, frequency, amount }) => ({ name, frequency, amount }));
-  }
-  const standardDemand = computedItems.reduce((sum, item) => sum + item.amount, 0);
-
-  const totalDemand = student.totalDemand || 0;
-  const extra = totalDemand - standardDemand;
-  if (extra > 0) {
-    computedItems.unshift({
-      name: 'Arrear Fees (Previous Balance)',
-      frequency: 'one-time',
-      amount: extra
-    });
-  }
-
-  return computedItems;
+  const structures = await col('feeStructures').find({ status: 'active' });
+  return resolveStudentFeeComponents({ student, klass, structures });
 }
 
 // Compute what a student owes: tuition + transport + late fee - discount
@@ -105,12 +88,16 @@ router.get('/compute/:studentId', async (req, res) => {
   const summary = summarizeStudentFees(student, paid);
 
   const items = await calculateFeeStructureItems(student, klass);
+  const itemSummaries = summarizeComponentPayments(items, paid);
+  const amountPaid = Number(req.query.amountPaid) || 0;
+  const allocation = allocateFeePayment(amountPaid, itemSummaries);
 
   res.json({
     student: { _id: student._id, name: `${student.firstName} ${student.lastName || ''}`.trim(), admissionNo: student.admissionNo },
     className: klass ? `${klass.name} ${klass.section} (${klass.academicYear})` : '',
     ...summary,
-    items
+    items: itemSummaries,
+    allocationPreview: allocation.preview,
   });
 });
 
@@ -295,35 +282,8 @@ router.post('/', allowRoles(...STAFF), async (req, res) => {
 
   // Dynamic chronological fee allocation (FIFO)
   const applicableItems = await calculateFeeStructureItems(student, klass);
-  const allocatedSoFar = {};
-  for (const r of paid) {
-    for (const item of (r.items || [])) {
-      allocatedSoFar[item.description] = (allocatedSoFar[item.description] || 0) + item.amount;
-    }
-  }
-
-  let remaining = amountPaid;
-  const items = [];
-  for (const item of applicableItems) {
-    if (remaining <= 0) break;
-    const paidForThisItem = allocatedSoFar[item.name] || 0;
-    const outstandingForItem = Math.max(0, item.amount - paidForThisItem);
-    if (outstandingForItem > 0) {
-      const alloc = Math.min(remaining, outstandingForItem);
-      items.push({ description: item.name, amount: alloc });
-      remaining -= alloc;
-    }
-  }
-
-  if (remaining > 0) {
-    const desc = "School Fees Payment";
-    const existingIdx = items.findIndex(i => i.description === desc);
-    if (existingIdx > -1) {
-      items[existingIdx].amount += remaining;
-    } else {
-      items.push({ description: desc, amount: remaining });
-    }
-  }
+  const componentSummaries = summarizeComponentPayments(applicableItems, paid);
+  const { items } = allocateFeePayment(amountPaid, componentSummaries);
 
   const subTotal = amountPaid;
   const amountDue = amountPaid + lateFee - discount;
