@@ -9,6 +9,9 @@ import { DataTable, StatusTabs, Field, Modal, Badge, CredentialsModal } from '..
 const EMPTY = {
   firstName: '', lastName: '', gender: 'Male', dob: '', nationality: '', curriculum: 'IB PYP',
   classAppliedFor: '', academicYear: '2024-2025', address: '',
+  addressLine1: '', addressLine2: '', city: '', state: '', pinCode: '', country: 'India',
+  fatherName: '', fatherMobile: '', fatherEmail: '', fatherOccupation: '',
+  motherName: '', motherMobile: '', motherEmail: '', motherOccupation: '',
   parentName: '', parentRelation: 'Father', parentMobile: '', parentEmail: '', parentOccupation: '',
 };
 
@@ -134,8 +137,28 @@ export default function Admissions() {
               </select>
             </Field>
             <Field label="Academic Year" required><input value={form.academicYear} onChange={(e) => setForm({ ...form, academicYear: e.target.value })} /></Field>
-            <Field label="Address" full><input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></Field>
-            <div className="form-section">Parent / Guardian Information</div>
+            <div className="form-section">Address Details</div>
+            <Field label="Address Line 1" full><input value={form.addressLine1} onChange={(e) => setForm({ ...form, addressLine1: e.target.value })} /></Field>
+            <Field label="Address Line 2" full><input value={form.addressLine2} onChange={(e) => setForm({ ...form, addressLine2: e.target.value })} /></Field>
+            <Field label="City"><input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} /></Field>
+            <Field label="State"><input value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} /></Field>
+            <Field label="PIN Code"><input value={form.pinCode} onChange={(e) => setForm({ ...form, pinCode: e.target.value })} /></Field>
+            <Field label="Country"><input value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} /></Field>
+            <Field label="Full Address" full><input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></Field>
+
+            <div className="form-section">Father Information</div>
+            <Field label="Father Name"><input value={form.fatherName} onChange={(e) => setForm({ ...form, fatherName: e.target.value })} /></Field>
+            <Field label="Father Mobile"><input value={form.fatherMobile} onChange={(e) => setForm({ ...form, fatherMobile: e.target.value })} /></Field>
+            <Field label="Father Email"><input value={form.fatherEmail} onChange={(e) => setForm({ ...form, fatherEmail: e.target.value })} /></Field>
+            <Field label="Father Occupation"><input value={form.fatherOccupation} onChange={(e) => setForm({ ...form, fatherOccupation: e.target.value })} /></Field>
+
+            <div className="form-section">Mother Information</div>
+            <Field label="Mother Name"><input value={form.motherName} onChange={(e) => setForm({ ...form, motherName: e.target.value })} /></Field>
+            <Field label="Mother Mobile"><input value={form.motherMobile} onChange={(e) => setForm({ ...form, motherMobile: e.target.value })} /></Field>
+            <Field label="Mother Email"><input value={form.motherEmail} onChange={(e) => setForm({ ...form, motherEmail: e.target.value })} /></Field>
+            <Field label="Mother Occupation"><input value={form.motherOccupation} onChange={(e) => setForm({ ...form, motherOccupation: e.target.value })} /></Field>
+
+            <div className="form-section">Parent / Guardian Login Contact</div>
             <Field label="Parent Name" required><input value={form.parentName} onChange={(e) => setForm({ ...form, parentName: e.target.value })} /></Field>
             <Field label="Relation"><select value={form.parentRelation} onChange={(e) => setForm({ ...form, parentRelation: e.target.value })}><option>Father</option><option>Mother</option><option>Guardian</option></select></Field>
             <Field label="Mobile"><input value={form.parentMobile} onChange={(e) => setForm({ ...form, parentMobile: e.target.value })} /></Field>
@@ -208,6 +231,9 @@ export default function Admissions() {
               ['Nationality', modal.data.nationality], ['Class Applied', modal.data.classAppliedFor],
               ['Academic Year', modal.data.academicYear], ['Parent', `${modal.data.parentName} (${modal.data.parentRelation})`],
               ['Parent Mobile', modal.data.parentMobile], ['Parent Email', modal.data.parentEmail],
+              ['Father', modal.data.fatherName], ['Father Mobile', modal.data.fatherMobile],
+              ['Mother', modal.data.motherName], ['Mother Mobile', modal.data.motherMobile],
+              ['City', modal.data.city], ['State', modal.data.state], ['PIN Code', modal.data.pinCode],
               ['Address', modal.data.address], ['Admission #', modal.data.admissionNo],
             ].map(([k, v]) => <div key={k} className="field"><label>{k}</label><div style={{ fontWeight: 600 }}>{v || '—'}</div></div>)}
           </div>

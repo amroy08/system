@@ -10,6 +10,63 @@ import { acquireKeyedLock } from '../utils/keyedLock.js';
 const router = Router();
 router.use(authRequired);
 
+function compactAddress(source) {
+  return [
+    source.addressLine1,
+    source.addressLine2,
+    source.city,
+    source.state,
+    source.pinCode,
+    source.country,
+  ].map((part) => String(part || '').trim()).filter(Boolean).join(', ');
+}
+
+function primaryParentFromApplication(app) {
+  if (app.parentName) {
+    return {
+      name: app.parentName,
+      relation: app.parentRelation || 'Guardian',
+      mobile: app.parentMobile || '',
+      email: app.parentEmail || '',
+      occupation: app.parentOccupation || '',
+    };
+  }
+  if (app.parentRelation === 'Mother' && app.motherName) {
+    return {
+      name: app.motherName,
+      relation: 'Mother',
+      mobile: app.motherMobile || '',
+      email: app.motherEmail || '',
+      occupation: app.motherOccupation || '',
+    };
+  }
+  if (app.fatherName) {
+    return {
+      name: app.fatherName,
+      relation: 'Father',
+      mobile: app.fatherMobile || '',
+      email: app.fatherEmail || '',
+      occupation: app.fatherOccupation || '',
+    };
+  }
+  if (app.motherName) {
+    return {
+      name: app.motherName,
+      relation: 'Mother',
+      mobile: app.motherMobile || '',
+      email: app.motherEmail || '',
+      occupation: app.motherOccupation || '',
+    };
+  }
+  return {
+    name: 'Guardian',
+    relation: 'Guardian',
+    mobile: app.parentMobile || '',
+    email: app.parentEmail || '',
+    occupation: app.parentOccupation || '',
+  };
+}
+
 router.get('/', allowRoles(...STAFF), async (req, res) => {
   const query = { _deleted: { $ne: true } };
   if (req.query.status) query.status = req.query.status;
@@ -87,17 +144,34 @@ router.post('/:id/enroll', allowRoles(...STAFF), async (req, res) => {
   const admNo = `${year}-${String(seq).padStart(8, '0')}`;
   const credentials = {};
 
+  const fullAddress = app.address || compactAddress(app);
+  const primaryParent = primaryParentFromApplication(app);
+
   // 1) Parent (reuse by mobile if the same parent already exists)
-  let parent = await findParentByMobile(app.parentMobile);
+  let parent = await findParentByMobile(primaryParent.mobile);
   const isNewParent = !parent;
   if (!parent) {
     parent = await col('parents').insertOne({
-      name: app.parentName || 'Guardian',
-      relation: app.parentRelation || 'Guardian',
-      mobile: app.parentMobile || '',
-      email: app.parentEmail || '',
-      occupation: app.parentOccupation || '',
-      address: app.address || '',
+      name: primaryParent.name,
+      relation: primaryParent.relation,
+      mobile: primaryParent.mobile,
+      email: primaryParent.email,
+      occupation: primaryParent.occupation,
+      address: fullAddress,
+      fatherName: app.fatherName || '',
+      fatherMobile: app.fatherMobile || '',
+      fatherEmail: app.fatherEmail || '',
+      fatherOccupation: app.fatherOccupation || '',
+      motherName: app.motherName || '',
+      motherMobile: app.motherMobile || '',
+      motherEmail: app.motherEmail || '',
+      motherOccupation: app.motherOccupation || '',
+      addressLine1: app.addressLine1 || '',
+      addressLine2: app.addressLine2 || '',
+      city: app.city || '',
+      state: app.state || '',
+      pinCode: app.pinCode || '',
+      country: app.country || '',
       status: 'active',
     });
   }
@@ -121,7 +195,26 @@ router.post('/:id/enroll', allowRoles(...STAFF), async (req, res) => {
     allergies: app.allergies || '',
     medicalNotes: app.medicalNotes || '',
     languages: app.languages || '',
-    address: app.address || '',
+    address: fullAddress,
+    addressLine1: app.addressLine1 || '',
+    addressLine2: app.addressLine2 || '',
+    city: app.city || '',
+    state: app.state || '',
+    pinCode: app.pinCode || '',
+    country: app.country || '',
+    fatherName: app.fatherName || '',
+    fatherMobile: app.fatherMobile || '',
+    fatherEmail: app.fatherEmail || '',
+    fatherOccupation: app.fatherOccupation || '',
+    motherName: app.motherName || '',
+    motherMobile: app.motherMobile || '',
+    motherEmail: app.motherEmail || '',
+    motherOccupation: app.motherOccupation || '',
+    parentName: primaryParent.name,
+    parentRelation: primaryParent.relation,
+    parentMobile: primaryParent.mobile,
+    parentEmail: primaryParent.email,
+    parentOccupation: primaryParent.occupation,
     classId,
     rollNo: rollNo || '',
     admissionDate: admissionDate || new Date().toISOString().slice(0, 10),

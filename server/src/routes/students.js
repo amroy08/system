@@ -15,6 +15,17 @@ const STUDENT_DOCUMENT_TYPES = new Set([
   'transferCertificate', 'previousMarksheet', 'other',
 ]);
 
+function compactAddress(source) {
+  return [
+    source.addressLine1,
+    source.addressLine2,
+    source.city,
+    source.state,
+    source.pinCode,
+    source.country,
+  ].map((part) => String(part || '').trim()).filter(Boolean).join(', ');
+}
+
 function publicStudent(doc, role) {
   if (STAFF.includes(role)) return doc;
   const { profilePhoto, documents, ...safe } = doc;
@@ -137,6 +148,7 @@ router.post('/', allowRoles(...STAFF), async (req, res) => {
 
   const student = await col('students').insertOne({
     ...b,
+    address: b.address || compactAddress(b),
     admissionNo: `${year}-${String(seq).padStart(8, '0')}`,
     status: 'active',
     parentIds,
@@ -153,7 +165,22 @@ router.post('/', allowRoles(...STAFF), async (req, res) => {
       parent = await col('parents').insertOne({
         name: b.parentName, relation: b.parentRelation || 'Guardian',
         mobile: b.parentMobile || '', email: b.parentEmail || '',
-        occupation: b.parentOccupation || '', address: b.address || '', status: 'active',
+        occupation: b.parentOccupation || '', address: b.address || compactAddress(b),
+        fatherName: b.fatherName || '',
+        fatherMobile: b.fatherMobile || '',
+        fatherEmail: b.fatherEmail || '',
+        fatherOccupation: b.fatherOccupation || '',
+        motherName: b.motherName || '',
+        motherMobile: b.motherMobile || '',
+        motherEmail: b.motherEmail || '',
+        motherOccupation: b.motherOccupation || '',
+        addressLine1: b.addressLine1 || '',
+        addressLine2: b.addressLine2 || '',
+        city: b.city || '',
+        state: b.state || '',
+        pinCode: b.pinCode || '',
+        country: b.country || '',
+        status: 'active',
       });
     }
     const pPassword = parentPassword || generateTemporaryPassword();
