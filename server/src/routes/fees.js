@@ -7,6 +7,7 @@ import { summarizeStudentFees } from '../utils/studentFees.js';
 import {
   allocateFeePayment,
   buildRemainingBalanceBreakdown,
+  normalizeFeeHead,
   resolveStudentFeeComponents,
   summarizeComponentPayments,
 } from '../utils/feeAllocation.js';
@@ -77,6 +78,30 @@ async function ensureRefundLedger(receipt) {
 async function calculateFeeStructureItems(student, klass) {
   const structures = await col('feeStructures').find({ status: 'active' });
   return resolveStudentFeeComponents({ student, klass, structures });
+}
+
+function sanitizeManualSplit(items, amountPaid, componentSummaries = []) {
+  if (!Array.isArray(items) || items.length === 0) return null;
+  const cleanItems = items
+    .map((item) => ({
+      description: String(item.description || item.name || '').trim(),
+      amount: Number(item.amount) || 0,
+    }))
+    .filter((item) => item.description && item.amount > 0);
+  const splitTotal = cleanItems.reduce((sum, item) => sum + item.amount, 0);
+  if (Math.abs(splitTotal - amountPaid) > 0.01) {
+    const expected = amountPaid.toFixed(2);
+    const received = splitTotal.toFixed(2);
+    throw new Error(`Split total (${received}) must match payment amount (${expected}).`);
+  }
+  const outstandingByHead = new Map(componentSummaries.map((item) => [normalizeFeeHead(item.name), Number(item.outstandingAmount || 0)]));
+  for (const item of cleanItems) {
+    if (normalizeFeeHead(item.description) === 'school fees payment') continue;
+    const outstanding = outstandingByHead.get(normalizeFeeHead(item.description));
+    if (outstanding === undefined) throw new Error(`Unknown fee head in split: ${item.description}`);
+    if (item.amount - outstanding > 0.01) throw new Error(`${item.description} split cannot exceed its pending balance.`);
+  }
+  return cleanItems;
 }
 
 // Compute what a student owes: tuition + transport + late fee - discount
@@ -284,7 +309,12 @@ router.post('/', allowRoles(...STAFF), async (req, res) => {
   // Dynamic chronological fee allocation (FIFO)
   const applicableItems = await calculateFeeStructureItems(student, klass);
   const componentSummaries = summarizeComponentPayments(applicableItems, paid);
-  const { items } = allocateFeePayment(amountPaid, componentSummaries);
+  let items;
+  try {
+    items = sanitizeManualSplit(b.items, amountPaid, componentSummaries) || allocateFeePayment(amountPaid, componentSummaries).items;
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
+  }
   const status = balanceAfter <= 0 ? 'paid' : amountPaid > 0 ? 'partial' : 'unpaid';
   const balanceBreakdown = buildRemainingBalanceBreakdown(applicableItems, [...paid, { items, amountPaid, status }], balanceAfter);
 

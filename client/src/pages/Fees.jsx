@@ -89,6 +89,7 @@ export default function Fees() {
   const [formClassId, setFormClassId] = useState('');
   const [computed, setComputed] = useState(null);
   const [pay, setPay] = useState(createPaymentForm);
+  const [splitEdited, setSplitEdited] = useState(false);
 
   const filteredStudents = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -138,13 +139,55 @@ export default function Fees() {
     if (!studentId) { setComputed(null); return; }
     api.get(`/fees/compute/${studentId}`).then(({ data }) => {
       setComputed(data);
+      setSplitEdited(false);
     });
   }, [studentId]);
 
-  const paymentSplitPreview = useMemo(
+  const autoSplitPreview = useMemo(
     () => buildSplitPreview(computed?.items || [], pay.amountPaid),
     [computed, pay.amountPaid]
   );
+
+  const manualSplitPreview = useMemo(
+    () => buildSplitPreview(computed?.items || [], 0).map((item) => {
+      const allocationAmount = Number(pay.items.find((split) => split.description === item.name)?.amount || 0);
+      return {
+        ...item,
+        allocationAmount,
+        remainingAfterPayment: Math.max(0, item.outstandingAmount - allocationAmount),
+      };
+    }),
+    [computed, pay.items]
+  );
+
+  const paymentSplitPreview = splitEdited ? manualSplitPreview : autoSplitPreview;
+
+  useEffect(() => {
+    if (!computed || splitEdited) return;
+    const autoItems = autoSplitPreview
+      .filter((item) => Number(item.allocationAmount || 0) > 0)
+      .map((item) => ({ description: item.name, amount: item.allocationAmount }));
+    setPay((current) => ({ ...current, items: autoItems }));
+  }, [computed, autoSplitPreview, splitEdited]);
+
+  const splitTotal = useMemo(
+    () => pay.items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0),
+    [pay.items]
+  );
+
+  const updateManualSplit = (description, amount) => {
+    setSplitEdited(true);
+    setPay((current) => {
+      const next = current.items.filter((item) => item.description !== description);
+      const numericAmount = Number(amount) || 0;
+      if (numericAmount > 0) next.push({ description, amount: numericAmount });
+      return { ...current, items: next };
+    });
+  };
+
+  const resetAutoSplit = () => {
+    setSplitEdited(false);
+  };
 
   const projectedBalance = useMemo(() => Math.max(0, (
     Number(computed?.balance || 0)
@@ -239,6 +282,10 @@ export default function Fees() {
     }
     if (computed && paidAmt > computed.balance) {
       notify(`Payment amount exceeds the outstanding balance (${computed.balance}).`, "error");
+      return;
+    }
+    if (Math.abs(splitTotal - paidAmt) > 0.01) {
+      notify(`Split total must match the paid amount. Current split total is ${splitTotal}.`, "error");
       return;
     }
     if (pay.mode === 'upi' && !pay.reference) {
@@ -823,7 +870,14 @@ export default function Fees() {
                   </b>
                 </div>
 
-                <div className="form-section">Auto Split Preview</div>
+                <div className="form-section" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                  <span>{splitEdited ? 'Edited Split' : 'Auto Split Preview'}</span>
+                  {splitEdited && (
+                    <button type="button" className="btn btn-gray" style={{ padding: '4px 10px', fontSize: 12 }} onClick={resetAutoSplit}>
+                      Reset Auto Split
+                    </button>
+                  )}
+                </div>
                 <div className="full" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginBottom: 12 }}>
                   <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
                     <thead>
@@ -839,10 +893,28 @@ export default function Fees() {
                         <tr key={`${item.name}-${idx}`} style={{ borderBottom: idx === paymentSplitPreview.length - 1 ? 'none' : '1px solid var(--border-light)' }}>
                           <td style={{ padding: '6px 0', fontWeight: 600 }}>{item.name}</td>
                           <td style={{ padding: '6px 0', textAlign: 'right', fontFamily: 'monospace' }}>{cur}{Number(item.paidAmount || 0).toLocaleString()}</td>
-                          <td style={{ padding: '6px 0', textAlign: 'right', fontFamily: 'monospace', color: Number(item.allocationAmount || 0) > 0 ? '#2563eb' : 'var(--txt-muted)', fontWeight: 700 }}>{cur}{Number(item.allocationAmount || 0).toLocaleString()}</td>
+                          <td style={{ padding: '6px 0', textAlign: 'right' }}>
+                            <input
+                              type="number"
+                              min="0"
+                              max={Number(item.outstandingAmount || 0)}
+                              value={Number(item.allocationAmount || 0)}
+                              onChange={(e) => updateManualSplit(item.name, e.target.value)}
+                              style={{ width: 120, textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: Number(item.allocationAmount || 0) > 0 ? '#2563eb' : 'var(--txt-muted)' }}
+                            />
+                          </td>
                           <td style={{ padding: '6px 0', textAlign: 'right', fontFamily: 'monospace', color: Number(item.remainingAfterPayment || 0) > 0 ? '#dc2626' : '#16a34a' }}>{cur}{Number(item.remainingAfterPayment || 0).toLocaleString()}</td>
                         </tr>
                       ))}
+                      <tr style={{ borderTop: '1px solid var(--border)', fontWeight: 700 }}>
+                        <td style={{ padding: '8px 0' }} colSpan={2}>Split Total</td>
+                        <td style={{ padding: '8px 0', textAlign: 'right', fontFamily: 'monospace', color: Math.abs(splitTotal - (Number(pay.amountPaid) || 0)) > 0.01 ? '#dc2626' : '#16a34a' }}>
+                          {cur}{splitTotal.toLocaleString()}
+                        </td>
+                        <td style={{ padding: '8px 0', textAlign: 'right', color: Math.abs(splitTotal - (Number(pay.amountPaid) || 0)) > 0.01 ? '#dc2626' : '#16a34a' }}>
+                          {Math.abs(splitTotal - (Number(pay.amountPaid) || 0)) > 0.01 ? 'Must match paid amount' : 'Ready'}
+                        </td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
