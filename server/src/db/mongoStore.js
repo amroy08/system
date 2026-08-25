@@ -1,4 +1,4 @@
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 import { nanoid } from 'nanoid';
 import { config } from '../config.js';
 import { ensureMongoIndexes } from './indexes.js';
@@ -10,13 +10,36 @@ import { ensureMongoIndexes } from './indexes.js';
 let client;
 let db;
 
+function objectIdCandidate(value) {
+  return typeof value === 'string' && ObjectId.isValid(value) && String(new ObjectId(value)) === value;
+}
+
+function expandObjectIdValue(value) {
+  return objectIdCandidate(value) ? [value, new ObjectId(value)] : [value];
+}
+
+function normalizeMongoQuery(query = {}) {
+  if (!query || typeof query !== 'object' || Array.isArray(query)) return query;
+  const normalized = { ...query };
+  const idQuery = normalized._id;
+  if (objectIdCandidate(idQuery)) {
+    normalized._id = { $in: expandObjectIdValue(idQuery) };
+  } else if (idQuery && typeof idQuery === 'object' && !Array.isArray(idQuery) && Array.isArray(idQuery.$in)) {
+    normalized._id = {
+      ...idQuery,
+      $in: idQuery.$in.flatMap(expandObjectIdValue),
+    };
+  }
+  return normalized;
+}
+
 class MongoCollection {
   constructor(name) {
     this.col = db.collection(name);
   }
 
   async find(query = {}, { sort, limit, skip } = {}) {
-    let cursor = this.col.find(query);
+    let cursor = this.col.find(normalizeMongoQuery(query));
     if (sort) cursor = cursor.sort(sort);
     if (skip) cursor = cursor.skip(skip);
     if (limit) cursor = cursor.limit(limit);
@@ -24,7 +47,7 @@ class MongoCollection {
   }
 
   async findOne(query = {}) {
-    return this.col.findOne(query);
+    return this.col.findOne(normalizeMongoQuery(query));
   }
 
   async insertOne(doc) {
@@ -41,7 +64,7 @@ class MongoCollection {
 
   async updateOne(query, changes) {
     const res = await this.col.findOneAndUpdate(
-      query,
+      normalizeMongoQuery(query),
       { $set: { ...changes, updatedAt: new Date().toISOString() } },
       { returnDocument: 'after' }
     );
@@ -49,22 +72,22 @@ class MongoCollection {
   }
 
   async updateMany(query, changes) {
-    const res = await this.col.updateMany(query, { $set: { ...changes, updatedAt: new Date().toISOString() } });
+    const res = await this.col.updateMany(normalizeMongoQuery(query), { $set: { ...changes, updatedAt: new Date().toISOString() } });
     return res.modifiedCount;
   }
 
   async deleteOne(query) {
-    const res = await this.col.deleteOne(query);
+    const res = await this.col.deleteOne(normalizeMongoQuery(query));
     return res.deletedCount;
   }
 
   async deleteMany(query) {
-    const res = await this.col.deleteMany(query);
+    const res = await this.col.deleteMany(normalizeMongoQuery(query));
     return res.deletedCount;
   }
 
   async count(query = {}) {
-    return this.col.countDocuments(query);
+    return this.col.countDocuments(normalizeMongoQuery(query));
   }
 }
 
