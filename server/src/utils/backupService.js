@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
+import { MongoClient } from 'mongodb';
 import { config } from '../config.js';
 import { flushDb, reloadDb } from '../db/index.js';
 import { isOffsiteBackupConfigured, replicateBackup } from './backupReplica.js';
@@ -93,6 +94,43 @@ function runProcess(command, args) {
   });
 }
 
+async function dumpMongoJson(destination) {
+  const client = new MongoClient(config.mongoUri);
+  try {
+    await client.connect();
+    const db = client.db(config.mongoDbName);
+    const collections = await db.listCollections({}, { nameOnly: true }).toArray();
+    const exportRoot = path.join(destination, 'mongo-json');
+    fs.mkdirSync(exportRoot, { recursive: true });
+    for (const { name } of collections.sort((a, b) => a.name.localeCompare(b.name))) {
+      if (name.startsWith('system.')) continue;
+      const docs = await db.collection(name).find({}).sort({ _id: 1 }).toArray();
+      writeJsonAtomic(path.join(exportRoot, `${name}.json`), {
+        collection: name,
+        exportedAt: new Date().toISOString(),
+        documentCount: docs.length,
+        documents: JSON.parse(JSON.stringify(docs)),
+      });
+    }
+  } finally {
+    await client.close();
+  }
+}
+
+async function dumpMongo(destination) {
+  try {
+    await runProcess('mongodump', [
+      `--uri=${config.mongoUri}`,
+      `--db=${config.mongoDbName}`,
+      `--archive=${path.join(destination, 'mongo.archive.gz')}`,
+      '--gzip',
+    ]);
+  } catch (error) {
+    if (!error.message.includes('mongodump is unavailable')) throw error;
+    await dumpMongoJson(destination);
+  }
+}
+
 function applyRetention() {
   const groups = { scheduled: config.backupRetention, 'pre-restore': 10 };
   const backups = listBackups();
@@ -125,12 +163,7 @@ async function createBackupUnsafe({ type = 'manual', createdBy = 'System', reaso
       fs.copyFileSync(path.join(config.dataDir, entry.name), path.join(backupData, entry.name));
     }
   } else if (config.dbDriver === 'mongo') {
-    await runProcess('mongodump', [
-      `--uri=${config.mongoUri}`,
-      `--db=${config.mongoDbName}`,
-      `--archive=${path.join(backupData, 'mongo.archive.gz')}`,
-      '--gzip',
-    ]);
+    await dumpMongo(backupData);
   } else {
     throw new Error(`Unsupported database driver: ${config.dbDriver}`);
   }
