@@ -108,6 +108,7 @@ export default function Fees() {
   const [computed, setComputed] = useState(null);
   const [pay, setPay] = useState(createPaymentForm);
   const [splitEdited, setSplitEdited] = useState(false);
+  const [recordingPayment, setRecordingPayment] = useState(false);
 
   const filteredStudents = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -319,12 +320,16 @@ export default function Fees() {
       return;
     }
     try {
+      setRecordingPayment(true);
       const idempotencyKey = pay.idempotencyKey;
       const { data } = await api.post('/fees', { studentId, ...pay, idempotencyKey }, { headers: { 'Idempotency-Key': idempotencyKey } });
-      notify(`Payment recorded — ${data.receiptNo}`);
       setModal({ type: 'receipt', data });
+      notify(`Payment recorded — ${data.receiptNo}`);
       load();
     } catch (e) { notify(errMsg(e), 'error'); }
+    finally {
+      setRecordingPayment(false);
+    }
   };
 
   const refund = async (r) => {
@@ -751,7 +756,7 @@ export default function Fees() {
         <Modal title="Record Fee Payment" icon={Wallet} size="lg" onClose={() => setModal(null)}
           footer={<>
             <button className="btn btn-gray" onClick={() => setModal(null)}>Cancel</button>
-            <button className="btn btn-green" disabled={!studentId || !pay.amountPaid || Number(pay.amountPaid) <= 0} onClick={record}>Record Payment</button>
+            <button className="btn btn-green" disabled={recordingPayment || !studentId || !pay.amountPaid || Number(pay.amountPaid) <= 0} onClick={record}>{recordingPayment ? 'Recording...' : 'Record Payment'}</button>
           </>}>
           <div className="form-grid">
             <Field label="Wing" required>

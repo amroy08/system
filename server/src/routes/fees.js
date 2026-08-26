@@ -142,6 +142,32 @@ function sanitizeManualSplit(items, amountPaid, componentSummaries = []) {
   return cleanItems;
 }
 
+async function queueReceiptEmail(receipt, student, createdBy) {
+  try {
+    const recipientResult = await resolveEmailRecipients({ parentIds: student.parentIds || [] });
+    const queued = await enqueueEmailEvent({
+      eventType: 'receipt',
+      entityType: 'feeReceipt',
+      entityId: receipt._id,
+      version: receipt.createdAt,
+      recipients: recipientResult.recipients,
+      payload: receipt,
+      createdBy,
+    });
+    await col('feeReceipts').updateOne({ _id: receipt._id }, {
+      emailStatus: queued.queuedCount ? 'queued' : 'no-recipients',
+      emailRecipientCount: queued.queuedCount,
+      emailSkipped: recipientResult.skipped,
+    });
+  } catch (err) {
+    console.error('[Receipt Email Queue Error]', err);
+    await col('feeReceipts').updateOne({ _id: receipt._id }, {
+      emailStatus: 'failed',
+      emailFailureReason: err.message,
+    });
+  }
+}
+
 // Compute what a student owes: tuition + transport + late fee - discount
 router.get('/compute/:studentId', async (req, res) => {
   const student = await col('students').findOne({ _id: req.params.studentId });
@@ -394,21 +420,10 @@ router.post('/', allowRoles(...STAFF), async (req, res) => {
     remarks: b.remarks || '',
     collectedBy: req.user.name,
     status,
+    emailStatus: 'pending',
+    emailRecipientCount: 0,
     ...(idempotencyKey ? { idempotencyKey } : {}),
   });
-
-  try {
-    const recipientResult = await resolveEmailRecipients({ parentIds: student.parentIds || [] });
-    const queued = await enqueueEmailEvent({
-      eventType: 'receipt', entityType: 'feeReceipt', entityId: doc._id, version: doc.createdAt,
-      recipients: recipientResult.recipients, payload: doc, createdBy: req.user.name,
-    });
-    await col('feeReceipts').updateOne({ _id: doc._id }, {
-      emailStatus: queued.queuedCount ? 'queued' : 'no-recipients',
-      emailRecipientCount: queued.queuedCount,
-      emailSkipped: recipientResult.skipped,
-    });
-  } catch (err) { console.error('[Receipt Email Queue Error]', err); }
 
   // Mirror income into Daily Accounts
   if (amountPaid > 0) {
@@ -420,6 +435,7 @@ router.post('/', allowRoles(...STAFF), async (req, res) => {
     });
   }
   res.status(201).json(doc);
+  queueMicrotask(() => queueReceiptEmail(doc, student, req.user.name).catch((err) => console.error('[Receipt Email Queue Error]', err)));
   } finally {
     release();
   }
