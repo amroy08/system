@@ -30,7 +30,7 @@ function shade(hex, pct) {
 export function AppProvider({ children }) {
   const [user, setUser] = useState(null);
   const [authReady, setAuthReady] = useState(false);
-  const [settings, setSettings] = useState({ schoolName: 'Demo School', currency: '₹' });
+  const [settings, setSettings] = useState({ schoolName: 'M.V HIGH SCHOOL', currency: '₹' });
   const [toast, setToast] = useState(null);
 
   const loadSettings = useCallback(async () => {

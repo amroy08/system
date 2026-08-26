@@ -31,13 +31,13 @@ export default function Login() {
     }
   };
 
-  const initials = (settings.schoolName || 'DS').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+  const initials = (settings.schoolName || 'M.V HIGH SCHOOL').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
   return (
     <div className="login-page">
       <div className="login-card">
         <div className="login-logo">{initials}</div>
-        <h1>{settings.schoolName || 'Demo School'}</h1>
+        <h1>{settings.schoolName || 'M.V HIGH SCHOOL'}</h1>
         <div className="sub">School Management System — Sign in to continue</div>
         {error && <div className="login-error">{error}</div>}
         <form onSubmit={submit} style={{ display: 'grid', gap: 13 }}>

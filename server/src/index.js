@@ -89,7 +89,7 @@ app.get('/api/public/settings', async (req, res) => {
   const doc = await col('settings').findOne({ key: 'school' });
   const v = doc?.value || {};
   res.json({
-    schoolName: v.schoolName || 'Demo School',
+    schoolName: v.schoolName || 'M.V HIGH SCHOOL',
     logoUrl: v.logoUrl || '',
     primaryColor: v.primaryColor || '#0f2248',
     accentColor: v.accentColor || '#16a34a',
