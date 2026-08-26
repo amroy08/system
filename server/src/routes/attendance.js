@@ -14,7 +14,7 @@ async function validateAttendanceInput(classId, date, records) {
   if (!classId || !ISO_DATE.test(String(date || '')) || !Array.isArray(records)) {
     throw new Error('A valid class, date and attendance records are required');
   }
-  const klass = await col('classes').findOne({ _id: classId });
+  const klass = await col('classes').findOne({ _id: classId, _deleted: { $ne: true }, status: { $ne: 'archived' } });
   if (!klass) throw new Error('Class not found');
   const roster = await col('students').find({ classId, status: 'active' });
   const rosterIds = new Set(roster.map((student) => student._id));

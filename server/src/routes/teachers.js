@@ -4,12 +4,13 @@ import { authRequired, allowRoles, STAFF, STAFF_TEACHER } from '../middleware/au
 
 const router = Router();
 router.use(authRequired);
+const ACTIVE_CLASS_QUERY = { _deleted: { $ne: true }, status: { $ne: 'archived' } };
 
 // Teachers overview (teacher users + their assignments)
 router.get('/', allowRoles(...STAFF_TEACHER), async (req, res) => {
-  const teachers = await col('users').find({ role: 'teacher' }, { sort: { fullName: 1 } });
+  const teachers = await col('users').find({ role: 'teacher', status: { $ne: 'deleted' } }, { sort: { fullName: 1 } });
   const assignments = await col('assignments').find({ _deleted: { $ne: true } });
-  const classes = await col('classes').find({});
+  const classes = await col('classes').find(ACTIVE_CLASS_QUERY);
   res.json(teachers.map((t) => {
     const mine = assignments.filter((a) => a.teacherId === t._id);
     const classTeacherOf = classes.find((c) => c.classTeacherId === t._id);
@@ -40,7 +41,15 @@ router.get('/assignments', allowRoles(...STAFF_TEACHER), async (req, res) => {
 router.post('/assignments', allowRoles(...STAFF), async (req, res) => {
   const { teacherId, classId, subjectId } = req.body;
   if (!teacherId || !classId || !subjectId) return res.status(400).json({ error: 'Teacher, class and subject are required' });
-  const dup = await col('assignments').findOne({ teacherId, classId, subjectId });
+  const [teacher, klass, subject] = await Promise.all([
+    col('users').findOne({ _id: teacherId, role: 'teacher', status: 'active' }),
+    col('classes').findOne({ _id: classId, ...ACTIVE_CLASS_QUERY }),
+    col('subjects').findOne({ _id: subjectId, _deleted: { $ne: true } }),
+  ]);
+  if (!teacher) return res.status(400).json({ error: 'Please select an active teacher' });
+  if (!klass) return res.status(400).json({ error: 'Please select an active class' });
+  if (!subject) return res.status(400).json({ error: 'Please select an active subject' });
+  const dup = await col('assignments').findOne({ teacherId, classId, subjectId, _deleted: { $ne: true } });
   if (dup) return res.status(400).json({ error: 'This assignment already exists' });
   res.status(201).json(await col('assignments').insertOne({ teacherId, classId, subjectId }));
 });

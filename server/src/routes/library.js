@@ -71,7 +71,7 @@ router.put('/books/:id', allowRoles(...STAFF), async (req, res) => {
   const release = await acquireKeyedLock(`library-book:${req.params.id}`);
   try {
     // Keep availableCopies consistent when total copies change
-    const book = await col('books').findOne({ _id: req.params.id });
+    const book = await col('books').findOne({ _id: req.params.id, _deleted: { $ne: true } });
     if (!book) return res.status(404).json({ error: 'Book not found' });
     if (b.title !== undefined && !String(b.title).trim()) return res.status(400).json({ error: 'Book title is required' });
     if (b.copies != null) {
@@ -187,7 +187,7 @@ router.get('/my', allowRoles('student', 'parent'), async (req, res) => {
   if (req.user.role === 'student') {
     studentIds = [req.user.refId];
   } else {
-    const students = await col('students').find({});
+    const students = await col('students').find({ status: { $ne: 'deleted' } });
     studentIds = students.filter((s) => (s.parentIds || []).includes(req.user.refId)).map((s) => s._id);
   }
   const issues = await col('bookIssues').find({ memberType: 'student' }, { sort: { createdAt: -1 } });

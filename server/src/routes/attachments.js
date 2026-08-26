@@ -43,9 +43,9 @@ async function findHost(attachment) {
   const collectionName = scopeCollections[attachment.scope];
   if (!collectionName) return null;
   if (attachment.scope === 'studentDocument') {
-    return attachment.hostId ? col('students').findOne({ _id: attachment.hostId }) : null;
+    return attachment.hostId ? col('students').findOne({ _id: attachment.hostId, status: { $ne: 'deleted' } }) : null;
   }
-  const rows = await col(collectionName).find({});
+  const rows = await col(collectionName).find({ _deleted: { $ne: true } });
   return rows.find((row) => row.attachment?._id === attachment._id) || null;
 }
 
@@ -89,7 +89,7 @@ router.post('/', allowRoles('admin', 'clerk', 'supervisor', 'teacher'), async (r
     if (!scopeCollections[scope]) return res.status(400).json({ error: 'Invalid attachment destination' });
     if (scope === 'studentDocument') {
       if (!STAFF.includes(req.user.role)) return res.status(403).json({ error: 'Only authorized staff can manage student documents' });
-      if (!hostId || !(await col('students').findOne({ _id: hostId }))) return res.status(404).json({ error: 'Student not found' });
+      if (!hostId || !(await col('students').findOne({ _id: hostId, status: { $ne: 'deleted' } }))) return res.status(404).json({ error: 'Student not found' });
       if (!STUDENT_DOCUMENT_TYPES.has(documentType)) return res.status(400).json({ error: 'Invalid student document type' });
       if (documentType === 'profilePhoto' && !mimeType.startsWith('image/')) {
         return res.status(400).json({ error: 'Student photos must be PNG, JPG or JPEG images' });

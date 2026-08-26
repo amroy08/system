@@ -33,7 +33,7 @@ router.post('/', allowRoles(...STAFF), async (req, res) => {
 });
 
 router.put('/:id', allowRoles(...STAFF), async (req, res) => {
-  const existing = await col('parents').findOne({ _id: req.params.id });
+  const existing = await col('parents').findOne({ _id: req.params.id, status: { $ne: 'deleted' } });
   if (!existing) return res.status(404).json({ error: 'Parent not found' });
   const body = { ...req.body };
   delete body._id;
@@ -48,7 +48,7 @@ router.put('/:id', allowRoles(...STAFF), async (req, res) => {
 });
 
 router.delete('/:id', allowRoles('admin'), async (req, res) => {
-  const parent = await col('parents').findOne({ _id: req.params.id });
+  const parent = await col('parents').findOne({ _id: req.params.id, status: { $ne: 'deleted' } });
   if (!parent) return res.status(404).json({ error: 'Parent not found' });
   const students = await col('students').find({ status: { $ne: 'deleted' } });
   const linked = students.filter((student) => (student.parentIds || []).includes(parent._id));

@@ -15,6 +15,7 @@ const STUDENT_DOCUMENT_TYPES = new Set([
   'transferCertificate', 'previousMarksheet', 'other',
 ]);
 const VISIBLE_STUDENT_STATUSES = ['active', 'inactive', 'transferred', 'passed-out', 'suspended'];
+const ACTIVE_CLASS_QUERY = { _deleted: { $ne: true }, status: { $ne: 'archived' } };
 const STUDENT_LIST_PROJECTION = {
   _id: 1,
   firstName: 1,
@@ -105,7 +106,7 @@ router.get('/', allowRoles(...STAFF_TEACHER), async (req, res) => {
 });
 
 router.get('/fee-preview', allowRoles(...STAFF), async (req, res) => {
-  const klass = await col('classes').findOne({ _id: req.query.classId });
+  const klass = await col('classes').findOne({ _id: req.query.classId, ...ACTIVE_CLASS_QUERY });
   if (!klass) return res.status(404).json({ error: 'Class not found' });
   const category = normalizeAdmissionCategory(req.query.admissionCategory);
   const structures = await col('feeStructures').find({ status: 'active' });
@@ -129,7 +130,7 @@ router.get('/:id', async (req, res) => {
 });
 
 async function createFeeAssignment(classId, admissionCategory, source, userName) {
-  const klass = await col('classes').findOne({ _id: classId });
+  const klass = await col('classes').findOne({ _id: classId, ...ACTIVE_CLASS_QUERY });
   if (!klass) throw new Error('Class not found');
   const structures = await col('feeStructures').find({ status: 'active' });
   const assignment = resolveFeeAssignment(structures, klass, admissionCategory);
@@ -255,7 +256,7 @@ router.put('/:id', allowRoles(...STAFF), async (req, res) => {
   delete b.deletedAt;
   delete b.deletedBy;
 
-  const doc = await col('students').findOne({ _id: req.params.id });
+  const doc = await col('students').findOne({ _id: req.params.id, status: { $ne: 'deleted' } });
   if (!doc) return res.status(404).json({ error: 'Student not found' });
 
   if (b.admissionCategory !== undefined) {
@@ -286,7 +287,7 @@ router.put('/:id', allowRoles(...STAFF), async (req, res) => {
 
 // Quick views used by the action icons on the students table
 router.get('/:id/fees', async (req, res) => {
-  const student = await col('students').findOne({ _id: req.params.id });
+  const student = await col('students').findOne({ _id: req.params.id, status: { $ne: 'deleted' } });
   if (!student || !(await mayReadStudent(req, student))) return res.status(404).json({ error: 'Student not found' });
   const receipts = await col('feeReceipts').find({ studentId: req.params.id }, { sort: { date: -1 } });
   const structures = await col('feeStructures').find({});
@@ -294,7 +295,7 @@ router.get('/:id/fees', async (req, res) => {
 });
 
 router.get('/:id/attendance', async (req, res) => {
-  const student = await col('students').findOne({ _id: req.params.id });
+  const student = await col('students').findOne({ _id: req.params.id, status: { $ne: 'deleted' } });
   if (!student || !(await mayReadStudent(req, student))) return res.status(404).json({ error: 'Student not found' });
   const { from, to } = req.query;
   const all = await col('attendance').find({});
@@ -312,10 +313,10 @@ router.get('/:id/attendance', async (req, res) => {
 });
 
 router.get('/:id/results', async (req, res) => {
-  const student = await col('students').findOne({ _id: req.params.id });
+  const student = await col('students').findOne({ _id: req.params.id, status: { $ne: 'deleted' } });
   if (!student || !(await mayReadStudent(req, student))) return res.status(404).json({ error: 'Student not found' });
   const allMarks = await col('marks').find({ classId: student.classId });
-  const exams = await col('exams').find({});
+  const exams = await col('exams').find({ _deleted: { $ne: true } });
   const subjects = await col('subjects').find({ _deleted: { $ne: true } });
   const visible = req.user.role === 'student' || req.user.role === 'parent';
   const results = [];
@@ -334,14 +335,14 @@ router.get('/:id/results', async (req, res) => {
 });
 
 router.get('/:id/parents', async (req, res) => {
-  const student = await col('students').findOne({ _id: req.params.id });
+  const student = await col('students').findOne({ _id: req.params.id, status: { $ne: 'deleted' } });
   if (!student || !(await mayReadStudent(req, student))) return res.status(404).json({ error: 'Student not found' });
-  const parents = await col('parents').find({ _id: { $in: student.parentIds || [] } });
+  const parents = await col('parents').find({ _id: { $in: student.parentIds || [] }, status: 'active' });
   res.json(parents);
 });
 
 router.delete('/:id', allowRoles('admin'), async (req, res) => {
-  const student = await col('students').findOne({ _id: req.params.id });
+  const student = await col('students').findOne({ _id: req.params.id, status: { $ne: 'deleted' } });
   if (!student) return res.status(404).json({ error: 'Student not found' });
   const deletedAt = new Date().toISOString();
   await col('students').updateOne({ _id: req.params.id }, {

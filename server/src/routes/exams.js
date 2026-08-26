@@ -9,6 +9,7 @@ import { acquireKeyedLock } from '../utils/keyedLock.js';
 
 const router = Router();
 router.use(authRequired);
+const ACTIVE_CLASS_QUERY = { _deleted: { $ne: true }, status: { $ne: 'archived' } };
 
 // ---------- Exams ----------
 router.get('/', async (req, res) => {
@@ -44,7 +45,7 @@ router.post('/', allowRoles(...STAFF), async (req, res) => {
 
 router.put('/:id', allowRoles(...STAFF), async (req, res) => {
   try {
-    const existing = await col('exams').findOne({ _id: req.params.id });
+    const existing = await col('exams').findOne({ _id: req.params.id, _deleted: { $ne: true } });
     if (!existing) return res.status(404).json({ error: 'Exam not found' });
     const b = { ...req.body };
     delete b._id;
@@ -65,14 +66,14 @@ router.delete('/:id', allowRoles('admin'), async (req, res) => {
 });
 
 router.post('/:id/publish-schedule', allowRoles('admin'), async (req, res) => {
-  const exam = await col('exams').findOne({ _id: req.params.id });
+  const exam = await col('exams').findOne({ _id: req.params.id, _deleted: { $ne: true } });
   if (!exam) return res.status(404).json({ error: 'Exam not found' });
   if (!exam.startDate || !exam.endDate) return res.status(400).json({ error: 'Add both start and end dates before publishing the exam schedule' });
   const classIds = exam.classIds || [];
   const result = classIds.length
     ? await resolveEmailRecipients({ audience: 'class', classIds })
     : await resolveEmailRecipients({ audience: 'parents' });
-  const classes = classIds.length ? await col('classes').find({ _id: { $in: classIds } }) : [];
+  const classes = classIds.length ? await col('classes').find({ _id: { $in: classIds }, ...ACTIVE_CLASS_QUERY }) : [];
   const className = classes.length ? classes.map((item) => `${item.name} ${item.section}`).join(', ') : 'All Grades / Classes';
   const publishedAt = new Date().toISOString();
   const queued = await enqueueEmailEvent({
@@ -110,7 +111,7 @@ async function validateMarksContext(examId, classId, subjectId) {
   if (!classId || !subjectId) throw new Error('Class and subject are required');
   const [exam, klass, subject] = await Promise.all([
     col('exams').findOne({ _id: examId, _deleted: { $ne: true } }),
-    col('classes').findOne({ _id: classId }),
+    col('classes').findOne({ _id: classId, ...ACTIVE_CLASS_QUERY }),
     col('subjects').findOne({ _id: subjectId, _deleted: { $ne: true } }),
   ]);
   if (!exam) throw new Error('Exam not found');
@@ -192,6 +193,8 @@ router.post('/:examId/marks', allowRoles(...STAFF_TEACHER), async (req, res) => 
 
 // Publish — ADMIN ONLY (makes results visible to students/parents)
 router.post('/:examId/publish', allowRoles('admin'), async (req, res) => {
+  const exam = await col('exams').findOne({ _id: req.params.examId, _deleted: { $ne: true } });
+  if (!exam) return res.status(404).json({ error: 'Exam not found' });
   const n = await col('marks').updateMany(
     { examId: req.params.examId, status: { $in: ['submitted', 'locked'] } },
     { status: 'published', publishedBy: req.user.name, publishedAt: new Date().toISOString() }
@@ -210,7 +213,9 @@ router.get('/:examId/results', allowRoles(...STAFF_TEACHER), async (req, res) =>
   if (classId) query.classId = classId;
   const sheets = await col('marks').find(query);
   const subjects = await col('subjects').find({ _deleted: { $ne: true } });
-  const students = await col('students').find(classId ? { classId } : {});
+  const students = await col('students').find(classId
+    ? { classId, status: { $ne: 'deleted' } }
+    : { status: { $ne: 'deleted' } });
 
   const perStudent = {};
   const gradeDist = {};
@@ -242,11 +247,11 @@ router.get('/:examId/results', allowRoles(...STAFF_TEACHER), async (req, res) =>
 
 // ---------- Hall tickets ----------
 router.get('/:examId/hall-tickets', async (req, res) => {
-  const exam = await col('exams').findOne({ _id: req.params.examId });
+  const exam = await col('exams').findOne({ _id: req.params.examId, _deleted: { $ne: true } });
   if (!exam) return res.status(404).json({ error: 'Exam not found' });
   let students;
   if (req.user.role === 'student') {
-    students = await col('students').find({ _id: req.user.refId });
+    students = await col('students').find({ _id: req.user.refId, status: 'active' });
   } else if (req.user.role === 'parent') {
     students = await col('students').find({ parentIds: { $in: [req.user.refId] }, status: 'active' });
     students = students.filter((s) => (s.parentIds || []).includes(req.user.refId));
@@ -263,7 +268,7 @@ router.get('/:examId/hall-tickets', async (req, res) => {
     students = await col('students').find(q, { sort: { rollNo: 1 } });
   }
   if ((exam.classIds || []).length) students = students.filter((student) => exam.classIds.includes(student.classId));
-  const classes = await col('classes').find({});
+  const classes = await col('classes').find(ACTIVE_CLASS_QUERY);
   const subjects = await col('subjects').find({ _deleted: { $ne: true } });
   const settings = await col('settings').findOne({ key: 'school' });
   const tickets = students.map((s) => {

@@ -9,6 +9,7 @@ import { acquireKeyedLock } from '../utils/keyedLock.js';
 const router = Router();
 router.use(authRequired);
 router.use(allowRoles(...STAFF));
+const ACTIVE_CLASS_QUERY = { _deleted: { $ne: true }, status: { $ne: 'archived' } };
 
 function isPassoutClass(klass) {
   const name = String(klass?.name || '').toLowerCase();
@@ -27,7 +28,7 @@ function classGrade(klass) {
 router.get('/preview/:classId', async (req, res) => {
   try {
     const classId = req.params.classId;
-    const sourceClass = await col('classes').findOne({ _id: classId });
+    const sourceClass = await col('classes').findOne({ _id: classId, ...ACTIVE_CLASS_QUERY });
     if (!sourceClass) return res.status(404).json({ error: 'Source class not found' });
 
     const students = await col('students').find({ classId, status: 'active' });
@@ -78,9 +79,9 @@ router.post('/batch', async (req, res) => {
     }
     release = await acquireKeyedLock(`promotion:${fromClassId}`);
 
-    const sourceClass = await col('classes').findOne({ _id: fromClassId });
+    const sourceClass = await col('classes').findOne({ _id: fromClassId, ...ACTIVE_CLASS_QUERY });
     if (!sourceClass) return res.status(404).json({ error: 'Source class not found' });
-    const targetClass = await col('classes').findOne({ _id: toClassId });
+    const targetClass = await col('classes').findOne({ _id: toClassId, ...ACTIVE_CLASS_QUERY });
     if (!targetClass) return res.status(404).json({ error: 'Target class not found' });
 
     const passoutRollover = isPassoutClass(targetClass);
@@ -104,7 +105,7 @@ router.post('/batch', async (req, res) => {
     let carriedArrears = 0;
 
     for (const cand of candidates) {
-      const student = await col('students').findOne({ _id: cand.studentId });
+      const student = await col('students').findOne({ _id: cand.studentId, status: { $ne: 'deleted' } });
       if (!student || student.classId !== fromClassId || student.status !== 'active') continue;
 
       if (cand.action === 'PROMOTE') {

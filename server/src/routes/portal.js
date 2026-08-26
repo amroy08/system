@@ -6,6 +6,7 @@ import { summarizeStudentFees } from '../utils/studentFees.js';
 // Student & Parent portal: scoped views of "my" data
 const router = Router();
 router.use(authRequired);
+const ACTIVE_CLASS_QUERY = { _deleted: { $ne: true }, status: { $ne: 'archived' } };
 
 function targetsClass(record, classId) {
   const classIds = Array.isArray(record.classIds) ? record.classIds.filter(Boolean) : [];
@@ -24,9 +25,9 @@ function portalStudent(student) {
 }
 
 async function studentSnapshot(studentId) {
-  const student = await col('students').findOne({ _id: studentId });
+  const student = await col('students').findOne({ _id: studentId, status: { $ne: 'deleted' } });
   if (!student) return null;
-  const klass = await col('classes').findOne({ _id: student.classId });
+  const klass = await col('classes').findOne({ _id: student.classId, ...ACTIVE_CLASS_QUERY });
 
   // Attendance summary
   const allAttendance = await col('attendance').find({ classId: student.classId });
@@ -43,7 +44,7 @@ async function studentSnapshot(studentId) {
 
   // Published results only
   const sheets = await col('marks').find({ classId: student.classId, status: 'published' });
-  const exams = await col('exams').find({});
+  const exams = await col('exams').find({ _deleted: { $ne: true } });
   const subjects = await col('subjects').find({ _deleted: { $ne: true } });
   const results = [];
   for (const m of sheets) {
@@ -62,12 +63,12 @@ async function studentSnapshot(studentId) {
   const receipts = await col('feeReceipts').find({ studentId }, { sort: { date: -1 } });
   const fees = summarizeStudentFees(student, receipts);
   const [notices, meetings, activities, documents, homework, lessonPlans] = await Promise.all([
-    col('notices').find({ status: 'published' }, { sort: { date: -1 } }),
-    col('ptm').find({}, { sort: { date: -1 } }),
-    col('activities').find({}, { sort: { date: -1 } }),
-    col('documents').find({}, { sort: { date: -1 } }),
-    col('homework').find({ status: 'active' }, { sort: { dueDate: 1 } }),
-    col('lessonPlans').find({ shareWithFamilies: true }, { sort: { date: -1 } }),
+    col('notices').find({ _deleted: { $ne: true }, status: 'published' }, { sort: { date: -1 } }),
+    col('ptm').find({ _deleted: { $ne: true } }, { sort: { date: -1 } }),
+    col('activities').find({ _deleted: { $ne: true } }, { sort: { date: -1 } }),
+    col('documents').find({ _deleted: { $ne: true } }, { sort: { date: -1 } }),
+    col('homework').find({ _deleted: { $ne: true }, status: 'active' }, { sort: { dueDate: 1 } }),
+    col('lessonPlans').find({ _deleted: { $ne: true }, shareWithFamilies: true }, { sort: { date: -1 } }),
   ]);
 
   return {
@@ -94,9 +95,9 @@ router.get('/student', allowRoles('student'), async (req, res) => {
 });
 
 router.get('/parent', allowRoles('parent'), async (req, res) => {
-  const parent = await col('parents').findOne({ _id: req.user.refId });
+  const parent = await col('parents').findOne({ _id: req.user.refId, status: 'active' });
   if (!parent) return res.status(404).json({ error: 'Parent record not found' });
-  const children = await col('students').find({});
+  const children = await col('students').find({ status: { $ne: 'deleted' } });
   const mine = children.filter((s) => (s.parentIds || []).includes(parent._id));
   const activeMine = mine.filter((student) => student.status === 'active');
   const formerMine = mine.filter((student) => student.status !== 'active');
@@ -109,12 +110,12 @@ router.get('/parent', allowRoles('parent'), async (req, res) => {
 
 // Notices visible to my role
 router.get('/notices', async (req, res) => {
-  const all = await col('notices').find({ status: 'published' }, { sort: { date: -1 } });
+  const all = await col('notices').find({ _deleted: { $ne: true }, status: 'published' }, { sort: { date: -1 } });
   const audienceMap = { student: 'students', teacher: 'teachers', parent: 'parents' };
   
   let myClassIds = [];
   if (req.user.role === 'student') {
-    const student = await col('students').findOne({ _id: req.user.refId });
+    const student = await col('students').findOne({ _id: req.user.refId, status: 'active' });
     if (student) myClassIds = [student.classId];
   } else if (req.user.role === 'parent') {
     const students = await col('students').find({ status: 'active' });

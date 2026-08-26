@@ -72,7 +72,7 @@ router.post('/', allowRoles('admin', 'clerk'), async (req, res) => {
   const b = req.body;
   if (!b.staffId || !b.month) return res.status(400).json({ error: 'Staff member and month are required' });
   if (!/^\d{4}-\d{2}$/.test(String(b.month))) return res.status(400).json({ error: 'Salary month must use YYYY-MM format' });
-  const staff = await col('users').findOne({ _id: b.staffId });
+  const staff = await col('users').findOne({ _id: b.staffId, status: { $ne: 'deleted' } });
   if (!staff || !['admin', 'clerk', 'supervisor', 'teacher'].includes(staff.role)) return res.status(400).json({ error: 'Staff member not found' });
   const release = await acquireKeyedLock(`salary:${b.staffId}:${b.month}`);
   try {
@@ -100,7 +100,7 @@ router.post('/', allowRoles('admin', 'clerk'), async (req, res) => {
 });
 
 router.put('/:id', allowRoles('admin', 'clerk'), async (req, res) => {
-  const existing = await col('salarySlips').findOne({ _id: req.params.id });
+  const existing = await col('salarySlips').findOne({ _id: req.params.id, _deleted: { $ne: true } });
   if (!existing) return res.status(404).json({ error: 'Slip not found' });
   if (existing.status === 'paid') return res.status(400).json({ error: 'Paid slips cannot be edited' });
   const b = { ...req.body };
@@ -118,7 +118,7 @@ router.put('/:id', allowRoles('admin', 'clerk'), async (req, res) => {
 router.post('/:id/pay', allowRoles('admin', 'clerk'), async (req, res) => {
   const release = await acquireKeyedLock(`salary-pay:${req.params.id}`);
   try {
-    const slip = await col('salarySlips').findOne({ _id: req.params.id });
+    const slip = await col('salarySlips').findOne({ _id: req.params.id, _deleted: { $ne: true } });
     if (!slip) return res.status(404).json({ error: 'Slip not found' });
     if (slip.status === 'paid') {
       await ensureSalaryLedger(slip, slip.paidOn, slip.mode, slip.paidBy);

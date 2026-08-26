@@ -9,7 +9,7 @@ export function normalizeMobile(value) {
 export async function findParentByMobile(value) {
   const mobile = normalizeMobile(value);
   if (!mobile) return null;
-  const parents = await col('parents').find({});
+  const parents = await col('parents').find({ status: { $ne: 'deleted' } });
   return parents.find((parent) => normalizeMobile(parent.mobile) === mobile) || null;
 }
 

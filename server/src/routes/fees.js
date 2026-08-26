@@ -18,6 +18,8 @@ import { sendInternalError } from '../utils/httpErrors.js';
 const router = Router();
 router.use(authRequired);
 const PAYING_STUDENT_STATUSES = ['active', 'passed-out'];
+const PAYING_STUDENT_QUERY = { status: { $in: PAYING_STUDENT_STATUSES } };
+const ACTIVE_CLASS_QUERY = { _deleted: { $ne: true }, status: { $ne: 'archived' } };
 const OUTSTANDING_STUDENT_PROJECTION = {
   _id: 1,
   firstName: 1,
@@ -170,9 +172,9 @@ async function queueReceiptEmail(receipt, student, createdBy) {
 
 // Compute what a student owes: tuition + transport + late fee - discount
 router.get('/compute/:studentId', async (req, res) => {
-  const student = await col('students').findOne({ _id: req.params.studentId });
+  const student = await col('students').findOne({ _id: req.params.studentId, status: { $ne: 'deleted' } });
   if (!student || !mayReadStudent(req, student)) return res.status(404).json({ error: 'Student not found' });
-  const klass = await col('classes').findOne({ _id: student.classId });
+  const klass = await col('classes').findOne({ _id: student.classId, ...ACTIVE_CLASS_QUERY });
 
   const paid = await col('feeReceipts').find({ studentId: student._id });
   const summary = summarizeStudentFees(student, paid);
@@ -202,11 +204,11 @@ router.get('/', allowRoles(...STAFF), async (req, res) => {
 // Get outstanding dues for all active students
 router.get('/outstanding', allowRoles(...STAFF), async (req, res) => {
   try {
-    const students = await col('students').find({ status: { $in: PAYING_STUDENT_STATUSES } }, { projection: OUTSTANDING_STUDENT_PROJECTION });
+    const students = await col('students').find(PAYING_STUDENT_QUERY, { projection: OUTSTANDING_STUDENT_PROJECTION });
     const receipts = await col('feeReceipts').find({ status: { $in: ['paid', 'partial', 'unpaid'] } }, {
       projection: { _id: 1, studentId: 1, amountPaid: 1, discount: 1, lateFee: 1, status: 1 },
     });
-    const classes = await col('classes').find({});
+    const classes = await col('classes').find(ACTIVE_CLASS_QUERY);
     const parents = await col('parents').find({ status: 'active' }, {
       projection: { _id: 1, name: 1, relation: 1, mobile: 1, status: 1 },
     });
@@ -257,7 +259,7 @@ router.get('/outstanding', allowRoles(...STAFF), async (req, res) => {
 
 router.post('/whatsapp-reminders/prepared', allowRoles(...STAFF), async (req, res) => {
   const { studentId, parentId } = req.body;
-  const student = await col('students').findOne({ _id: studentId });
+  const student = await col('students').findOne({ _id: studentId, ...PAYING_STUDENT_QUERY });
   if (!student || !(student.parentIds || []).includes(parentId)) {
     return res.status(400).json({ error: 'The selected parent is not linked to this student' });
   }
@@ -283,7 +285,7 @@ router.post('/whatsapp-reminders/prepared', allowRoles(...STAFF), async (req, re
 router.get('/:id', async (req, res) => {
   const doc = await col('feeReceipts').findOne({ _id: req.params.id });
   if (!doc) return res.status(404).json({ error: 'Receipt not found' });
-  const student = await col('students').findOne({ _id: doc.studentId });
+  const student = await col('students').findOne({ _id: doc.studentId, status: { $ne: 'deleted' } });
   if (!student || !mayReadStudent(req, student)) return res.status(404).json({ error: 'Receipt not found' });
   res.json(doc);
 });
@@ -318,7 +320,7 @@ router.post('/:id/email', allowRoles(...STAFF), async (req, res) => {
 // Record a payment
 router.post('/', allowRoles(...STAFF), async (req, res) => {
   const b = req.body;
-  const student = await col('students').findOne({ _id: b.studentId });
+  const student = await col('students').findOne({ _id: b.studentId, ...PAYING_STUDENT_QUERY });
   if (!student) return res.status(400).json({ error: 'Please select a valid student' });
   const release = await acquireKeyedLock(`fee:${student._id}`);
   try {
@@ -341,7 +343,7 @@ router.post('/', allowRoles(...STAFF), async (req, res) => {
         return res.json(previous);
       }
     }
-    const klass = await col('classes').findOne({ _id: student.classId });
+    const klass = await col('classes').findOne({ _id: student.classId, ...ACTIVE_CLASS_QUERY });
 
   const amountPaid = Number(b.amountPaid) || 0;
   const lateFee = Number(b.lateFee) || 0;

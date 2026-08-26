@@ -38,7 +38,7 @@ async function filterCommunicationRows(rows, req) {
 // ---------- Classes (unique: name + section + academicYear) ----------
 async function assertUniqueClass(body, req, ignoreId = null) {
   const dup = await col('classes').findOne({
-    name: body.name, section: body.section, academicYear: body.academicYear,
+    name: body.name, section: body.section, academicYear: body.academicYear, _deleted: { $ne: true },
   });
   if (dup && dup._id !== ignoreId) {
     throw new Error(`Class "${body.name} ${body.section} (${body.academicYear})" already exists`);
@@ -95,7 +95,7 @@ function cleanFeeStructure(body, existing = {}) {
 
 async function assertNoFeeConflict(candidate, ignoreId = null) {
   if (candidate.status !== 'active') return;
-  const assignedClasses = await col('classes').find({ _id: { $in: candidate.classIds } });
+  const assignedClasses = await col('classes').find({ _id: { $in: candidate.classIds }, _deleted: { $ne: true }, status: { $ne: 'archived' } });
   if (assignedClasses.length !== candidate.classIds.length) throw new Error('One or more selected classes no longer exist');
   if (candidate.academicYear && assignedClasses.some((item) => item.academicYear !== candidate.academicYear)) {
     throw new Error('Every selected class must belong to the selected academic year');
@@ -124,7 +124,7 @@ feeStructures.post('/', allowRoles('admin'), async (req, res) => {
 });
 feeStructures.put('/:id', allowRoles('admin'), async (req, res) => {
   try {
-    const existing = await col('feeStructures').findOne({ _id: req.params.id });
+    const existing = await col('feeStructures').findOne({ _id: req.params.id, status: { $ne: 'archived' } });
     if (!existing) return res.status(404).json({ error: 'Fee component not found' });
     const body = cleanFeeStructure(req.body, existing);
     await assertNoFeeConflict(body, existing._id);
@@ -138,7 +138,7 @@ feeStructures.put('/:id', allowRoles('admin'), async (req, res) => {
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
 feeStructures.delete('/:id', allowRoles('admin'), async (req, res) => {
-  const existing = await col('feeStructures').findOne({ _id: req.params.id });
+  const existing = await col('feeStructures').findOne({ _id: req.params.id, status: { $ne: 'archived' } });
   if (!existing) return res.status(404).json({ error: 'Fee component not found' });
   const doc = await col('feeStructures').updateOne({ _id: existing._id }, {
     status: 'archived', archivedAt: new Date().toISOString(), updatedBy: req.user.name, updatedAt: new Date().toISOString(),

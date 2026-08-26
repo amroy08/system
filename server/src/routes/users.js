@@ -66,7 +66,7 @@ router.post('/', allowRoles('admin'), async (req, res) => {
 
 router.put('/:id', allowRoles('admin'), async (req, res) => {
   const b = { ...req.body };
-  const current = await col('users').findOne({ _id: req.params.id });
+  const current = await col('users').findOne({ _id: req.params.id, status: { $ne: 'deleted' } });
   if (!current) return res.status(404).json({ error: 'User not found' });
   delete b._id;
   delete b.passwordHash;
@@ -108,7 +108,7 @@ router.put('/:id', allowRoles('admin'), async (req, res) => {
 router.post('/:id/reset-password', allowRoles('admin'), async (req, res) => {
   const { newPassword } = req.body;
   if (!isStrongPassword(newPassword)) return res.status(400).json({ error: 'New password must be 6–128 characters and include uppercase, lowercase, number and symbol' });
-  const user = await col('users').findOne({ _id: req.params.id });
+  const user = await col('users').findOne({ _id: req.params.id, status: { $ne: 'deleted' } });
   if (!user) return res.status(404).json({ error: 'User not found' });
   if (await wouldRemoveLastAdmin(user, { status: req.body.status })) {
     return res.status(409).json({ error: 'Create another active administrator before changing this account' });
@@ -137,7 +137,7 @@ router.post('/:id/reset-password', allowRoles('admin'), async (req, res) => {
 router.post('/:id/status', allowRoles('admin'), async (req, res) => {
   const allowedStatuses = new Set(['active', 'inactive', 'suspended']);
   if (!allowedStatuses.has(req.body.status)) return res.status(400).json({ error: 'Invalid account status' });
-  const user = await col('users').findOne({ _id: req.params.id });
+  const user = await col('users').findOne({ _id: req.params.id, status: { $ne: 'deleted' } });
   if (!user) return res.status(404).json({ error: 'User not found' });
   if (await wouldRemoveLastAdmin(user, { status: 'deleted' })) {
     return res.status(409).json({ error: 'Create another active administrator before deleting this account' });
@@ -151,7 +151,7 @@ router.post('/:id/status', allowRoles('admin'), async (req, res) => {
 
 router.delete('/:id', allowRoles('admin'), async (req, res) => {
   if (req.params.id === req.user.id) return res.status(400).json({ error: 'You cannot delete your own account' });
-  const user = await col('users').findOne({ _id: req.params.id });
+  const user = await col('users').findOne({ _id: req.params.id, status: { $ne: 'deleted' } });
   if (!user) return res.status(404).json({ error: 'User not found' });
   await col('users').updateOne({ _id: req.params.id }, {
     status: 'deleted', deletedAt: new Date().toISOString(), deletedBy: req.user.name, deletedPreviousStatus: user.status,

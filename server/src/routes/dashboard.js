@@ -6,6 +6,7 @@ const router = Router();
 router.use(authRequired);
 
 const STATS_CACHE_MS = Number(process.env.DASHBOARD_STATS_CACHE_MS || 60_000);
+const ACTIVE_CLASS_QUERY = { _deleted: { $ne: true }, status: { $ne: 'archived' } };
 let statsCache = null;
 let statsRefresh = null;
 
@@ -18,15 +19,15 @@ async function buildStats() {
         projection: { _id: 1, firstName: 1, lastName: 1, gender: 1, dob: 1, classId: 1, status: 1, totalDemand: 1 },
       }),
       col('users').count({ role: 'teacher', status: 'active' }),
-      col('classes').find({ status: { $ne: 'archived' } }),
+      col('classes').find(ACTIVE_CLASS_QUERY),
       col('subjects').count({ _deleted: { $ne: true } }),
       col('parents').count({ status: 'active' }),
       col('feeReceipts').find({ status: { $in: ['paid', 'partial', 'unpaid'] } }, {
         projection: { _id: 1, studentId: 1, date: 1, amountPaid: 1 },
       }),
       col('attendance').find({ date: today }),
-      col('exams').find({ status: { $in: ['scheduled', 'ongoing'] } }),
-      col('discipline').find({}),
+      col('exams').find({ _deleted: { $ne: true }, status: { $in: ['scheduled', 'ongoing'] } }),
+      col('discipline').find({ _deleted: { $ne: true } }),
       col('helpdesk').count({ status: 'open' }),
       col('complaints').count({ status: 'open' }),
     ]);
@@ -166,11 +167,11 @@ router.get('/stats', allowRoles(...STAFF), async (req, res) => {
 router.get('/teacher', allowRoles(...STAFF_TEACHER), async (req, res) => {
   const teacherId = req.user.id;
   const [assignments, classes, subjects, timetables, exams, marks, students] = await Promise.all([
-    col('assignments').find({ teacherId }),
-    col('classes').find({}),
+    col('assignments').find({ teacherId, _deleted: { $ne: true } }),
+    col('classes').find(ACTIVE_CLASS_QUERY),
     col('subjects').find({ _deleted: { $ne: true } }),
     col('timetables').find({}),
-    col('exams').find({}),
+    col('exams').find({ _deleted: { $ne: true } }),
     col('marks').find({}),
     col('students').find({ status: 'active' }),
   ]);

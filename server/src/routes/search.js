@@ -18,7 +18,9 @@ router.get('/', async (req, res) => {
   const match = (...fields) => fields.some((f) => String(f || '').toLowerCase().includes(q));
   const out = [];
 
-  const studentQuery = isTeacher ? { classId: { $in: await teacherClassIds(req.user.id) } } : {};
+  const studentQuery = isTeacher
+    ? { classId: { $in: await teacherClassIds(req.user.id) }, status: { $ne: 'deleted' } }
+    : { status: { $ne: 'deleted' } };
   const students = await col('students').find(studentQuery);
   for (const s of students) {
     if (match(s.firstName, s.lastName, s.admissionNo, s.rollNo)) {
@@ -27,13 +29,13 @@ router.get('/', async (req, res) => {
   }
 
   if (isStaff) {
-    const users = await col('users').find({});
+    const users = await col('users').find({ status: { $ne: 'deleted' } });
     for (const u of users) {
       if (match(u.fullName, u.username, u.email)) {
         out.push({ type: u.role === 'teacher' ? 'Teacher' : 'User', title: u.fullName, subtitle: `@${u.username} · ${u.role}`, route: u.role === 'teacher' ? '/teachers' : '/users' });
       }
     }
-    const parents = await col('parents').find({});
+    const parents = await col('parents').find({ status: { $ne: 'deleted' } });
     for (const p of parents) {
       if (match(p.name, p.mobile, p.email)) {
         out.push({ type: 'Parent', title: p.name, subtitle: p.mobile, route: '/parents' });
@@ -45,13 +47,13 @@ router.get('/', async (req, res) => {
         out.push({ type: 'Receipt', title: r.receiptNo, subtitle: `${r.studentName} · ${r.status}`, route: '/fees' });
       }
     }
-    const assets = await col('assets').find({});
+    const assets = await col('assets').find({ _deleted: { $ne: true } });
     for (const a of assets) {
       if (match(a.name, a.tag)) {
         out.push({ type: 'Asset', title: a.name, subtitle: a.tag, route: '/assets' });
       }
     }
-    const slips = await col('salarySlips').find({});
+    const slips = await col('salarySlips').find({ _deleted: { $ne: true } });
     for (const s of slips) {
       if (match(s.slipNo, s.staffName)) {
         out.push({ type: 'Salary Slip', title: s.slipNo, subtitle: `${s.staffName} · ${s.month}`, route: '/payroll' });
@@ -59,14 +61,14 @@ router.get('/', async (req, res) => {
     }
   }
 
-  const books = await col('books').find({});
+  const books = await col('books').find({ _deleted: { $ne: true } });
   for (const b of books) {
     if (match(b.title, b.author, b.isbn, b.accNo)) {
       out.push({ type: 'Book', title: b.title, subtitle: `${b.author} · ${b.accNo}`, route: '/library' });
     }
   }
 
-  const exams = await col('exams').find({});
+  const exams = await col('exams').find({ _deleted: { $ne: true } });
   for (const e of exams) {
     if (match(e.name, e.type)) {
       out.push({ type: 'Exam', title: e.name, subtitle: `${e.type} · ${e.status}`, route: '/exams' });

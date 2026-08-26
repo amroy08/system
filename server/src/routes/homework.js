@@ -8,13 +8,14 @@ import { sendInternalError } from '../utils/httpErrors.js';
 
 const router = Router();
 router.use(authRequired);
+const ACTIVE_CLASS_QUERY = { _deleted: { $ne: true }, status: { $ne: 'archived' } };
 
 // Helper to trigger email notifications to class parents
 async function notifyClassParents(task) {
   try {
     const result = await resolveEmailRecipients({ audience: 'class', classIds: [task.classId] });
     if (result.recipients.length > 0) {
-      const klass = await col('classes').findOne({ _id: task.classId });
+      const klass = await col('classes').findOne({ _id: task.classId, ...ACTIVE_CLASS_QUERY });
       const subject = await col('subjects').findOne({ _id: task.subjectId, _deleted: { $ne: true } });
       const classNameStr = klass ? `${klass.name} ${klass.section}` : 'N/A';
       const subjectNameStr = subject ? subject.name : 'N/A';
@@ -39,7 +40,7 @@ router.get('/', async (req, res) => {
     let query = { _deleted: { $ne: true } };
 
     if (role === 'student') {
-      const student = await col('students').findOne({ _id: req.user.refId });
+      const student = await col('students').findOne({ _id: req.user.refId, status: 'active' });
       if (!student) return res.status(404).json({ error: 'Student profile not found' });
       query.classId = student.classId;
       query.status = 'active';
@@ -83,6 +84,12 @@ router.post('/', allowRoles(...STAFF_TEACHER), async (req, res) => {
       return res.status(400).json({ error: 'Title, Class, Subject, and Due Date are required.' });
     }
     if (!(await canAccessClass(req.user, b.classId))) return res.status(403).json({ error: 'You are not assigned to this class' });
+    const [klass, subject] = await Promise.all([
+      col('classes').findOne({ _id: b.classId, ...ACTIVE_CLASS_QUERY }),
+      col('subjects').findOne({ _id: b.subjectId, _deleted: { $ne: true } }),
+    ]);
+    if (!klass) return res.status(400).json({ error: 'Please select an active class' });
+    if (!subject) return res.status(400).json({ error: 'Please select an active subject' });
 
     const payload = {
       classId: b.classId,
@@ -116,10 +123,18 @@ router.put('/:id', allowRoles(...STAFF_TEACHER), async (req, res) => {
     const b = { ...req.body };
     for (const key of ['_id', '_deleted', 'deletedAt', 'deletedBy', 'createdBy', 'createdAt']) delete b[key];
 
-    const existing = await col('homework').findOne({ _id: req.params.id });
+    const existing = await col('homework').findOne({ _id: req.params.id, _deleted: { $ne: true } });
     if (!existing) return res.status(404).json({ error: 'Task not found' });
     if (!(await canAccessClass(req.user, existing.classId)) || (b.classId && !(await canAccessClass(req.user, b.classId)))) {
       return res.status(403).json({ error: 'You are not assigned to this class' });
+    }
+    if (b.classId || b.subjectId) {
+      const [klass, subject] = await Promise.all([
+        col('classes').findOne({ _id: b.classId || existing.classId, ...ACTIVE_CLASS_QUERY }),
+        col('subjects').findOne({ _id: b.subjectId || existing.subjectId, _deleted: { $ne: true } }),
+      ]);
+      if (!klass) return res.status(400).json({ error: 'Please select an active class' });
+      if (!subject) return res.status(400).json({ error: 'Please select an active subject' });
     }
 
     const updated = await col('homework').updateOne({ _id: req.params.id }, b);
@@ -137,7 +152,7 @@ router.put('/:id', allowRoles(...STAFF_TEACHER), async (req, res) => {
 // 4. Delete Homework task (Teachers & Staff)
 router.delete('/:id', allowRoles(...STAFF_TEACHER), async (req, res) => {
   try {
-    const existing = await col('homework').findOne({ _id: req.params.id });
+    const existing = await col('homework').findOne({ _id: req.params.id, _deleted: { $ne: true } });
     if (!existing) return res.status(404).json({ error: 'Task not found' });
     if (!(await canAccessClass(req.user, existing.classId))) return res.status(403).json({ error: 'You are not assigned to this class' });
 

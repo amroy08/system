@@ -9,6 +9,7 @@ import { acquireKeyedLock } from '../utils/keyedLock.js';
 
 const router = Router();
 router.use(authRequired);
+const ACTIVE_CLASS_QUERY = { _deleted: { $ne: true }, status: { $ne: 'archived' } };
 
 function compactAddress(source) {
   return [
@@ -92,14 +93,14 @@ router.post('/', allowRoles(...STAFF), async (req, res) => {
 router.put('/:id', allowRoles(...STAFF), async (req, res) => {
   const b = { ...req.body };
   for (const key of ['_id', '_deleted', 'deletedAt', 'deletedBy', 'regNo', 'status', 'studentId', 'admissionNo', 'enrolledClassId']) delete b[key];
-  const doc = await col('admissions').updateOne({ _id: req.params.id }, b);
+  const doc = await col('admissions').updateOne({ _id: req.params.id, _deleted: { $ne: true } }, b);
   if (!doc) return res.status(404).json({ error: 'Not found' });
   res.json(doc);
 });
 
 router.post('/:id/reject', allowRoles(...STAFF), async (req, res) => {
   const doc = await col('admissions').updateOne(
-    { _id: req.params.id },
+    { _id: req.params.id, _deleted: { $ne: true } },
     { status: 'rejected', rejectReason: req.body.reason || 'Not specified' }
   );
   res.json(doc);
@@ -124,7 +125,7 @@ router.post('/:id/enroll', allowRoles(...STAFF), async (req, res) => {
   if (parentPassword !== undefined && !isStrongPassword(parentPassword)) {
     return res.status(400).json({ error: 'Parent password must include 6–128 characters, uppercase, lowercase, number and symbol' });
   }
-  const klass = await col('classes').findOne({ _id: classId });
+  const klass = await col('classes').findOne({ _id: classId, ...ACTIVE_CLASS_QUERY });
   if (!klass) return res.status(400).json({ error: 'Please select a valid class' });
 
   const structures = await col('feeStructures').find({ status: 'active' });
