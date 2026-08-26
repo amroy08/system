@@ -14,6 +14,38 @@ const STUDENT_DOCUMENT_TYPES = new Set([
   'studentAadhaar', 'studentIdCard', 'birthCertificate', 'leavingCertificate',
   'transferCertificate', 'previousMarksheet', 'other',
 ]);
+const VISIBLE_STUDENT_STATUSES = ['active', 'inactive', 'transferred', 'passed-out', 'suspended'];
+const STUDENT_LIST_PROJECTION = {
+  _id: 1,
+  firstName: 1,
+  lastName: 1,
+  gender: 1,
+  dob: 1,
+  nationality: 1,
+  curriculum: 1,
+  englishLevel: 1,
+  house: 1,
+  classId: 1,
+  rollNo: 1,
+  admissionNo: 1,
+  admissionDate: 1,
+  admissionCategory: 1,
+  status: 1,
+  totalDemand: 1,
+  parentIds: 1,
+  allergies: 1,
+  medicalNotes: 1,
+  parentName: 1,
+  parentRelation: 1,
+  parentMobile: 1,
+  parentEmail: 1,
+  fatherName: 1,
+  motherName: 1,
+  address: 1,
+  city: 1,
+  state: 1,
+  pinCode: 1,
+};
 
 function compactAddress(source) {
   return [
@@ -50,11 +82,14 @@ async function validateStudentAttachments(studentId, profilePhoto, documents) {
 }
 
 router.get('/', allowRoles(...STAFF_TEACHER), async (req, res) => {
-  const query = { status: { $ne: 'deleted' } };
+  const query = { status: { $in: VISIBLE_STUDENT_STATUSES } };
   for (const k of ['classId', 'status', 'gender', 'curriculum', 'englishLevel', 'house']) {
     if (req.query[k]) query[k] = req.query[k];
   }
-  let docs = await col('students').find(query, { sort: { admissionNo: 1 } });
+  let docs = await col('students').find(query, {
+    sort: { admissionNo: 1 },
+    projection: req.query.lean === 'true' ? STUDENT_LIST_PROJECTION : undefined,
+  });
   if (req.user.role === 'teacher') {
     const allowedClassIds = await teacherClassIds(req.user.id);
     docs = docs.filter((doc) => allowedClassIds.includes(doc.classId));

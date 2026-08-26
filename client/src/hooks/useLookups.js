@@ -12,7 +12,8 @@ async function fetchLookup(key, force = false) {
 
   const promise = (async () => {
     const url = key === 'teachers' ? '/teachers' : `/${key}`;
-    const { data } = await api.get(url);
+    const params = key === 'students' ? { lean: true } : undefined;
+    const { data } = await api.get(url, { params });
     cache.set(key, { data, loadedAt: Date.now() });
     return data;
   })().finally(() => inflight.delete(key));

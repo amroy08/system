@@ -5,24 +5,25 @@ import { authRequired, allowRoles, STAFF, STAFF_TEACHER } from '../middleware/au
 const router = Router();
 router.use(authRequired);
 
-const STATS_CACHE_MS = Number(process.env.DASHBOARD_STATS_CACHE_MS || 15_000);
+const STATS_CACHE_MS = Number(process.env.DASHBOARD_STATS_CACHE_MS || 60_000);
 let statsCache = null;
+let statsRefresh = null;
 
-router.get('/stats', allowRoles(...STAFF), async (req, res) => {
-  if (statsCache && Date.now() - statsCache.createdAt < STATS_CACHE_MS) {
-    return res.json(statsCache.data);
-  }
-
+async function buildStats() {
   const today = new Date().toISOString().slice(0, 10);
 
   const [students, teachers, classList, subjects, parents, receipts, attendanceToday, exams, incidents, helpdesk, complaints] =
     await Promise.all([
-      col('students').find({ status: { $ne: 'deleted' } }),
+      col('students').find({ status: { $in: ['active', 'inactive', 'transferred', 'passed-out', 'suspended'] } }, {
+        projection: { _id: 1, firstName: 1, lastName: 1, gender: 1, dob: 1, classId: 1, status: 1, totalDemand: 1 },
+      }),
       col('users').count({ role: 'teacher', status: 'active' }),
       col('classes').find({ status: { $ne: 'archived' } }),
       col('subjects').count({}),
       col('parents').count({ status: 'active' }),
-      col('feeReceipts').find({ status: { $ne: 'refunded' } }),
+      col('feeReceipts').find({ status: { $in: ['paid', 'partial', 'unpaid'] } }, {
+        projection: { _id: 1, studentId: 1, date: 1, amountPaid: 1 },
+      }),
       col('attendance').find({ date: today }),
       col('exams').find({ status: { $in: ['scheduled', 'ongoing'] } }),
       col('discipline').find({}),
@@ -132,8 +133,33 @@ router.get('/stats', allowRoles(...STAFF), async (req, res) => {
     receiptsToday: receipts.filter((r) => r.date === today).length,
     classWiseStrength,
   };
-  statsCache = { createdAt: Date.now(), data };
-  res.json(data);
+  return data;
+}
+
+function refreshStatsCache() {
+  if (!statsRefresh) {
+    statsRefresh = buildStats()
+      .then((data) => {
+        statsCache = { createdAt: Date.now(), data };
+        return data;
+      })
+      .finally(() => {
+        statsRefresh = null;
+      });
+  }
+  return statsRefresh;
+}
+
+router.get('/stats', allowRoles(...STAFF), async (req, res) => {
+  const cacheAge = statsCache ? Date.now() - statsCache.createdAt : Infinity;
+  if (statsCache && cacheAge < STATS_CACHE_MS) {
+    return res.json(statsCache.data);
+  }
+  if (statsCache) {
+    refreshStatsCache().catch((error) => console.error('[dashboard] Background stats refresh failed:', error));
+    return res.json(statsCache.data);
+  }
+  res.json(await refreshStatsCache());
 });
 
 // Teacher-focused dashboard data: my assignments, my classes, today's periods

@@ -48,6 +48,18 @@ function matches(doc, query = {}) {
   });
 }
 
+function projectDoc(doc, projection) {
+  if (!projection) return doc;
+  const entries = Object.entries(projection).filter(([, value]) => value);
+  if (!entries.length) return doc;
+  const out = {};
+  for (const [key] of entries) {
+    if (doc[key] !== undefined) out[key] = doc[key];
+  }
+  if (projection._id !== 0 && doc._id !== undefined) out._id = doc._id;
+  return out;
+}
+
 class FileCollection {
   constructor(name) {
     this.name = name;
@@ -82,7 +94,7 @@ class FileCollection {
     this.docs = this._load();
   }
 
-  async find(query = {}, { sort, limit, skip } = {}) {
+  async find(query = {}, { sort, limit, skip, projection } = {}) {
     let out = this.docs.filter((d) => matches(d, query));
     if (sort) {
       const [[field, dir]] = Object.entries(sort);
@@ -94,7 +106,7 @@ class FileCollection {
     }
     if (skip) out = out.slice(skip);
     if (limit) out = out.slice(0, limit);
-    return structuredClone(out);
+    return structuredClone(out.map((doc) => projectDoc(doc, projection)));
   }
 
   async findOne(query = {}) {

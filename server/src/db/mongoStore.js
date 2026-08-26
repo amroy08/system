@@ -38,8 +38,8 @@ class MongoCollection {
     this.col = db.collection(name);
   }
 
-  async find(query = {}, { sort, limit, skip } = {}) {
-    let cursor = this.col.find(normalizeMongoQuery(query));
+  async find(query = {}, { sort, limit, skip, projection } = {}) {
+    let cursor = this.col.find(normalizeMongoQuery(query), projection ? { projection } : undefined);
     if (sort) cursor = cursor.sort(sort);
     if (skip) cursor = cursor.skip(skip);
     if (limit) cursor = cursor.limit(limit);

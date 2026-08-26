@@ -17,6 +17,44 @@ import { sendInternalError } from '../utils/httpErrors.js';
 
 const router = Router();
 router.use(authRequired);
+const PAYING_STUDENT_STATUSES = ['active', 'passed-out'];
+const OUTSTANDING_STUDENT_PROJECTION = {
+  _id: 1,
+  firstName: 1,
+  lastName: 1,
+  admissionNo: 1,
+  classId: 1,
+  parentIds: 1,
+  totalDemand: 1,
+};
+const RECEIPT_SUMMARY_PROJECTION = {
+  _id: 1,
+  receiptNo: 1,
+  studentId: 1,
+  studentName: 1,
+  admissionNo: 1,
+  className: 1,
+  date: 1,
+  amountDue: 1,
+  amountPaid: 1,
+  discount: 1,
+  lateFee: 1,
+  balance: 1,
+  mode: 1,
+  reference: 1,
+  remarks: 1,
+  items: 1,
+  status: 1,
+  subTotal: 1,
+  totalDemand: 1,
+  currentGradeFeeRate: 1,
+  previousYearArrears: 1,
+  totalPaidLifetime: 1,
+  balanceBreakdown: 1,
+  createdAt: 1,
+  emailStatus: 1,
+  emailRecipientCount: 1,
+};
 
 function mayReadStudent(req, student) {
   if (req.user.role === 'student') return req.user.refId === student._id;
@@ -132,16 +170,20 @@ router.get('/', allowRoles(...STAFF), async (req, res) => {
   const query = {};
   if (req.query.status) query.status = req.query.status;
   if (req.query.studentId) query.studentId = req.query.studentId;
-  res.json(await col('feeReceipts').find(query, { sort: { createdAt: -1 } }));
+  res.json(await col('feeReceipts').find(query, { sort: { createdAt: -1 }, projection: RECEIPT_SUMMARY_PROJECTION }));
 });
 
 // Get outstanding dues for all active students
 router.get('/outstanding', allowRoles(...STAFF), async (req, res) => {
   try {
-    const students = await col('students').find({ status: { $in: ['active', 'passed-out'] } });
-    const receipts = await col('feeReceipts').find({ status: { $ne: 'refunded' } });
+    const students = await col('students').find({ status: { $in: PAYING_STUDENT_STATUSES } }, { projection: OUTSTANDING_STUDENT_PROJECTION });
+    const receipts = await col('feeReceipts').find({ status: { $in: ['paid', 'partial', 'unpaid'] } }, {
+      projection: { _id: 1, studentId: 1, amountPaid: 1, discount: 1, lateFee: 1, status: 1 },
+    });
     const classes = await col('classes').find({});
-    const parents = await col('parents').find({});
+    const parents = await col('parents').find({ status: 'active' }, {
+      projection: { _id: 1, name: 1, relation: 1, mobile: 1, status: 1 },
+    });
     const receiptsByStudent = new Map();
     for (const receipt of receipts) {
       if (!receiptsByStudent.has(receipt.studentId)) receiptsByStudent.set(receipt.studentId, []);
