@@ -5,34 +5,39 @@ import { authRequired, allowRoles, STAFF, STAFF_TEACHER } from '../middleware/au
 const router = Router();
 router.use(authRequired);
 
+const STATS_CACHE_MS = Number(process.env.DASHBOARD_STATS_CACHE_MS || 15_000);
+let statsCache = null;
+
 router.get('/stats', allowRoles(...STAFF), async (req, res) => {
+  if (statsCache && Date.now() - statsCache.createdAt < STATS_CACHE_MS) {
+    return res.json(statsCache.data);
+  }
+
   const today = new Date().toISOString().slice(0, 10);
 
-  const [students, teachers, classList, subjects, parents, receipts, attendanceToday, exams, discipline, helpdesk, complaints] =
+  const [students, teachers, classList, subjects, parents, receipts, attendanceToday, exams, incidents, helpdesk, complaints] =
     await Promise.all([
-      col('students').find({}),
+      col('students').find({ status: { $ne: 'deleted' } }),
       col('users').count({ role: 'teacher', status: 'active' }),
       col('classes').find({ status: { $ne: 'archived' } }),
       col('subjects').count({}),
       col('parents').count({ status: 'active' }),
-      col('feeReceipts').find({}),
+      col('feeReceipts').find({ status: { $ne: 'refunded' } }),
       col('attendance').find({ date: today }),
-      col('exams').find({}),
-      col('discipline').count({ status: 'open' }),
+      col('exams').find({ status: { $in: ['scheduled', 'ongoing'] } }),
+      col('discipline').find({}),
       col('helpdesk').count({ status: 'open' }),
       col('complaints').count({ status: 'open' }),
     ]);
 
   const activeStudents = students.filter((s) => s.status === 'active');
   const todaysCollection = receipts
-    .filter((r) => r.date === today && r.status !== 'refunded')
+    .filter((r) => r.date === today)
     .reduce((s, r) => s + (r.amountPaid || 0), 0);
   // Sum of paid amount per student from non-refunded receipts
   const studentPaidMap = {};
   for (const r of receipts) {
-    if (r.status !== 'refunded') {
-      studentPaidMap[r.studentId] = (studentPaidMap[r.studentId] || 0) + (r.amountPaid || 0);
-    }
+    studentPaidMap[r.studentId] = (studentPaidMap[r.studentId] || 0) + (r.amountPaid || 0);
   }
 
   let outstanding = 0;
@@ -58,7 +63,6 @@ router.get('/stats', allowRoles(...STAFF), async (req, res) => {
   }
 
   const severity = {};
-  const incidents = await col('discipline').find({});
   for (const d of incidents) severity[d.severity || 'low'] = (severity[d.severity || 'low'] || 0) + 1;
 
   // Fee collection last 7 days
@@ -68,7 +72,7 @@ router.get('/stats', allowRoles(...STAFF), async (req, res) => {
     d.setDate(d.getDate() - i);
     const date = d.toISOString().slice(0, 10);
     const amount = receipts
-      .filter((r) => r.date === date && r.status !== 'refunded')
+      .filter((r) => r.date === date)
       .reduce((s, r) => s + (r.amountPaid || 0), 0);
     feeTrend.push({ date, amount });
   }
@@ -99,32 +103,37 @@ router.get('/stats', allowRoles(...STAFF), async (req, res) => {
   const marks = await col('marks').find({ status: 'submitted' });
 
   const totalFeeCollected = receipts
-    .filter((r) => r.status !== 'refunded')
     .reduce((s, r) => s + (r.amountPaid || 0), 0);
 
   const classWiseStrength = {};
+  const activeStudentCountByClass = {};
+  for (const student of activeStudents) {
+    activeStudentCountByClass[student.classId] = (activeStudentCountByClass[student.classId] || 0) + 1;
+  }
   for (const c of classList) {
     const label = `${c.name} ${c.section}`;
-    classWiseStrength[label] = activeStudents.filter((s) => s.classId === c._id).length;
+    classWiseStrength[label] = activeStudentCountByClass[c._id] || 0;
   }
 
-  res.json({
+  const data = {
     activeStudents: activeStudents.length,
     totalStudents: students.length,
     teachers, classes: classList.length, subjects, parents,
     todaysCollection, outstanding, totalFeeCollected,
     attendanceToday: { present: presentToday, marked: markedToday },
-    activeExams: exams.filter((e) => ['scheduled', 'ongoing'].includes(e.status)).length,
-    openIncidents: discipline,
+    activeExams: exams.length,
+    openIncidents: incidents.filter((incident) => incident.status === 'open').length,
     openTickets: helpdesk,
     openComplaints: complaints,
     genderMix, severity, feeTrend,
     birthdays,
     pendingAdmissions,
     sheetsAwaitingPublish: marks.length,
-    receiptsToday: receipts.filter((r) => r.date === today && r.status !== 'refunded').length,
+    receiptsToday: receipts.filter((r) => r.date === today).length,
     classWiseStrength,
-  });
+  };
+  statsCache = { createdAt: Date.now(), data };
+  res.json(data);
 });
 
 // Teacher-focused dashboard data: my assignments, my classes, today's periods

@@ -142,13 +142,20 @@ router.get('/outstanding', allowRoles(...STAFF), async (req, res) => {
     const receipts = await col('feeReceipts').find({ status: { $ne: 'refunded' } });
     const classes = await col('classes').find({});
     const parents = await col('parents').find({});
+    const receiptsByStudent = new Map();
+    for (const receipt of receipts) {
+      if (!receiptsByStudent.has(receipt.studentId)) receiptsByStudent.set(receipt.studentId, []);
+      receiptsByStudent.get(receipt.studentId).push(receipt);
+    }
+    const classesById = new Map(classes.map((klass) => [klass._id, klass]));
+    const parentsById = new Map(parents.map((parent) => [parent._id, parent]));
 
     const records = [];
     for (const s of students) {
-      const summary = summarizeStudentFees(s, receipts.filter((receipt) => receipt.studentId === s._id));
-      const klass = classes.find(c => c._id === s.classId);
+      const summary = summarizeStudentFees(s, receiptsByStudent.get(s._id) || []);
+      const klass = classesById.get(s.classId);
       const guardians = (s.parentIds || [])
-        .map((parentId) => parents.find((parent) => parent._id === parentId))
+        .map((parentId) => parentsById.get(parentId))
         .filter((parent) => parent?.status === 'active')
         .map((parent) => ({
           parentId: parent._id,
