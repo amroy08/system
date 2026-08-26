@@ -19,7 +19,7 @@ async function buildStats() {
       }),
       col('users').count({ role: 'teacher', status: 'active' }),
       col('classes').find({ status: { $ne: 'archived' } }),
-      col('subjects').count({}),
+      col('subjects').count({ _deleted: { $ne: true } }),
       col('parents').count({ status: 'active' }),
       col('feeReceipts').find({ status: { $in: ['paid', 'partial', 'unpaid'] } }, {
         projection: { _id: 1, studentId: 1, date: 1, amountPaid: 1 },
@@ -168,7 +168,7 @@ router.get('/teacher', allowRoles(...STAFF_TEACHER), async (req, res) => {
   const [assignments, classes, subjects, timetables, exams, marks, students] = await Promise.all([
     col('assignments').find({ teacherId }),
     col('classes').find({}),
-    col('subjects').find({}),
+    col('subjects').find({ _deleted: { $ne: true } }),
     col('timetables').find({}),
     col('exams').find({}),
     col('marks').find({}),
