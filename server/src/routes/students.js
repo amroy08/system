@@ -316,7 +316,7 @@ router.get('/:id/results', async (req, res) => {
   if (!student || !(await mayReadStudent(req, student))) return res.status(404).json({ error: 'Student not found' });
   const allMarks = await col('marks').find({ classId: student.classId });
   const exams = await col('exams').find({});
-  const subjects = await col('subjects').find({});
+  const subjects = await col('subjects').find({ _deleted: { $ne: true } });
   const visible = req.user.role === 'student' || req.user.role === 'parent';
   const results = [];
   for (const m of allMarks) {

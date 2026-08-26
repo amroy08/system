@@ -209,7 +209,7 @@ router.get('/:examId/results', allowRoles(...STAFF_TEACHER), async (req, res) =>
   const query = { examId: req.params.examId };
   if (classId) query.classId = classId;
   const sheets = await col('marks').find(query);
-  const subjects = await col('subjects').find({});
+  const subjects = await col('subjects').find({ _deleted: { $ne: true } });
   const students = await col('students').find(classId ? { classId } : {});
 
   const perStudent = {};
@@ -264,7 +264,7 @@ router.get('/:examId/hall-tickets', async (req, res) => {
   }
   if ((exam.classIds || []).length) students = students.filter((student) => exam.classIds.includes(student.classId));
   const classes = await col('classes').find({});
-  const subjects = await col('subjects').find({});
+  const subjects = await col('subjects').find({ _deleted: { $ne: true } });
   const settings = await col('settings').findOne({ key: 'school' });
   const tickets = students.map((s) => {
     const klass = classes.find((c) => c._id === s.classId);

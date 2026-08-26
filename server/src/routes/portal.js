@@ -44,7 +44,7 @@ async function studentSnapshot(studentId) {
   // Published results only
   const sheets = await col('marks').find({ classId: student.classId, status: 'published' });
   const exams = await col('exams').find({});
-  const subjects = await col('subjects').find({});
+  const subjects = await col('subjects').find({ _deleted: { $ne: true } });
   const results = [];
   for (const m of sheets) {
     const entry = (m.entries || []).find((e) => e.studentId === studentId);

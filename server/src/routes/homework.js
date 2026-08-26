@@ -15,7 +15,7 @@ async function notifyClassParents(task) {
     const result = await resolveEmailRecipients({ audience: 'class', classIds: [task.classId] });
     if (result.recipients.length > 0) {
       const klass = await col('classes').findOne({ _id: task.classId });
-      const subject = await col('subjects').findOne({ _id: task.subjectId });
+      const subject = await col('subjects').findOne({ _id: task.subjectId, _deleted: { $ne: true } });
       const classNameStr = klass ? `${klass.name} ${klass.section}` : 'N/A';
       const subjectNameStr = subject ? subject.name : 'N/A';
       const queued = await enqueueEmailEvent({
