@@ -2,6 +2,12 @@ import { Router } from 'express';
 import { col } from '../db/index.js';
 import { authRequired, allowRoles } from '../middleware/auth.js';
 
+function parseListNumber(value, fallback = 0, max = 500) {
+  const n = Number.parseInt(String(value || ''), 10);
+  if (!Number.isFinite(n) || n < 0) return fallback;
+  return Math.min(n, max);
+}
+
 /**
  * Generic CRUD router used by most modules.
  * options:
@@ -44,13 +50,18 @@ export function crudRouter(collectionName, options = {}) {
       if (k.startsWith('$') || ['__proto__', 'prototype', 'constructor'].includes(k)) continue;
       query[k] = v;
     }
-    let docs = await col(collectionName).find(query, { sort: defaultSort });
+    const limit = parseListNumber(req.query.limit, 0, 500);
+    const skip = parseListNumber(req.query.skip, 0, 10_000);
+    const hasMemorySearch = Boolean(req.query.search && req.query.searchFields);
+    let docs = await col(collectionName).find(query, { sort: defaultSort, limit: hasMemorySearch ? 0 : limit, skip: hasMemorySearch ? 0 : skip });
     if (filterRead) docs = await filterRead(docs, req);
     if (req.query.search && req.query.searchFields) {
       const term = String(req.query.search).toLowerCase();
       const fields = String(req.query.searchFields).split(',');
       docs = docs.filter((d) => fields.some((f) => String(d[f] ?? '').toLowerCase().includes(term)));
     }
+    if (hasMemorySearch && skip) docs = docs.slice(skip);
+    if (hasMemorySearch && limit) docs = docs.slice(0, limit);
     res.json(docs);
   });
 

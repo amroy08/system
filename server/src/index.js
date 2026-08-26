@@ -33,6 +33,7 @@ import { processEmailOutbox } from './utils/emailOutbox.js';
 import { startBackupScheduler } from './utils/backupService.js';
 import { csrfProtect } from './middleware/auth.js';
 import { mutationAudit, requestContext } from './middleware/mutationAudit.js';
+import { requestTiming } from './middleware/performance.js';
 
 assertProductionConfig();
 
@@ -63,6 +64,7 @@ app.use(cors({
 app.use(cookieParser());
 app.use(express.json({ limit: '12mb' }));
 app.use(requestContext);
+app.use(requestTiming);
 app.use(csrfProtect);
 app.use(mutationAudit);
 
