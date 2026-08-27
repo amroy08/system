@@ -26,6 +26,12 @@ const OUTSTANDING_CACHE_MS = 30_000;
 let outstandingCache = null;
 let outstandingCacheAt = 0;
 export function invalidateOutstandingCache() { outstandingCacheAt = 0; }
+
+// 20-second cache for receipts list (keyed by studentId+status filter)
+const RECEIPTS_CACHE_MS = 20_000;
+const receiptsCache = new Map();
+let receiptsCacheAt = 0;
+function invalidateReceiptsCache() { receiptsCache.clear(); receiptsCacheAt = 0; }
 const OUTSTANDING_STUDENT_PROJECTION = {
   _id: 1,
   firstName: 1,
@@ -201,10 +207,18 @@ router.get('/compute/:studentId', async (req, res) => {
 
 // Receipts list
 router.get('/', allowRoles(...STAFF), async (req, res) => {
+  const cacheKey = `${req.query.studentId || ''}:${req.query.status || ''}`;
+  const now = Date.now();
+  if (receiptsCache.has(cacheKey) && now - receiptsCacheAt < RECEIPTS_CACHE_MS) {
+    return res.json(receiptsCache.get(cacheKey));
+  }
   const query = {};
   if (req.query.status) query.status = req.query.status;
   if (req.query.studentId) query.studentId = req.query.studentId;
-  res.json(await col('feeReceipts').find(query, { sort: { createdAt: -1 }, projection: RECEIPT_SUMMARY_PROJECTION }));
+  const result = await col('feeReceipts').find(query, { sort: { createdAt: -1 }, projection: RECEIPT_SUMMARY_PROJECTION });
+  receiptsCache.set(cacheKey, result);
+  receiptsCacheAt = Date.now();
+  res.json(result);
 });
 
 // Get outstanding dues for all active students
@@ -452,6 +466,7 @@ router.post('/', allowRoles(...STAFF), async (req, res) => {
   }
   res.status(201).json(doc);
   invalidateOutstandingCache(); // new receipt changes balances
+  invalidateReceiptsCache();    // new receipt appears in list
   queueMicrotask(() => queueReceiptEmail(doc, student, req.user.name).catch((err) => console.error('[Receipt Email Queue Error]', err)));
   } finally {
     release();

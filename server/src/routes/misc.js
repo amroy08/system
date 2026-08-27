@@ -91,7 +91,33 @@ classesRouterWithCache.use(classesRouter);
 router.use('/classes', classesRouterWithCache);
 
 // ---------- Simple CRUD modules ----------
-router.use('/subjects', crudRouter('subjects', { writeRoles: STAFF, defaultSort: { name: 1 } }));
+// Subjects: 10-minute cache — almost never changes
+const SUBJECTS_CACHE_MS = 10 * 60 * 1000;
+let subjectsCache = null;
+let subjectsCacheAt = 0;
+function invalidateSubjectsCache() { subjectsCache = null; subjectsCacheAt = 0; }
+const subjectsRouter = crudRouter('subjects', {
+  writeRoles: STAFF,
+  defaultSort: { name: 1 },
+  afterCreate: async () => invalidateSubjectsCache(),
+  afterUpdate: async () => invalidateSubjectsCache(),
+});
+const subjectsRouterWithCache = Router();
+subjectsRouterWithCache.use(authRequired);
+subjectsRouterWithCache.get('/', async (req, res, next) => {
+  if (subjectsCache && Date.now() - subjectsCacheAt < SUBJECTS_CACHE_MS) return res.json(subjectsCache);
+  return next();
+});
+subjectsRouterWithCache.use((req, res, next) => {
+  const originalJson = res.json.bind(res);
+  if (req.method === 'GET' && req.path === '/') {
+    res.json = (data) => { subjectsCache = data; subjectsCacheAt = Date.now(); return originalJson(data); };
+  }
+  next();
+});
+subjectsRouterWithCache.use(subjectsRouter);
+router.use('/subjects', subjectsRouterWithCache);
+
 const feeStructures = Router();
 feeStructures.use(authRequired);
 
@@ -138,8 +164,20 @@ async function assertNoFeeConflict(candidate, ignoreId = null) {
   if (duplicate) throw new Error('An active fee component with the same name, audience and academic year already covers one of the selected classes');
 }
 
+// Fee-structures: 5-minute cache invalidated on any write
+const FEE_STRUCTURES_CACHE_MS = 5 * 60 * 1000;
+let feeStructuresCache = null;
+let feeStructuresCacheAt = 0;
+function invalidateFeeStructuresCache() { feeStructuresCache = null; feeStructuresCacheAt = 0; }
+
 feeStructures.get('/', async (req, res) => {
-  res.json(await col('feeStructures').find({}, { sort: { academicYear: -1, name: 1 } }));
+  if (feeStructuresCache && Date.now() - feeStructuresCacheAt < FEE_STRUCTURES_CACHE_MS) {
+    return res.json(feeStructuresCache);
+  }
+  const data = await col('feeStructures').find({}, { sort: { academicYear: -1, name: 1 } });
+  feeStructuresCache = data;
+  feeStructuresCacheAt = Date.now();
+  res.json(data);
 });
 feeStructures.post('/', allowRoles('admin'), async (req, res) => {
   try {
@@ -147,6 +185,7 @@ feeStructures.post('/', allowRoles('admin'), async (req, res) => {
     await assertNoFeeConflict(body);
     const now = new Date().toISOString();
     const doc = await col('feeStructures').insertOne({ ...body, createdBy: req.user.name, createdAt: now, updatedBy: req.user.name, updatedAt: now });
+    invalidateFeeStructuresCache();
     res.status(201).json(doc);
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
@@ -162,6 +201,7 @@ feeStructures.put('/:id', allowRoles('admin'), async (req, res) => {
       updatedAt: new Date().toISOString(),
       ...(body.status === 'archived' ? { archivedAt: new Date().toISOString() } : {}),
     });
+    invalidateFeeStructuresCache();
     res.json(doc);
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
@@ -171,6 +211,7 @@ feeStructures.delete('/:id', allowRoles('admin'), async (req, res) => {
   const doc = await col('feeStructures').updateOne({ _id: existing._id }, {
     status: 'archived', archivedAt: new Date().toISOString(), updatedBy: req.user.name, updatedAt: new Date().toISOString(),
   });
+  invalidateFeeStructuresCache();
   res.json(doc);
 });
 router.use('/fee-structures', feeStructures);
