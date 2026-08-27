@@ -29,13 +29,19 @@ export async function ensureMongoIndexes(db) {
     db.collection('feeReceipts').createIndex({ studentId: 1, date: -1 }, { name: 'receipts_student_date' }),
     db.collection('feeReceipts').createIndex({ status: 1, createdAt: -1 }, { name: 'receipts_status_created' }),
     db.collection('feeReceipts').createIndex({ date: -1 }, { name: 'receipts_date' }),
+    // --- NEW: covers outstanding dues query (status filter + studentId lookup) ---
+    db.collection('feeReceipts').createIndex({ studentId: 1, status: 1 }, { name: 'receipts_student_status' }),
     db.collection('feeStructures').createIndex({ status: 1, academicYear: 1 }, { name: 'fee_structures_status_year' }),
     db.collection('feeRefunds').createIndex({ receiptId: 1 }, { unique: true, name: 'refunds_receipt_unique' }),
     db.collection('dailyAccounts').createIndex({ ledgerKey: 1 }, { unique: true, sparse: true, name: 'daily_accounts_ledger_unique' }),
     db.collection('dailyAccounts').createIndex({ date: -1, type: 1 }, { name: 'daily_accounts_date_type' }),
     db.collection('salarySlips').createIndex({ staffId: 1, month: 1 }, { unique: true, name: 'salary_slips_staff_month_unique' }),
     db.collection('attendance').createIndex({ classId: 1, date: 1 }, { unique: true, name: 'attendance_class_date_unique' }),
+    // --- NEW: covers portal attendance fetch by classId alone ---
+    db.collection('attendance').createIndex({ classId: 1 }, { name: 'attendance_class_id' }),
     db.collection('marks').createIndex({ examId: 1, classId: 1, subjectId: 1 }, { unique: true, name: 'marks_exam_class_subject' }),
+    // --- NEW: covers portal published marks fetch by classId + status ---
+    db.collection('marks').createIndex({ classId: 1, status: 1 }, { name: 'marks_class_status' }),
     db.collection('attachments').createIndex({ storedName: 1 }, { unique: true, sparse: true, name: 'attachments_storage_key_unique' }),
     db.collection('attachments').createIndex({ scope: 1, hostId: 1 }, { name: 'attachments_scope_host' }),
     db.collection('emailDeliveries').createIndex({ createdAt: -1 }, { name: 'email_deliveries_created' }),
@@ -44,5 +50,10 @@ export async function ensureMongoIndexes(db) {
     db.collection('authEvents').createIndex({ occurredAt: -1 }, { name: 'auth_events_occurred' }),
     db.collection('auditLogs').createIndex({ occurredAt: -1 }, { name: 'audit_logs_occurred' }),
     db.collection('auditLogs').createIndex({ actorId: 1, occurredAt: -1 }, { name: 'audit_logs_actor' }),
+    // --- NEW: covers portal homework fetch by classId + status ---
+    db.collection('homework').createIndex({ classId: 1, status: 1 }, { name: 'homework_class_status' }),
+    // --- NEW: covers library issued books query by memberType + status ---
+    db.collection('bookIssues').createIndex({ memberType: 1, status: 1 }, { name: 'book_issues_type_status' }),
+    db.collection('bookIssues').createIndex({ memberId: 1, memberType: 1 }, { name: 'book_issues_member' }),
   ]);
 }

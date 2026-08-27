@@ -95,7 +95,11 @@ const collections = new Map();
 
 export const mongoStore = {
   async init() {
-    client = new MongoClient(config.mongoUri);
+    client = new MongoClient(config.mongoUri, {
+      maxPoolSize: 20,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+    });
     await client.connect();
     db = client.db(config.mongoDbName);
     await ensureMongoIndexes(db);

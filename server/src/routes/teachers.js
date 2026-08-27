@@ -6,14 +6,23 @@ const router = Router();
 router.use(authRequired);
 const ACTIVE_CLASS_QUERY = { _deleted: { $ne: true }, status: { $ne: 'archived' } };
 
+const TEACHERS_CACHE_MS = 2 * 60 * 1000; // 2 minutes
+let teachersCache = null;
+let teachersCacheAt = 0;
+export function invalidateTeachersCache() { teachersCacheAt = 0; }
+
 // Teachers overview (teacher users + their assignments)
 router.get('/', allowRoles(...STAFF_TEACHER), async (req, res) => {
+  const now = Date.now();
+  if (teachersCache && now - teachersCacheAt < TEACHERS_CACHE_MS) {
+    return res.json(teachersCache);
+  }
   const [teachers, assignments, classes] = await Promise.all([
     col('users').find({ role: 'teacher', status: { $ne: 'deleted' } }, { sort: { fullName: 1 } }),
     col('assignments').find({ _deleted: { $ne: true } }),
     col('classes').find(ACTIVE_CLASS_QUERY),
   ]);
-  res.json(teachers.map((t) => {
+  const result = teachers.map((t) => {
     const mine = assignments.filter((a) => a.teacherId === t._id);
     const classTeacherOf = classes.find((c) => c.classTeacherId === t._id);
     const {
@@ -28,7 +37,10 @@ router.get('/', allowRoles(...STAFF_TEACHER), async (req, res) => {
       assignmentCount: mine.length,
       classTeacherOf: classTeacherOf ? `${classTeacherOf.name} ${classTeacherOf.section} (${classTeacherOf.academicYear})` : null,
     };
-  }));
+  });
+  teachersCache = result;
+  teachersCacheAt = Date.now();
+  res.json(result);
 });
 
 // Assignments (teacher <-> class <-> subject)

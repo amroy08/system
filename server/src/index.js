@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
+import compression from 'compression';
 import { rateLimit } from 'express-rate-limit';
 import { config, assertProductionConfig } from './config.js';
 import { initDb, col, closeDb, flushDb } from './db/index.js';
@@ -54,6 +55,7 @@ app.use(helmet({
   },
   crossOriginResourcePolicy: { policy: 'same-site' },
 }));
+app.use(compression());
 app.use(cors({
   credentials: true,
   origin(origin, callback) {

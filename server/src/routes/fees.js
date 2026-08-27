@@ -20,6 +20,12 @@ router.use(authRequired);
 const PAYING_STUDENT_STATUSES = ['active', 'passed-out'];
 const PAYING_STUDENT_QUERY = { status: { $in: PAYING_STUDENT_STATUSES } };
 const ACTIVE_CLASS_QUERY = { _deleted: { $ne: true }, status: { $ne: 'archived' } };
+
+// 30-second cache for outstanding dues (invalidated on new receipt)
+const OUTSTANDING_CACHE_MS = 30_000;
+let outstandingCache = null;
+let outstandingCacheAt = 0;
+export function invalidateOutstandingCache() { outstandingCacheAt = 0; }
 const OUTSTANDING_STUDENT_PROJECTION = {
   _id: 1,
   firstName: 1,
@@ -204,6 +210,10 @@ router.get('/', allowRoles(...STAFF), async (req, res) => {
 // Get outstanding dues for all active students
 router.get('/outstanding', allowRoles(...STAFF), async (req, res) => {
   try {
+    const now = Date.now();
+    if (outstandingCache && now - outstandingCacheAt < OUTSTANDING_CACHE_MS) {
+      return res.json(outstandingCache);
+    }
     const [students, receipts, classes, parents] = await Promise.all([
       col('students').find(PAYING_STUDENT_QUERY, { projection: OUTSTANDING_STUDENT_PROJECTION }),
       col('feeReceipts').find({ status: { $in: ['paid', 'partial', 'unpaid'] } }, {
@@ -253,6 +263,8 @@ router.get('/outstanding', allowRoles(...STAFF), async (req, res) => {
       });
     }
 
+    outstandingCache = records;
+    outstandingCacheAt = Date.now();
     res.json(records);
   } catch (e) {
     sendInternalError(res, e, 'Outstanding fees');
@@ -439,6 +451,7 @@ router.post('/', allowRoles(...STAFF), async (req, res) => {
     });
   }
   res.status(201).json(doc);
+  invalidateOutstandingCache(); // new receipt changes balances
   queueMicrotask(() => queueReceiptEmail(doc, student, req.user.name).catch((err) => console.error('[Receipt Email Queue Error]', err)));
   } finally {
     release();
