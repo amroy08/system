@@ -168,7 +168,15 @@ export default function Outstanding() {
   // Table columns definition for DataTable
   const columns = [
     {
-      label: 'Select',
+      label: (
+        <input
+          type="checkbox"
+          checked={defaultersOnly.length > 0 && selectedIds.length === defaultersOnly.length}
+          onChange={toggleSelectAll}
+          style={{ width: '15px', height: '15px', cursor: 'pointer', verticalAlign: 'middle' }}
+          aria-label="Select all defaulters"
+        />
+      ),
       sortable: false,
       noExport: true,
       render: (r) => (
@@ -226,8 +234,8 @@ export default function Outstanding() {
         r.outstandingAmount > 0 && (r.guardianOptions || []).length ? (
           <button
             onClick={() => sendSingleWhatsApp(r)}
-            className="btn btn-sm btn-green"
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', padding: '4px 10px', fontWeight: '700' }}
+            className="act-btn-modern act-btn-pay"
+            style={{ padding: '5px 10px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '5px', borderRadius: '8px' }}
           >
             <Send size={12} /> WhatsApp
           </button>
@@ -357,25 +365,25 @@ export default function Outstanding() {
           <div style={{ display: 'inline-flex', background: 'rgba(241, 245, 249, 0.8)', border: '1px solid var(--border)', padding: '3px', borderRadius: '10px', gap: '2px' }}>
             <button
               onClick={() => setDuesFilter('DEFAULTERS')}
-              style={{ border: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', transition: 'all 0.2s', background: duesFilter === 'DEFAULTERS' ? 'linear-gradient(135deg, #f97316, #ea580c)' : 'transparent', color: duesFilter === 'DEFAULTERS' ? '#fff' : 'var(--txt-muted)' }}
+              style={{ border: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', transition: 'all 0.2s', background: duesFilter === 'DEFAULTERS' ? 'linear-gradient(135deg, #2563eb, #1e40af)' : 'transparent', color: duesFilter === 'DEFAULTERS' ? '#fff' : 'var(--txt-muted)' }}
             >
               ⚠️ Unpaid Only
             </button>
             <button
               onClick={() => setDuesFilter('OVER_5K')}
-              style={{ border: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', transition: 'all 0.2s', background: duesFilter === 'OVER_5K' ? 'linear-gradient(135deg, #f97316, #ea580c)' : 'transparent', color: duesFilter === 'OVER_5K' ? '#fff' : 'var(--txt-muted)' }}
+              style={{ border: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', transition: 'all 0.2s', background: duesFilter === 'OVER_5K' ? 'linear-gradient(135deg, #2563eb, #1e40af)' : 'transparent', color: duesFilter === 'OVER_5K' ? '#fff' : 'var(--txt-muted)' }}
             >
               &gt; {cur}5,000
             </button>
             <button
               onClick={() => setDuesFilter('OVER_10K')}
-              style={{ border: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', transition: 'all 0.2s', background: duesFilter === 'OVER_10K' ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'transparent', color: duesFilter === 'OVER_10K' ? '#fff' : 'var(--txt-muted)' }}
+              style={{ border: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', transition: 'all 0.2s', background: duesFilter === 'OVER_10K' ? 'linear-gradient(135deg, #2563eb, #1e40af)' : 'transparent', color: duesFilter === 'OVER_10K' ? '#fff' : 'var(--txt-muted)' }}
             >
               &gt; {cur}10,000
             </button>
             <button
               onClick={() => setDuesFilter('ALL')}
-              style={{ border: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', transition: 'all 0.2s', background: duesFilter === 'ALL' ? 'linear-gradient(135deg, #3b82f6, #2563eb)' : 'transparent', color: duesFilter === 'ALL' ? '#fff' : 'var(--txt-muted)' }}
+              style={{ border: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', transition: 'all 0.2s', background: duesFilter === 'ALL' ? 'linear-gradient(135deg, #2563eb, #1e40af)' : 'transparent', color: duesFilter === 'ALL' ? '#fff' : 'var(--txt-muted)' }}
             >
               All Records
             </button>
