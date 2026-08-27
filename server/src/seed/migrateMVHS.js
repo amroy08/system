@@ -430,7 +430,8 @@ const schoolSettings = settings.find(s => s.key === 'school');
 if (schoolSettings) {
   schoolSettings.value.schoolName = "M.V HIGH SCHOOL";
   schoolSettings.value.tagline = "Learn. Grow. Succeed.";
-  schoolSettings.value.address = "Marwari Lane, Mumbai, Maharashtra 400002";
+  schoolSettings.value.address = "S.V.P. ROAD, Charni Road, Bhatwadi, PRARTHNA SAMAJ, Mumbai, Maharashtra 400004";
+  schoolSettings.value.phone = "022 2386 5845";
   schoolSettings.value.academicYear = "2025-2026";
 }
 fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2));

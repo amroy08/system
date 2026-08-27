@@ -15,8 +15,8 @@ export default function Contact() {
   };
 
   const info = [
-    { icon: MapPin, label: 'Address', value: settings.address || '123 Education Street, Knowledge City' },
-    { icon: Phone, label: 'Phone', value: settings.phone || '+91 98765 43210' },
+    { icon: MapPin, label: 'Address', value: settings.address || 'S.V.P. ROAD, Charni Road, Bhatwadi, PRARTHNA SAMAJ, Mumbai, Maharashtra 400004' },
+    { icon: Phone, label: 'Phone', value: settings.phone || '022 2386 5845' },
     { icon: Mail, label: 'Email', value: settings.email || 'info@demoschool.edu' },
     { icon: Globe, label: 'Website', value: settings.website || 'www.demoschool.edu' },
     { icon: Clock, label: 'Office Hours', value: 'Mon – Sat, 8:00 AM – 4:00 PM' },

@@ -52,8 +52,8 @@ async function clearDb() {
     value: {
       schoolName: 'M.V HIGH SCHOOL',
       tagline: 'Learn. Grow. Succeed.',
-      address: 'Marwari Lane, Mumbai, Maharashtra 400002',
-      phone: '+91 22 2385 1414',
+      address: 'S.V.P. ROAD, Charni Road, Bhatwadi, PRARTHNA SAMAJ, Mumbai, Maharashtra 400004',
+      phone: '022 2386 5845',
       email: 'info@mvhs.edu.in',
       website: 'www.mvhs.edu.in',
       timezone: 'Asia/Kolkata',

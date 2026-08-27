@@ -139,6 +139,29 @@ async function assertNoDefaultProductionCredentials() {
 
 initDb().then(async () => {
   await assertNoDefaultProductionCredentials();
+
+  // Auto-patch school details database settings in production if they are old defaults
+  try {
+    const schoolSettings = await col('settings').findOne({ key: 'school' });
+    if (schoolSettings && schoolSettings.value) {
+      const v = schoolSettings.value;
+      const oldAddresses = [
+        '123 Education Street, Knowledge City',
+        'Marwari Lane, Mumbai, Maharashtra 400002',
+        'Mumbai, Maharashtra',
+        ''
+      ];
+      if (oldAddresses.includes(v.address) || v.phone === '+91 98765 43210' || v.phone === '+91 22 2385 1414' || !v.phone) {
+        v.address = 'S.V.P. ROAD, Charni Road, Bhatwadi, PRARTHNA SAMAJ, Mumbai, Maharashtra 400004';
+        v.phone = '022 2386 5845';
+        await col('settings').updateOne({ key: 'school' }, { value: v });
+        console.log('[db] Patched school settings with correct address and phone number.');
+      }
+    }
+  } catch (err) {
+    console.error('[db] Failed to patch school settings:', err);
+  }
+
   startBackupScheduler();
   processEmailOutbox().catch((error) => console.error('[Email Outbox]', error));
   const emailWorker = setInterval(() => processEmailOutbox().catch((error) => console.error('[Email Outbox]', error)), 15_000);

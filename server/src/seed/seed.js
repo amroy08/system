@@ -42,8 +42,8 @@ async function seed() {
     value: {
       schoolName: 'Demo School',
       tagline: 'Learn. Grow. Succeed.',
-      address: '123 Education Street, Knowledge City',
-      phone: '+91 98765 43210',
+      address: 'S.V.P. ROAD, Charni Road, Bhatwadi, PRARTHNA SAMAJ, Mumbai, Maharashtra 400004',
+      phone: '022 2386 5845',
       email: 'info@demoschool.edu',
       website: 'www.demoschool.edu',
       timezone: 'Asia/Kolkata',
