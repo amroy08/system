@@ -53,14 +53,42 @@ async function filterClassRows(rows, req) {
   return rows.filter((row) => classIds.includes(row._id));
 }
 
+// 5-minute in-memory cache for classes list (changes rarely)
+const CLASSES_CACHE_MS = 5 * 60 * 1000;
+let classesCache = null;
+let classesCacheAt = 0;
+function invalidateClassesCache() { classesCache = null; classesCacheAt = 0; }
+
 const classesRouter = crudRouter('classes', {
   writeRoles: STAFF,
   beforeCreate: (b, req) => assertUniqueClass({ status: 'active', ...b }, req),
   beforeUpdate: (b, req) => (b.name && b.section && b.academicYear ? assertUniqueClass(b, req, req.params.id) : b),
-  filterRead: filterClassRows,
+  filterRead: async (rows, req) => {
+    const filtered = await filterClassRows(rows, req);
+    // Only cache for staff (not student/parent scoped views)
+    if (['admin', 'clerk', 'supervisor', 'teacher'].includes(req.user.role)) {
+      classesCache = filtered;
+      classesCacheAt = Date.now();
+    }
+    return filtered;
+  },
+  afterCreate: async () => invalidateClassesCache(),
+  afterUpdate: async () => invalidateClassesCache(),
   defaultSort: { name: 1 },
 });
-router.use('/classes', classesRouter);
+
+// Serve from cache for full unfiltered staff requests before hitting DB via crudRouter
+const classesRouterWithCache = Router();
+classesRouterWithCache.use(authRequired);
+classesRouterWithCache.get('/', async (req, res, next) => {
+  const staffRoles = ['admin', 'clerk', 'supervisor'];
+  if (staffRoles.includes(req.user.role) && classesCache && Date.now() - classesCacheAt < CLASSES_CACHE_MS) {
+    return res.json(classesCache);
+  }
+  return next();
+});
+classesRouterWithCache.use(classesRouter);
+router.use('/classes', classesRouterWithCache);
 
 // ---------- Simple CRUD modules ----------
 router.use('/subjects', crudRouter('subjects', { writeRoles: STAFF, defaultSort: { name: 1 } }));

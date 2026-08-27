@@ -10,6 +10,12 @@ import { teacherClassIds } from '../utils/accessScope.js';
 const router = Router();
 router.use(authRequired);
 
+// 30-second cache for full student list (unfiltered, staff-only)
+const STUDENTS_CACHE_MS = 30_000;
+let studentsCache = null;       // { lean: [...], full: [...] }
+let studentsCacheAt = 0;
+export function invalidateStudentsCache() { studentsCacheAt = 0; }
+
 const STUDENT_DOCUMENT_TYPES = new Set([
   'studentAadhaar', 'studentIdCard', 'birthCertificate', 'leavingCertificate',
   'transferCertificate', 'previousMarksheet', 'other',
@@ -87,11 +93,34 @@ router.get('/', allowRoles(...STAFF_TEACHER), async (req, res) => {
   for (const k of ['classId', 'status', 'gender', 'curriculum', 'englishLevel', 'house']) {
     if (req.query[k]) query[k] = req.query[k];
   }
-  let docs = await col('students').find(query, {
-    sort: { admissionNo: 1 },
-    projection: req.query.lean === 'true' ? STUDENT_LIST_PROJECTION : undefined,
-  });
-  if (req.user.role === 'teacher') {
+  const isFiltered = Object.keys(query).length > 1 || req.query.hasAllergies === 'true' || req.query.search;
+  const isTeacher = req.user.role === 'teacher';
+  const isLean = req.query.lean === 'true';
+  const now = Date.now();
+
+  // Use cache only for unfiltered staff requests
+  let docs;
+  if (!isFiltered && !isTeacher && studentsCache && now - studentsCacheAt < STUDENTS_CACHE_MS) {
+    docs = isLean ? studentsCache.lean : studentsCache.full;
+  } else {
+    const [leanDocs, fullDocs] = !isFiltered && !isTeacher
+      ? await Promise.all([
+          col('students').find(query, { sort: { admissionNo: 1 }, projection: STUDENT_LIST_PROJECTION }),
+          col('students').find(query, { sort: { admissionNo: 1 } }),
+        ])
+      : [null, await col('students').find(query, {
+          sort: { admissionNo: 1 },
+          projection: isLean ? STUDENT_LIST_PROJECTION : undefined,
+        })];
+
+    if (!isFiltered && !isTeacher) {
+      studentsCache = { lean: leanDocs, full: fullDocs };
+      studentsCacheAt = Date.now();
+    }
+    docs = (!isFiltered && !isTeacher) ? (isLean ? leanDocs : fullDocs) : fullDocs;
+  }
+
+  if (isTeacher) {
     const allowedClassIds = await teacherClassIds(req.user.id);
     docs = docs.filter((doc) => allowedClassIds.includes(doc.classId));
   }
@@ -104,6 +133,7 @@ router.get('/', allowRoles(...STAFF_TEACHER), async (req, res) => {
   }
   res.json(docs.map((doc) => publicStudent(doc, req.user.role)));
 });
+
 
 router.get('/fee-preview', allowRoles(...STAFF), async (req, res) => {
   const klass = await col('classes').findOne({ _id: req.query.classId, ...ACTIVE_CLASS_QUERY });
@@ -239,6 +269,7 @@ router.post('/', allowRoles(...STAFF), async (req, res) => {
   });
   credentials.studentUsername = sUsername;
   credentials.studentPassword = sPassword;
+  invalidateStudentsCache();
   res.status(201).json({ ...student, credentials });
 });
 
@@ -282,6 +313,7 @@ router.put('/:id', allowRoles(...STAFF), async (req, res) => {
   delete b.feeAssignments;
 
   const updatedDoc = await col('students').updateOne({ _id: req.params.id }, b);
+  invalidateStudentsCache();
   res.json(updatedDoc);
 });
 

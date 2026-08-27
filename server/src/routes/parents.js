@@ -8,13 +8,27 @@ import { teacherClassIds } from '../utils/accessScope.js';
 const router = Router();
 router.use(authRequired);
 
+// 60-second cache for parent list (staff-only, unfiltered)
+const PARENTS_CACHE_MS = 60_000;
+let parentsCache = null;
+let parentsCacheAt = 0;
+function invalidateParentsCache() { parentsCacheAt = 0; }
+
 router.get('/', allowRoles(...STAFF_TEACHER), async (req, res) => {
+  const isTeacher = req.user.role === 'teacher';
+  const now = Date.now();
+  if (!isTeacher && parentsCache && now - parentsCacheAt < PARENTS_CACHE_MS) {
+    return res.json(parentsCache);
+  }
   let parents = await col('parents').find({ status: { $ne: 'deleted' } }, { sort: { name: 1 } });
-  if (req.user.role === 'teacher') {
+  if (isTeacher) {
     const classIds = await teacherClassIds(req.user.id);
     const students = await col('students').find({ classId: { $in: classIds }, status: 'active' });
     const parentIds = new Set(students.flatMap((student) => student.parentIds || []));
     parents = parents.filter((parent) => parentIds.has(parent._id));
+  } else {
+    parentsCache = parents;
+    parentsCacheAt = Date.now();
   }
   res.json(parents);
 });
@@ -29,6 +43,7 @@ router.post('/', allowRoles(...STAFF), async (req, res) => {
   }
   const parent = await col('parents').insertOne(body);
   const account = await ensureParentUser(parent, req.body.password);
+  invalidateParentsCache();
   res.status(201).json({ ...parent, credentials: { username: account.user.username, temporaryPassword: account.temporaryPassword } });
 });
 
@@ -44,6 +59,7 @@ router.put('/:id', allowRoles(...STAFF), async (req, res) => {
   delete body.deletedBy;
   const parent = await col('parents').updateOne({ _id: existing._id }, body);
   await syncParentUser(parent);
+  invalidateParentsCache();
   res.json(parent);
 });
 
@@ -56,6 +72,7 @@ router.delete('/:id', allowRoles('admin'), async (req, res) => {
   const deletedAt = new Date().toISOString();
   await col('users').updateMany({ role: 'parent', refId: parent._id }, { status: 'deleted', deletedAt, deletedBy: req.user.name });
   await col('parents').updateOne({ _id: parent._id }, { status: 'deleted', deletedAt, deletedBy: req.user.name, deletedPreviousStatus: parent.status });
+  invalidateParentsCache();
   res.json({ ok: true });
 });
 

@@ -10,6 +10,12 @@ const MANAGED_ROLES = new Set(['admin', 'clerk', 'supervisor', 'teacher']);
 const ACCOUNT_STATUSES = new Set(['active', 'inactive', 'suspended']);
 const USERNAME_PATTERN = /^[a-z0-9._-]{3,64}$/;
 
+// 2-minute cache for staff/user list
+const USERS_CACHE_MS = 2 * 60 * 1000;
+const usersCache = new Map(); // keyed by query string
+let usersCacheAt = 0;
+function invalidateUsersCache() { usersCache.clear(); usersCacheAt = 0; }
+
 async function wouldRemoveLastAdmin(current, changes) {
   if (current.role !== 'admin' || current.status !== 'active') return false;
   const remainsActiveAdmin = (changes.role ?? current.role) === 'admin'
@@ -24,11 +30,19 @@ function publicUser(u) {
 }
 
 router.get('/', allowRoles('admin', 'clerk', 'supervisor'), async (req, res) => {
+  const cacheKey = `${req.query.role || ''}:${req.query.status || ''}`;
+  const now = Date.now();
+  if (usersCache.has(cacheKey) && now - usersCacheAt < USERS_CACHE_MS) {
+    return res.json(usersCache.get(cacheKey));
+  }
   const query = { status: { $ne: 'deleted' } };
   if (req.query.role) query.role = req.query.role;
   if (req.query.status) query.status = req.query.status;
   const users = await col('users').find(query, { sort: { createdAt: -1 } });
-  res.json(users.map(publicUser));
+  const result = users.map(publicUser);
+  usersCache.set(cacheKey, result);
+  usersCacheAt = Date.now();
+  res.json(result);
 });
 
 router.post('/', allowRoles('admin'), async (req, res) => {
@@ -62,6 +76,7 @@ router.post('/', allowRoles('admin'), async (req, res) => {
     credentialVersion: 2,
   });
   res.status(201).json(publicUser(doc));
+  invalidateUsersCache();
 });
 
 router.put('/:id', allowRoles('admin'), async (req, res) => {
@@ -101,6 +116,7 @@ router.put('/:id', allowRoles('admin'), async (req, res) => {
     if (existing && existing._id !== req.params.id) return res.status(400).json({ error: `Username "${b.username}" is already taken` });
   }
   const doc = await col('users').updateOne({ _id: req.params.id }, b);
+  invalidateUsersCache();
   res.json(publicUser(doc));
 });
 
@@ -146,6 +162,7 @@ router.post('/:id/status', allowRoles('admin'), async (req, res) => {
     return res.status(409).json({ error: 'Reset this account password before activating it' });
   }
   const doc = await col('users').updateOne({ _id: req.params.id }, { status: req.body.status });
+  invalidateUsersCache();
   res.json(publicUser(doc));
 });
 
@@ -157,6 +174,7 @@ router.delete('/:id', allowRoles('admin'), async (req, res) => {
     status: 'deleted', deletedAt: new Date().toISOString(), deletedBy: req.user.name, deletedPreviousStatus: user.status,
     tokenVersion: (user.tokenVersion || 0) + 1,
   });
+  invalidateUsersCache();
   res.json({ ok: true });
 });
 
