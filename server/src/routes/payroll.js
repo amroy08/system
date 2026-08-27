@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { col, nextSeq } from '../db/index.js';
 import { authRequired, allowRoles, STAFF } from '../middleware/auth.js';
 import { acquireKeyedLock } from '../utils/keyedLock.js';
+import { invalidateDailyAccountsCache } from './misc.js';
 
 const router = Router();
 router.use(authRequired);
@@ -42,7 +43,7 @@ async function ensureSalaryLedger(slip, paidOn, mode, recordedBy) {
   const existing = await col('dailyAccounts').findOne({ ledgerKey });
   if (existing) return existing;
   try {
-    return await col('dailyAccounts').insertOne({
+    const doc = await col('dailyAccounts').insertOne({
       ledgerKey,
       date: paidOn,
       type: 'expense',
@@ -53,6 +54,8 @@ async function ensureSalaryLedger(slip, paidOn, mode, recordedBy) {
       recordedBy,
       salarySlipId: slip._id,
     });
+    invalidateDailyAccountsCache();
+    return doc;
   } catch (error) {
     if (error?.code !== 11000) throw error;
     return col('dailyAccounts').findOne({ ledgerKey });

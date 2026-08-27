@@ -242,7 +242,16 @@ function cleanManualAccount(body, req, existing = {}) {
   };
 }
 
-router.use('/daily-accounts', crudRouter('dailyAccounts', {
+// 30-second cache for daily accounts ledger
+const DAILY_ACCOUNTS_CACHE_MS = 30_000;
+const dailyAccountsCache = new Map();
+let dailyAccountsCacheAt = 0;
+export function invalidateDailyAccountsCache() {
+  dailyAccountsCache.clear();
+  dailyAccountsCacheAt = 0;
+}
+
+const dailyAccountsRouter = crudRouter('dailyAccounts', {
   readRoles: STAFF,
   writeRoles: STAFF,
   deleteRoles: ['admin'],
@@ -250,8 +259,36 @@ router.use('/daily-accounts', crudRouter('dailyAccounts', {
   beforeUpdate: (body, req, existing) => cleanManualAccount(body, req, existing),
   authorizeUpdate: (existing) => !isGeneratedLedger(existing),
   authorizeDelete: (existing) => !isGeneratedLedger(existing),
+  afterCreate: async () => invalidateDailyAccountsCache(),
+  afterUpdate: async () => invalidateDailyAccountsCache(),
+  afterDelete: async () => invalidateDailyAccountsCache(),
   defaultSort: { date: -1 },
-}));
+});
+
+const dailyAccountsRouterWithCache = Router();
+dailyAccountsRouterWithCache.use(authRequired);
+dailyAccountsRouterWithCache.get('/', async (req, res, next) => {
+  const cacheKey = JSON.stringify(req.query);
+  const now = Date.now();
+  if (dailyAccountsCache.has(cacheKey) && now - dailyAccountsCacheAt < DAILY_ACCOUNTS_CACHE_MS) {
+    return res.json(dailyAccountsCache.get(cacheKey));
+  }
+  return next();
+});
+dailyAccountsRouterWithCache.use((req, res, next) => {
+  const originalJson = res.json.bind(res);
+  if (req.method === 'GET' && req.path === '/') {
+    res.json = (data) => {
+      const cacheKey = JSON.stringify(req.query);
+      dailyAccountsCache.set(cacheKey, data);
+      dailyAccountsCacheAt = Date.now();
+      return originalJson(data);
+    };
+  }
+  next();
+});
+dailyAccountsRouterWithCache.use(dailyAccountsRouter);
+router.use('/daily-accounts', dailyAccountsRouterWithCache);
 async function notifyNoticeAudience(doc) {
   if (doc.status !== 'published') return;
   try {

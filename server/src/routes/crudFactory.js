@@ -28,6 +28,7 @@ export function crudRouter(collectionName, options = {}) {
     beforeUpdate,
     afterCreate,
     afterUpdate,
+    afterDelete,
     authorizeCreate,
     authorizeUpdate,
     authorizeDelete,
@@ -130,6 +131,10 @@ export function crudRouter(collectionName, options = {}) {
       _deleted: true, deletedAt: new Date().toISOString(), deletedBy: req.user.name,
     });
     res.json({ ok: true });
+
+    if (afterDelete) {
+      afterDelete(doc, req).catch((err) => console.error(`[CRUD Hook Error] afterDelete on ${collectionName}:`, err));
+    }
   });
 
   return router;

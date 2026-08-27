@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { col, nextSeq } from '../db/index.js';
 import { authRequired, allowRoles, STAFF } from '../middleware/auth.js';
 import { acquireKeyedLock } from '../utils/keyedLock.js';
+import { invalidateDailyAccountsCache } from './misc.js';
 
 const router = Router();
 router.use(authRequired);
@@ -62,6 +63,7 @@ router.post('/:id/maintenance', allowRoles(...STAFF), async (req, res) => {
         description: `${asset.name} (${asset.tag}): ${entry.description}`,
         amount: entry.cost, mode: 'cash', recordedBy: req.user.name,
       });
+      invalidateDailyAccountsCache();
     }
     res.json(doc);
   } finally {

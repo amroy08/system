@@ -14,6 +14,7 @@ import {
 import { toWhatsAppNumber } from '../utils/whatsapp.js';
 import { acquireKeyedLock } from '../utils/keyedLock.js';
 import { sendInternalError } from '../utils/httpErrors.js';
+import { invalidateDailyAccountsCache } from './misc.js';
 
 const router = Router();
 router.use(authRequired);
@@ -84,11 +85,17 @@ async function ensureDailyAccount(entry) {
       type: entry.type,
       category: entry.category,
     });
-    if (existing) return col('dailyAccounts').updateOne({ _id: existing._id }, { ledgerKey: entry.ledgerKey });
+    if (existing) {
+      const res = await col('dailyAccounts').updateOne({ _id: existing._id }, { ledgerKey: entry.ledgerKey });
+      invalidateDailyAccountsCache();
+      return res;
+    }
   }
   if (existing) return existing;
   try {
-    return await col('dailyAccounts').insertOne(entry);
+    const doc = await col('dailyAccounts').insertOne(entry);
+    invalidateDailyAccountsCache();
+    return doc;
   } catch (error) {
     if (error?.code !== 11000) throw error;
     return col('dailyAccounts').findOne({ ledgerKey: entry.ledgerKey });
