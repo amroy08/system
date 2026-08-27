@@ -24,7 +24,7 @@ export default function Settings() {
   useEffect(() => {
     api.get('/settings').then(({ data }) => setForm({
       schoolName: '', tagline: '', address: '', phone: '', email: '', website: '',
-      timezone: 'Asia/Kolkata', currency: '₹', academicYear: '2024-2025', logoUrl: '',
+      timezone: 'Asia/Kolkata', currency: '₹', academicYear: '2026-2027', logoUrl: '',
       ...data,
     }));
     loadEmailDiagnostics();

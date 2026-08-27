@@ -79,7 +79,7 @@ uniqueClasses.forEach((clsKey, index) => {
     "_id": classId,
     "name": grade,
     "section": section,
-    "academicYear": "2025-2026",
+    "academicYear": "2026-2027",
     "capacity": 40,
     "room": `Room ${101 + index}`,
     "classTeacherId": teacher ? teacher._id : "",
@@ -277,7 +277,7 @@ legacyStudents.forEach((s, index) => {
     "transportRequired": false,
     "transportRoute": "",
     "parentIds": [parentId],
-    "academicYear": "2025-2026",
+    "academicYear": "2026-2027",
     "status": "active",
     "address": "Mumbai, Maharashtra",
     "createdAt": new Date().toISOString()
@@ -432,7 +432,7 @@ if (schoolSettings) {
   schoolSettings.value.tagline = "Learn. Grow. Succeed.";
   schoolSettings.value.address = "S.V.P. ROAD, Charni Road, Bhatwadi, PRARTHNA SAMAJ, Mumbai, Maharashtra 400004";
   schoolSettings.value.phone = "022 2386 5845";
-  schoolSettings.value.academicYear = "2025-2026";
+  schoolSettings.value.academicYear = "2026-2027";
 }
 fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2));
 console.log('Updated settings.json with school name and academic year.');

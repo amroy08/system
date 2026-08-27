@@ -8,7 +8,7 @@ import { DataTable, StatusTabs, Field, Modal, Badge, CredentialsModal } from '..
 
 const EMPTY = {
   firstName: '', lastName: '', gender: 'Male', dob: '', nationality: '', curriculum: 'IB PYP',
-  classAppliedFor: '', academicYear: '2024-2025', address: '',
+  classAppliedFor: '', academicYear: '2026-2027', address: '',
   addressLine1: '', addressLine2: '', city: '', state: '', pinCode: '', country: 'India',
   fatherName: '', fatherMobile: '', fatherEmail: '', fatherOccupation: '',
   motherName: '', motherMobile: '', motherEmail: '', motherOccupation: '',

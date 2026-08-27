@@ -34,7 +34,7 @@ async function seed() {
     }
   }
 
-  const AY = '2024-2025';
+  const AY = '2026-2027';
 
   // ---------- Settings ----------
   await col('settings').insertOne({

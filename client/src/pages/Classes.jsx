@@ -7,7 +7,7 @@ import { useApp } from '../context/AppContextValue';
 import { useLookups } from '../hooks/useLookups';
 import { DataTable, Field, Modal, Badge, Confirm } from '../components/ui';
 
-const EMPTY = { name: '', section: 'A', academicYear: '2024-2025', capacity: 30, room: '', classTeacherId: '', status: 'active' };
+const EMPTY = { name: '', section: 'A', academicYear: '2026-2027', capacity: 30, room: '', classTeacherId: '', status: 'active' };
 
 export default function Classes() {
   const { notify, user } = useApp();

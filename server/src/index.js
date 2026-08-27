@@ -151,11 +151,19 @@ initDb().then(async () => {
         'Mumbai, Maharashtra',
         ''
       ];
+      let modified = false;
       if (oldAddresses.includes(v.address) || v.phone === '+91 98765 43210' || v.phone === '+91 22 2385 1414' || !v.phone) {
         v.address = 'S.V.P. ROAD, Charni Road, Bhatwadi, PRARTHNA SAMAJ, Mumbai, Maharashtra 400004';
         v.phone = '022 2386 5845';
+        modified = true;
+      }
+      if (v.academicYear !== '2026-2027') {
+        v.academicYear = '2026-2027';
+        modified = true;
+      }
+      if (modified) {
         await col('settings').updateOne({ key: 'school' }, { value: v });
-        console.log('[db] Patched school settings with correct address and phone number.');
+        console.log('[db] Patched school settings with correct details and academic year (2026-2027).');
       }
     }
   } catch (err) {
