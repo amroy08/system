@@ -27,10 +27,25 @@ function portalStudent(student) {
 async function studentSnapshot(studentId) {
   const student = await col('students').findOne({ _id: studentId, status: { $ne: 'deleted' } });
   if (!student) return null;
-  const klass = await col('classes').findOne({ _id: student.classId, ...ACTIVE_CLASS_QUERY });
+
+  // Fire all independent queries concurrently
+  const [klass, allAttendance, sheets, exams, subjects, receipts, notices, meetings, activities, documents, homework, lessonPlans] =
+    await Promise.all([
+      col('classes').findOne({ _id: student.classId, ...ACTIVE_CLASS_QUERY }),
+      col('attendance').find({ classId: student.classId }),
+      col('marks').find({ classId: student.classId, status: 'published' }),
+      col('exams').find({ _deleted: { $ne: true } }),
+      col('subjects').find({ _deleted: { $ne: true } }),
+      col('feeReceipts').find({ studentId }, { sort: { date: -1 } }),
+      col('notices').find({ _deleted: { $ne: true }, status: 'published' }, { sort: { date: -1 } }),
+      col('ptm').find({ _deleted: { $ne: true } }, { sort: { date: -1 } }),
+      col('activities').find({ _deleted: { $ne: true } }, { sort: { date: -1 } }),
+      col('documents').find({ _deleted: { $ne: true } }, { sort: { date: -1 } }),
+      col('homework').find({ _deleted: { $ne: true }, status: 'active' }, { sort: { dueDate: 1 } }),
+      col('lessonPlans').find({ _deleted: { $ne: true }, shareWithFamilies: true }, { sort: { date: -1 } }),
+    ]);
 
   // Attendance summary
-  const allAttendance = await col('attendance').find({ classId: student.classId });
   const summary = { present: 0, absent: 0, late: 0, halfday: 0, leave: 0 };
   const recent = [];
   for (const day of allAttendance) {
@@ -43,9 +58,6 @@ async function studentSnapshot(studentId) {
   recent.sort((a, b) => (a.date < b.date ? 1 : -1));
 
   // Published results only
-  const sheets = await col('marks').find({ classId: student.classId, status: 'published' });
-  const exams = await col('exams').find({ _deleted: { $ne: true } });
-  const subjects = await col('subjects').find({ _deleted: { $ne: true } });
   const results = [];
   for (const m of sheets) {
     const entry = (m.entries || []).find((e) => e.studentId === studentId);
@@ -60,16 +72,7 @@ async function studentSnapshot(studentId) {
   }
 
   // Fees
-  const receipts = await col('feeReceipts').find({ studentId }, { sort: { date: -1 } });
   const fees = summarizeStudentFees(student, receipts);
-  const [notices, meetings, activities, documents, homework, lessonPlans] = await Promise.all([
-    col('notices').find({ _deleted: { $ne: true }, status: 'published' }, { sort: { date: -1 } }),
-    col('ptm').find({ _deleted: { $ne: true } }, { sort: { date: -1 } }),
-    col('activities').find({ _deleted: { $ne: true } }, { sort: { date: -1 } }),
-    col('documents').find({ _deleted: { $ne: true } }, { sort: { date: -1 } }),
-    col('homework').find({ _deleted: { $ne: true }, status: 'active' }, { sort: { dueDate: 1 } }),
-    col('lessonPlans').find({ _deleted: { $ne: true }, shareWithFamilies: true }, { sort: { date: -1 } }),
-  ]);
 
   return {
     student: portalStudent(student),
@@ -101,10 +104,12 @@ router.get('/parent', allowRoles('parent'), async (req, res) => {
   const mine = children.filter((s) => (s.parentIds || []).includes(parent._id));
   const activeMine = mine.filter((student) => student.status === 'active');
   const formerMine = mine.filter((student) => student.status !== 'active');
-  const snaps = [];
-  const formerChildren = [];
-  for (const child of activeMine) snaps.push(await studentSnapshot(child._id));
-  for (const child of formerMine) formerChildren.push(await studentSnapshot(child._id));
+
+  // Run all children snapshots in parallel instead of serially
+  const [snaps, formerChildren] = await Promise.all([
+    Promise.all(activeMine.map((child) => studentSnapshot(child._id))),
+    Promise.all(formerMine.map((child) => studentSnapshot(child._id))),
+  ]);
   res.json({ parent, children: snaps.filter(Boolean), formerChildren: formerChildren.filter(Boolean) });
 });
 

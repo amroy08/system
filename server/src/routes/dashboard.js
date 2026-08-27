@@ -13,7 +13,7 @@ let statsRefresh = null;
 async function buildStats() {
   const today = new Date().toISOString().slice(0, 10);
 
-  const [students, teachers, classList, subjects, parents, receipts, attendanceToday, exams, incidents, helpdesk, complaints] =
+  const [students, teachers, classList, subjects, parents, receipts, attendanceToday, exams, incidents, helpdesk, complaints, pendingAdmissions, marks] =
     await Promise.all([
       col('students').find({ status: { $in: ['active', 'inactive', 'transferred', 'passed-out', 'suspended'] } }, {
         projection: { _id: 1, firstName: 1, lastName: 1, gender: 1, dob: 1, classId: 1, status: 1, totalDemand: 1 },
@@ -30,6 +30,8 @@ async function buildStats() {
       col('discipline').find({ _deleted: { $ne: true } }),
       col('helpdesk').count({ status: 'open' }),
       col('complaints').count({ status: 'open' }),
+      col('admissions').count({ status: 'registered' }),
+      col('marks').find({ status: 'submitted' }),
     ]);
 
   const activeStudents = students.filter((s) => s.status === 'active');
@@ -100,9 +102,6 @@ async function buildStats() {
     }
   }
   birthdays.sort((a, b) => a.inDays - b.inDays);
-
-  const pendingAdmissions = await col('admissions').count({ status: 'registered' });
-  const marks = await col('marks').find({ status: 'submitted' });
 
   const totalFeeCollected = receipts
     .reduce((s, r) => s + (r.amountPaid || 0), 0);

@@ -8,9 +8,11 @@ const ACTIVE_CLASS_QUERY = { _deleted: { $ne: true }, status: { $ne: 'archived' 
 
 // Teachers overview (teacher users + their assignments)
 router.get('/', allowRoles(...STAFF_TEACHER), async (req, res) => {
-  const teachers = await col('users').find({ role: 'teacher', status: { $ne: 'deleted' } }, { sort: { fullName: 1 } });
-  const assignments = await col('assignments').find({ _deleted: { $ne: true } });
-  const classes = await col('classes').find(ACTIVE_CLASS_QUERY);
+  const [teachers, assignments, classes] = await Promise.all([
+    col('users').find({ role: 'teacher', status: { $ne: 'deleted' } }, { sort: { fullName: 1 } }),
+    col('assignments').find({ _deleted: { $ne: true } }),
+    col('classes').find(ACTIVE_CLASS_QUERY),
+  ]);
   res.json(teachers.map((t) => {
     const mine = assignments.filter((a) => a.teacherId === t._id);
     const classTeacherOf = classes.find((c) => c.classTeacherId === t._id);

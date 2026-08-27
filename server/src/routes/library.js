@@ -186,11 +186,26 @@ router.get('/my', allowRoles('student', 'parent'), async (req, res) => {
   let studentIds = [];
   if (req.user.role === 'student') {
     studentIds = [req.user.refId];
-  } else {
-    const students = await col('students').find({ status: { $ne: 'deleted' } });
-    studentIds = students.filter((s) => (s.parentIds || []).includes(req.user.refId)).map((s) => s._id);
+    const issues = await col('bookIssues').find({ memberType: 'student' }, { sort: { createdAt: -1 } });
+    const today = new Date().toISOString().slice(0, 10);
+    const mine = issues.filter((i) => studentIds.includes(i.memberId));
+    return res.json({
+      finePerDay: FINE_PER_DAY,
+      issues: mine.map((i) => {
+        const overdue = i.status === 'issued' && i.dueDate < today;
+        const daysLate = overdue ? Math.ceil((new Date(today) - new Date(i.dueDate)) / 86400000) : 0;
+        const dueInDays = i.status === 'issued'
+          ? Math.ceil((new Date(i.dueDate) - new Date(today)) / 86400000) : null;
+        return { ...i, overdue, daysLate, fineAccrued: daysLate * FINE_PER_DAY, dueInDays };
+      }),
+    });
   }
-  const issues = await col('bookIssues').find({ memberType: 'student' }, { sort: { createdAt: -1 } });
+  // parent: fetch students + issues in parallel
+  const [students, issues] = await Promise.all([
+    col('students').find({ status: { $ne: 'deleted' } }),
+    col('bookIssues').find({ memberType: 'student' }, { sort: { createdAt: -1 } }),
+  ]);
+  studentIds = students.filter((s) => (s.parentIds || []).includes(req.user.refId)).map((s) => s._id);
   const mine = issues.filter((i) => studentIds.includes(i.memberId));
   const today = new Date().toISOString().slice(0, 10);
   res.json({
@@ -207,8 +222,10 @@ router.get('/my', allowRoles('student', 'parent'), async (req, res) => {
 
 // ---------- Stats ----------
 router.get('/stats', async (req, res) => {
-  const books = await col('books').find({ _deleted: { $ne: true } });
-  const issues = await col('bookIssues').find({});
+  const [books, issues] = await Promise.all([
+    col('books').find({ _deleted: { $ne: true } }),
+    col('bookIssues').find({}),
+  ]);
   const today = new Date().toISOString().slice(0, 10);
   const open = issues.filter((i) => i.status === 'issued');
   const overdueList = open.filter((i) => i.dueDate < today);

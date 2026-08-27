@@ -204,14 +204,16 @@ router.get('/', allowRoles(...STAFF), async (req, res) => {
 // Get outstanding dues for all active students
 router.get('/outstanding', allowRoles(...STAFF), async (req, res) => {
   try {
-    const students = await col('students').find(PAYING_STUDENT_QUERY, { projection: OUTSTANDING_STUDENT_PROJECTION });
-    const receipts = await col('feeReceipts').find({ status: { $in: ['paid', 'partial', 'unpaid'] } }, {
-      projection: { _id: 1, studentId: 1, amountPaid: 1, discount: 1, lateFee: 1, status: 1 },
-    });
-    const classes = await col('classes').find(ACTIVE_CLASS_QUERY);
-    const parents = await col('parents').find({ status: 'active' }, {
-      projection: { _id: 1, name: 1, relation: 1, mobile: 1, status: 1 },
-    });
+    const [students, receipts, classes, parents] = await Promise.all([
+      col('students').find(PAYING_STUDENT_QUERY, { projection: OUTSTANDING_STUDENT_PROJECTION }),
+      col('feeReceipts').find({ status: { $in: ['paid', 'partial', 'unpaid'] } }, {
+        projection: { _id: 1, studentId: 1, amountPaid: 1, discount: 1, lateFee: 1, status: 1 },
+      }),
+      col('classes').find(ACTIVE_CLASS_QUERY),
+      col('parents').find({ status: 'active' }, {
+        projection: { _id: 1, name: 1, relation: 1, mobile: 1, status: 1 },
+      }),
+    ]);
     const receiptsByStudent = new Map();
     for (const receipt of receipts) {
       if (!receiptsByStudent.has(receipt.studentId)) receiptsByStudent.set(receipt.studentId, []);
