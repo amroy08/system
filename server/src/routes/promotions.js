@@ -5,6 +5,7 @@ import { ADMISSION_CATEGORY, resolveFeeAssignment } from '../utils/feeStructure.
 import { summarizeStudentFees } from '../utils/studentFees.js';
 import { sendInternalError } from '../utils/httpErrors.js';
 import { acquireKeyedLock } from '../utils/keyedLock.js';
+import { isPrePrimaryClassName } from '../utils/classNames.js';
 
 const router = Router();
 router.use(authRequired);
@@ -17,7 +18,7 @@ function isPassoutClass(klass) {
 }
 
 function isPrePrimaryClass(klass) {
-  return /nursery|kg|pre-primary/i.test(String(klass?.name || ''));
+  return isPrePrimaryClassName(klass?.name || '');
 }
 
 function classGrade(klass) {

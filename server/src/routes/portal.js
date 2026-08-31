@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { col } from '../db/index.js';
 import { authRequired, allowRoles } from '../middleware/auth.js';
 import { summarizeStudentFees } from '../utils/studentFees.js';
+import { formatClass } from '../utils/classNames.js';
 
 // Student & Parent portal: scoped views of "my" data
 const router = Router();
@@ -76,7 +77,7 @@ async function studentSnapshot(studentId) {
 
   return {
     student: portalStudent(student),
-    className: klass ? `${klass.name} ${klass.section} (${klass.academicYear})` : '',
+    className: klass ? formatClass(klass) : '',
     attendance: { summary, recent: recent.slice(0, 30) },
     results,
     fees: { receipts, ...fees },

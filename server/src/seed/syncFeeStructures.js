@@ -1,5 +1,6 @@
 import { MongoClient } from 'mongodb';
 import { config } from '../config.js';
+import { isPrePrimaryClassName } from '../utils/classNames.js';
 
 async function run() {
   const client = new MongoClient(config.mongoUri || 'mongodb://localhost:27017/school_mgmt');
@@ -15,7 +16,7 @@ async function run() {
 
   classes.forEach(c => {
     const name = c.name.toLowerCase();
-    if (name.includes('nursery') || name.includes('kg') || name.includes('pre-primary')) {
+    if (isPrePrimaryClassName(name)) {
       prePrimaryIds.push(c._id);
     } else if (name.includes('1') || name.includes('2') || name.includes('3') || name.includes('4')) {
       primaryIds.push(c._id);

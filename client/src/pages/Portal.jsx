@@ -4,6 +4,11 @@ import {
   BookOpen, AlertTriangle, Clock, UsersRound, Trophy, ClipboardCheck, FolderOpen,
   ChevronDown, Home, Check,
 } from 'lucide-react';
+import { api, errMsg } from '../api';
+import { useApp } from '../context/AppContextValue';
+import { KpiCard, Badge } from '../components/ui';
+import { AttachmentLink } from '../components/Attachment';
+import { displayClassName } from '../utils/classNames';
 
 const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#f43f5e', '#06b6d4'];
 const stringToColor = (str) => {
@@ -11,10 +16,6 @@ const stringToColor = (str) => {
   for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
   return colors[Math.abs(hash) % colors.length];
 };
-import { api, errMsg } from '../api';
-import { useApp } from '../context/AppContextValue';
-import { KpiCard, Badge } from '../components/ui';
-import { AttachmentLink } from '../components/Attachment';
 
 /* ---- Library books issued to this student, with overdue / due-soon alerts ---- */
 function MyLibraryBooks({ studentId, cur, isParent, studentName }) {
@@ -435,7 +436,7 @@ function SnapshotView({ snap, cur, isParent }) {
   return (
     <div style={{ display: 'grid', gap: 14 }}>
       <div className="kpi-grid">
-        <KpiCard color="navy" icon={GraduationCap} value={snap.className} label="Class" />
+        <KpiCard color="navy" icon={GraduationCap} value={displayClassName(snap.className)} label="Class" />
         <KpiCard color="green" icon={CalendarCheck} value={`${presentPct}%`} label="Attendance" />
         <KpiCard color="purple" icon={Award} value={snap.results.length} label="Published Results" />
         <KpiCard color={snap.fees.balance > 0 ? 'red' : 'teal'} icon={Wallet} value={`${cur}${snap.fees.balance.toLocaleString()}`} label="Fee Balance" />
@@ -639,7 +640,7 @@ function FamilyOverview({ activeChildren, formerChildren, cur, onSelect }) {
                   </div>
                 </td>
                 <td className="mono">{child.student.admissionNo}</td>
-                <td>{child.className}</td>
+                <td>{displayClassName(child.className)}</td>
                 <td><Badge value={child.student.status} color={child.student.status === 'active' ? 'bg-green' : 'bg-gray'} /></td>
                 <td className={child.fees.balance > 0 ? 'txt-red' : 'txt-green'}><b>{cur}{child.fees.balance.toLocaleString()}</b></td>
                 <td><button className="btn btn-xs btn-navy" onClick={() => onSelect(child.student._id)}>View</button></td>
@@ -869,7 +870,7 @@ export default function Portal() {
                             <div style={{ fontSize: 12, fontWeight: 'bold', color: isSel ? '#1e40af' : 'var(--txt)' }}>
                               {child.student.firstName} {child.student.lastName || ''}
                             </div>
-                            <div style={{ fontSize: 10, color: 'var(--txt-muted)' }}>{child.className}</div>
+                            <div style={{ fontSize: 10, color: 'var(--txt-muted)' }}>{displayClassName(child.className)}</div>
                           </div>
                           {isSel && <Check size={14} style={{ color: '#2563eb' }} />}
                         </button>
@@ -922,7 +923,7 @@ export default function Portal() {
                             <div style={{ fontSize: 12, fontWeight: 'bold', color: isSel ? '#1e40af' : 'var(--txt)' }}>
                               {child.student.firstName} {child.student.lastName || ''}
                             </div>
-                            <div style={{ fontSize: 10, color: 'var(--txt-muted)' }}>{child.className}</div>
+                            <div style={{ fontSize: 10, color: 'var(--txt-muted)' }}>{displayClassName(child.className)}</div>
                           </div>
                           {isSel && <Check size={14} style={{ color: '#2563eb' }} />}
                         </button>

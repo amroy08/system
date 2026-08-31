@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { config } from '../config.js';
+import { displayClassName } from './classNames.js';
 
 let transporter = null;
 
@@ -132,6 +133,7 @@ function wrapHtmlTemplate(title, bodyHtml, actionUrl = null, actionText = 'Open 
  */
 export async function sendReceiptEmail(parentEmail, data) {
   const title = `Receipt Confirmation — Receipt #${data.receiptNo}`;
+  const className = displayClassName(data.className);
   const bodyHtml = `
     <h2>Fee Payment Received</h2>
     <p>Dear Parent,</p>
@@ -148,7 +150,7 @@ export async function sendReceiptEmail(parentEmail, data) {
       </tr>
       <tr>
         <td class="meta-label">Grade / Section</td>
-        <td class="meta-value">${escapeHtml(data.className)}</td>
+        <td class="meta-value">${escapeHtml(className)}</td>
       </tr>
       <tr>
         <td class="meta-label">Payment Date</td>
@@ -173,7 +175,7 @@ export async function sendReceiptEmail(parentEmail, data) {
   `;
 
   const html = wrapHtmlTemplate(title, bodyHtml, `${config.appUrl}/login`, 'Login to Parent Portal');
-  const text = `Fee Payment Received!\n\nReceipt: ${data.receiptNo}\nStudent: ${data.studentName}\nClass: ${data.className}\nAmount Paid: ₹${data.amountPaid}\nRemaining Balance: ₹${data.balance}\n\nLogin to portal: ${config.appUrl}/login`;
+  const text = `Fee Payment Received!\n\nReceipt: ${data.receiptNo}\nStudent: ${data.studentName}\nClass: ${className}\nAmount Paid: ₹${data.amountPaid}\nRemaining Balance: ₹${data.balance}\n\nLogin to portal: ${config.appUrl}/login`;
 
   return sendMail({
     from: config.emailFrom,
@@ -237,7 +239,7 @@ export async function sendDocumentEmail(parentEmails, doc) {
       </tr>
       <tr>
         <td class="meta-label">Audience</td>
-        <td class="meta-value">${escapeHtml(doc.className || 'General')}</td>
+        <td class="meta-value">${escapeHtml(displayClassName(doc.className || 'General'))}</td>
       </tr>
       <tr>
         <td class="meta-label">Description</td>
@@ -254,7 +256,7 @@ export async function sendDocumentEmail(parentEmails, doc) {
 
   const documentUrl = doc.link && doc.link !== '#' ? doc.link : `${config.appUrl}/documents`;
   const html = wrapHtmlTemplate(title, bodyHtml, documentUrl, 'Download Circular');
-  const text = `Circular Shared!\n\nTitle: ${doc.title}\nAudience: ${doc.className}\nDescription: ${doc.description || ''}\n\nOpen: ${documentUrl}`;
+  const text = `Circular Shared!\n\nTitle: ${doc.title}\nAudience: ${displayClassName(doc.className)}\nDescription: ${doc.description || ''}\n\nOpen: ${documentUrl}`;
 
   return sendMail({
     from: config.emailFrom,
@@ -271,6 +273,7 @@ export async function sendDocumentEmail(parentEmails, doc) {
 export async function sendExamEmail(parentEmails, exam, scheduleList = []) {
   if (!parentEmails.length) return;
   const title = `Exam Announcement: ${exam.name}`;
+  const className = displayClassName(exam.className);
 
   let scheduleRowsHtml = '';
   if (scheduleList.length > 0) {
@@ -315,7 +318,7 @@ export async function sendExamEmail(parentEmails, exam, scheduleList = []) {
       </tr>
       <tr>
         <td class="meta-label">Class / Grade</td>
-        <td class="meta-value">${escapeHtml(exam.className)}</td>
+        <td class="meta-value">${escapeHtml(className)}</td>
       </tr>
       <tr>
         <td class="meta-label">Term</td>
@@ -337,7 +340,7 @@ export async function sendExamEmail(parentEmails, exam, scheduleList = []) {
   `;
 
   const html = wrapHtmlTemplate(title, bodyHtml, `${config.appUrl}/exams`, 'Open Portal');
-  const text = `Exam Schedule Announced!\n\nExam: ${exam.name}\nClass: ${exam.className}\nTerm: ${exam.term || exam.type || ''}\nStart: ${exam.startDate || ''}\nEnd: ${exam.endDate || ''}\n\nReview timetable on Parent Portal: ${config.appUrl}/exams`;
+  const text = `Exam Schedule Announced!\n\nExam: ${exam.name}\nClass: ${className}\nTerm: ${exam.term || exam.type || ''}\nStart: ${exam.startDate || ''}\nEnd: ${exam.endDate || ''}\n\nReview timetable on Parent Portal: ${config.appUrl}/exams`;
 
   return sendMail({
     from: config.emailFrom,
@@ -353,6 +356,7 @@ export async function sendExamEmail(parentEmails, exam, scheduleList = []) {
  */
 export async function sendFeeReminderEmail(parentEmail, data) {
   const title = `Fee Reminder — Outstanding Balance`;
+  const className = displayClassName(data.className);
   const bodyHtml = `
     <h2>Fee Payment Pending Reminder</h2>
     <p>Dear Parent,</p>
@@ -365,7 +369,7 @@ export async function sendFeeReminderEmail(parentEmail, data) {
       </tr>
       <tr>
         <td class="meta-label">Grade / Section</td>
-        <td class="meta-value">${escapeHtml(data.className)}</td>
+        <td class="meta-value">${escapeHtml(className)}</td>
       </tr>
       <tr>
         <td class="meta-label">GR Number</td>
@@ -389,7 +393,7 @@ export async function sendFeeReminderEmail(parentEmail, data) {
   `;
 
   const html = wrapHtmlTemplate(title, bodyHtml, `${config.appUrl}/fees`, 'Pay Outstanding Dues');
-  const text = `Fee Reminder!\n\nStudent: ${data.studentName}\nClass: ${data.className}\nOutstanding Balance: ₹${data.outstanding}\n\nPay online: ${config.appUrl}/fees`;
+  const text = `Fee Reminder!\n\nStudent: ${data.studentName}\nClass: ${className}\nOutstanding Balance: ₹${data.outstanding}\n\nPay online: ${config.appUrl}/fees`;
 
   return sendMail({
     from: config.emailFrom,
@@ -406,6 +410,7 @@ export async function sendFeeReminderEmail(parentEmail, data) {
 export async function sendHomeworkEmail(parentEmails, task, classNameStr, subjectNameStr) {
   if (!parentEmails.length) return;
   const title = `New Assignment Alert: ${task.title}`;
+  const className = displayClassName(classNameStr);
 
   const bodyHtml = `
     <h2>New ${escapeHtml(task.type)} Posted</h2>
@@ -423,7 +428,7 @@ export async function sendHomeworkEmail(parentEmails, task, classNameStr, subjec
       </tr>
       <tr style="border-bottom: 1px solid #e2e8f0;">
         <td style="padding: 8px 0; color: #64748b; font-weight: 500;">Class / Grade</td>
-        <td style="padding: 8px 0; font-weight: bold; text-align: right;">${escapeHtml(classNameStr)}</td>
+        <td style="padding: 8px 0; font-weight: bold; text-align: right;">${escapeHtml(className)}</td>
       </tr>
       <tr style="border-bottom: 1px solid #e2e8f0;">
         <td style="padding: 8px 0; color: #64748b; font-weight: 500;">Subject</td>

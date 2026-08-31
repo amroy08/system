@@ -5,6 +5,7 @@ import { resolveEmailRecipients } from '../utils/emailRecipients.js';
 import { enqueueEmailEvent } from '../utils/emailOutbox.js';
 import { canAccessClass, teacherClassIds } from '../utils/accessScope.js';
 import { sendInternalError } from '../utils/httpErrors.js';
+import { formatClass } from '../utils/classNames.js';
 
 const router = Router();
 router.use(authRequired);
@@ -17,7 +18,7 @@ async function notifyClassParents(task) {
     if (result.recipients.length > 0) {
       const klass = await col('classes').findOne({ _id: task.classId, ...ACTIVE_CLASS_QUERY });
       const subject = await col('subjects').findOne({ _id: task.subjectId, _deleted: { $ne: true } });
-      const classNameStr = klass ? `${klass.name} ${klass.section}` : 'N/A';
+      const classNameStr = klass ? formatClass(klass, false) : 'N/A';
       const subjectNameStr = subject ? subject.name : 'N/A';
       const queued = await enqueueEmailEvent({
         eventType: 'homework', entityType: 'homework', entityId: task._id,

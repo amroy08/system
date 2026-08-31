@@ -5,6 +5,7 @@ import { useApp } from '../context/AppContextValue';
 import { useLookups } from '../hooks/useLookups';
 import { DataTable, Field, Modal, Badge, Confirm } from '../components/ui';
 import { AttachmentField, AttachmentLink } from '../components/Attachment';
+import { formatClass } from '../utils/classNames';
 
 const EMPTY = { title: '', description: '', type: 'Homework', classId: '', subjectId: '', dueDate: '', status: 'active', attachment: null };
 
@@ -64,7 +65,7 @@ export default function Homework() {
   // Helper to map IDs to Names
   const getClassName = (id) => {
     const c = classes.find(x => x._id === id);
-    return c ? `${c.name} ${c.section}` : 'N/A';
+    return c ? formatClass(c, false) : 'N/A';
   };
 
   const getSubjectName = (id) => {
@@ -204,7 +205,7 @@ export default function Homework() {
             <Field label="Class / Grade" required>
               <select value={form.classId} onChange={(e) => setForm({ ...form, classId: e.target.value })}>
                 <option value="">Select Class</option>
-                {classes.map(c => <option key={c._id} value={c._id}>{c.name} {c.section} ({c.academicYear})</option>)}
+                {classes.map(c => <option key={c._id} value={c._id}>{formatClass(c)}</option>)}
               </select>
             </Field>
 

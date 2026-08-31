@@ -9,6 +9,7 @@ import { useApp } from '../context/AppContextValue';
 import { useLookups, className } from '../hooks/useLookups';
 import { DataTable, StatusTabs, FilterBar, Field, Modal, Badge, Confirm, CredentialsModal } from '../components/ui';
 import { AttachmentField, AttachmentImage } from '../components/Attachment';
+import { displayClassName, formatClass, isPrePrimaryClassName } from '../utils/classNames';
 
 const HOUSE_COLORS = { Red: 'bg-solid-red', Blue: 'bg-solid-blue', Green: 'bg-solid-green', Yellow: 'bg-solid-orange' };
 const HOUSE_HEX = { Red: '#dc2626', Blue: '#2563eb', Green: '#16a34a', Yellow: '#f59e0b' };
@@ -169,7 +170,7 @@ export default function Students() {
       const totalDemand = r.totalDemand || (Number(r.subTotal || 0) + Number(r.balance || 0)) || 0;
       const name = String(r.className || '').toLowerCase();
       let standardDemand = 23500;
-      if (name.includes('nursery') || name.includes('jr') || name.includes('junior') || name.includes('sr') || name.includes('senior') || name.includes('kg') || name.includes('pre-primary')) {
+      if (isPrePrimaryClassName(name)) {
         standardDemand = 29500;
       } else if (name.includes('grade 1') || name.includes('class 1')) {
         standardDemand = 25500;
@@ -210,7 +211,7 @@ export default function Students() {
                 <p style="margin:0; font-size:9px; color:#94a3b8; text-transform:uppercase">Receipt To</p>
                 <p style="margin:0; font-size:11px; font-weight:700; text-transform:uppercase">${r.studentName}</p>
                 <p style="margin:0"><b>Adm No:</b> ${r.admissionNo}</p>
-                <p style="margin:0; font-weight:700">${r.className}</p>
+                <p style="margin:0; font-weight:700">${displayClassName(r.className)}</p>
               </div>
             </div>
 
@@ -415,7 +416,7 @@ export default function Students() {
         <Field label="Class">
           <select value={filters.classId} onChange={(e) => setFilters({ ...filters, classId: e.target.value })}>
             <option value="">All Classes</option>
-            {classes.map((c) => <option key={c._id} value={c._id}>{c.name} {c.section} ({c.academicYear})</option>)}
+            {classes.map((c) => <option key={c._id} value={c._id}>{formatClass(c)}</option>)}
           </select>
         </Field>
         <Field label="Gender">
@@ -485,7 +486,7 @@ export default function Students() {
             <Field label="Class" required>
               <select value={form.classId} onChange={(e) => setForm({ ...form, classId: e.target.value })}>
                 <option value="">Select class…</option>
-                {classes.map((c) => <option key={c._id} value={c._id}>{c.name} {c.section} ({c.academicYear})</option>)}
+                {classes.map((c) => <option key={c._id} value={c._id}>{formatClass(c)}</option>)}
               </select>
             </Field>
             <Field label="Roll No"><input value={form.rollNo} onChange={(e) => setForm({ ...form, rollNo: e.target.value })} /></Field>
@@ -501,7 +502,7 @@ export default function Students() {
             </Field>
             {feePreview && (
               <div className="student-fee-preview">
-                <span>Annual fee for {feePreview.className}</span>
+                <span>Annual fee for {displayClassName(feePreview.className)}</span>
                 <b>{settings.currency || '₹'}{feePreview.annualFee.toLocaleString()}</b>
               </div>
             )}
@@ -623,7 +624,7 @@ export default function Students() {
         const outstanding = Math.max(0, totalDemand - totalPaid);
         
         const classNameLower = String(className(classes, student.classId) || '').toLowerCase();
-        const isPP = classNameLower.includes('nursery') || classNameLower.includes('jr') || classNameLower.includes('junior') || classNameLower.includes('sr') || classNameLower.includes('senior') || classNameLower.includes('kg') || classNameLower.includes('pre-primary');
+        const isPP = isPrePrimaryClassName(classNameLower);
         const isP = !isPP && (classNameLower.includes('grade 1') || classNameLower.includes('class 1') || classNameLower.includes('grade 2') || classNameLower.includes('class 2') || classNameLower.includes('grade 3') || classNameLower.includes('class 3') || classNameLower.includes('grade 4') || classNameLower.includes('class 4') || classNameLower.includes('primary'));
         
         const hasAdmission = isPP

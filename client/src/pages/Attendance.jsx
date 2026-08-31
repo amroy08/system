@@ -4,6 +4,7 @@ import { api, errMsg } from '../api';
 import { useApp } from '../context/AppContextValue';
 import { useLookups } from '../hooks/useLookups';
 import { Field, Badge } from '../components/ui';
+import { formatClass } from '../utils/classNames';
 
 const STATUSES = [
   { key: 'present', label: 'P', title: 'Present' },
@@ -92,7 +93,7 @@ export default function Attendance() {
             <select value={classId} onChange={(e) => setClassId(e.target.value)}>
               <option value="">Select class…</option>
               {classes.filter((c) => c.status === 'active').map((c) => (
-                <option key={c._id} value={c._id}>{c.name} {c.section} ({c.academicYear})</option>
+                <option key={c._id} value={c._id}>{formatClass(c)}</option>
               ))}
             </select>
           </Field>
@@ -118,7 +119,7 @@ export default function Attendance() {
           <div className="academic-table-context">
             <div>
               <span className="academic-eyebrow">Attendance register</span>
-              <h3>{selectedClass ? `${selectedClass.name} ${selectedClass.section}` : 'Selected class'} <small>· {date}</small></h3>
+              <h3>{selectedClass ? formatClass(selectedClass, false) : 'Selected class'} <small>· {date}</small></h3>
             </div>
             <div className="academic-context-tags"><span>{sheet.records.length} students</span>{sheet.saved && <span className="is-warning">Previously saved</span>}</div>
           </div>

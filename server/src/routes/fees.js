@@ -15,6 +15,7 @@ import { toWhatsAppNumber } from '../utils/whatsapp.js';
 import { acquireKeyedLock } from '../utils/keyedLock.js';
 import { sendInternalError } from '../utils/httpErrors.js';
 import { invalidateDailyAccountsCache } from './misc.js';
+import { formatClass } from '../utils/classNames.js';
 
 const router = Router();
 router.use(authRequired);
@@ -205,7 +206,7 @@ router.get('/compute/:studentId', async (req, res) => {
 
   res.json({
     student: { _id: student._id, name: `${student.firstName} ${student.lastName || ''}`.trim(), admissionNo: student.admissionNo },
-    className: klass ? `${klass.name} ${klass.section} (${klass.academicYear})` : '',
+    className: klass ? formatClass(klass) : '',
     ...summary,
     items: itemSummaries,
     allocationPreview: allocation.preview,
@@ -444,7 +445,7 @@ router.post('/', allowRoles(...STAFF), async (req, res) => {
     studentId: student._id,
     studentName: `${student.firstName} ${student.lastName || ''}`.trim(),
     admissionNo: student.admissionNo,
-    className: klass ? `${klass.name} ${klass.section} (${klass.academicYear})` : '',
+    className: klass ? formatClass(klass) : '',
     academicYear: klass?.academicYear || '',
     date: b.date || new Date().toISOString().slice(0, 10),
     items, balanceBreakdown, subTotal, lateFee, discount, amountDue, amountPaid, balance: balanceAfter,

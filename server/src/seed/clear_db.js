@@ -96,9 +96,9 @@ async function clearDb() {
   console.log('Seeding default MVHS classes with capacity 70...');
   const AY = '2026-2027';
   const defaultClasses = [
-    { name: 'Nursery', section: 'A', academicYear: AY, capacity: 70, room: 'Room N1', status: 'active' },
-    { name: 'Junior KG', section: 'A', academicYear: AY, capacity: 70, room: 'Room JK1', status: 'active' },
-    { name: 'Senior KG', section: 'A', academicYear: AY, capacity: 70, room: 'Room SK1', status: 'active' },
+    { name: 'Montessori - I', section: 'A', academicYear: AY, capacity: 70, room: 'Room M1', status: 'active' },
+    { name: 'Montessori - II', section: 'A', academicYear: AY, capacity: 70, room: 'Room M2', status: 'active' },
+    { name: 'Montessori - III', section: 'A', academicYear: AY, capacity: 70, room: 'Room M3', status: 'active' },
     { name: 'Grade 1', section: 'A', academicYear: AY, capacity: 70, room: 'Room 101', status: 'active' },
     { name: 'Grade 2', section: 'A', academicYear: AY, capacity: 70, room: 'Room 201', status: 'active' },
     { name: 'Grade 3', section: 'A', academicYear: AY, capacity: 70, room: 'Room 301', status: 'active' },

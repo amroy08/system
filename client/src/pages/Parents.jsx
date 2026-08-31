@@ -4,6 +4,7 @@ import { api, errMsg } from '../api';
 import { useApp } from '../context/AppContextValue';
 import { useLookups, className } from '../hooks/useLookups';
 import { DataTable, Field, Modal, Badge, Confirm, FilterBar, KpiCard } from '../components/ui';
+import { formatClass } from '../utils/classNames';
 
 const EMPTY = { name: '', relation: 'Father', mobile: '', email: '', occupation: '', address: '', status: 'active' };
 const EMPTY_FILTERS = { classId: '', relation: '', linkType: '', emailType: '', status: '' };
@@ -159,7 +160,7 @@ export default function Parents() {
         <Field label="Grade / Class">
           <select value={filters.classId} onChange={(e) => setFilters({ ...filters, classId: e.target.value })}>
             <option value="">All grades</option>
-            {classes.filter((item) => item.status === 'active').map((item) => <option key={item._id} value={item._id}>{item.name} {item.section}</option>)}
+            {classes.filter((item) => item.status === 'active').map((item) => <option key={item._id} value={item._id}>{formatClass(item, false)}</option>)}
           </select>
         </Field>
         <Field label="Relationship">
@@ -234,7 +235,7 @@ export default function Parents() {
                 }}>
                   <option value="">Select class / grade…</option>
                   {classes.filter((c) => c.status === 'active').map((c) => (
-                    <option key={c._id} value={c._id}>{c.name} {c.section}</option>
+                    <option key={c._id} value={c._id}>{formatClass(c, false)}</option>
                   ))}
                 </select>
               </Field>

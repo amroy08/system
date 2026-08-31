@@ -5,6 +5,7 @@ import { api, errMsg } from '../api';
 import { useApp } from '../context/AppContextValue';
 import { useLookups } from '../hooks/useLookups';
 import { DataTable, StatusTabs, Field, Modal, Badge, KpiCard } from '../components/ui';
+import { displayClassName, formatClass, isPrePrimaryClassName } from '../utils/classNames';
 
 function createPaymentForm() {
   return {
@@ -356,7 +357,7 @@ export default function Fees() {
       const totalDemand = data.totalDemand || (Number(data.subTotal || 0) + Number(data.balance || 0)) || 0;
       const name = String(data.className || '').toLowerCase();
       let standardDemand = 23500;
-      if (name.includes('nursery') || name.includes('jr') || name.includes('junior') || name.includes('sr') || name.includes('senior') || name.includes('kg') || name.includes('pre-primary')) {
+      if (isPrePrimaryClassName(name)) {
         standardDemand = 29500;
       } else if (name.includes('grade 1') || name.includes('class 1')) {
         standardDemand = 25500;
@@ -397,7 +398,7 @@ export default function Fees() {
                 <p style="margin:0; font-size:9px; color:#94a3b8; text-transform:uppercase">Receipt To</p>
                 <p style="margin:0; font-size:11px; font-weight:700; text-transform:uppercase">${data.studentName}</p>
                 <p style="margin:0"><b>Adm No:</b> ${data.admissionNo}</p>
-                <p style="margin:0; font-weight:700">${data.className}</p>
+                <p style="margin:0; font-weight:700">${displayClassName(data.className)}</p>
               </div>
             </div>
 
@@ -549,9 +550,9 @@ export default function Fees() {
         const student = students.find((s) => s._id === r.studentId);
         if (student) {
           const klass = classes.find((c) => c._id === student.classId);
-          if (klass) return `${klass.name} ${klass.section} (${klass.academicYear})`;
+          if (klass) return formatClass(klass);
         }
-        return r.className;
+        return displayClassName(r.className);
       }
     },
     { key: 'amountDue', label: 'Due', value: (r) => r.amountDue, render: (r) => `${cur}${(r.amountDue || 0).toLocaleString()}` },
@@ -580,7 +581,7 @@ export default function Fees() {
           <select value={selectedClassId} onChange={(e) => setSelectedClassId(e.target.value)} style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--txt)', cursor: 'pointer' }}>
             <option value="">All Classes / Grades</option>
             {classes.map((c) => (
-              <option key={c._id} value={c._id}>{c.name} {c.section}</option>
+              <option key={c._id} value={c._id}>{formatClass(c, false)}</option>
             ))}
           </select>
         </div>
@@ -651,7 +652,7 @@ export default function Fees() {
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, fontFamily: 'Outfit' }}>
-                    {stat.class.name} {stat.class.section}
+                    {formatClass(stat.class, false)}
                   </h3>
                   <span style={{ fontSize: 10, fontWeight: 700, background: 'rgba(37, 99, 235, 0.1)', color: '#2563eb', padding: '2px 8px', borderRadius: 99 }}>
                     {stat.studentCount} Students
@@ -737,15 +738,15 @@ export default function Fees() {
                 ← Back to Grades
               </button>
               <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, fontFamily: 'Outfit' }}>
-                Students in {selectedClass ? `${selectedClass.name} ${selectedClass.section}` : ''}
+                Students in {selectedClass ? formatClass(selectedClass, false) : ''}
               </h3>
             </div>
             
             <DataTable 
               columns={drillDownColumns} 
               rows={classStudents} 
-              title={`Students Directory — ${selectedClass ? selectedClass.name : ''}`} 
-              exportName={`students-${selectedClass ? selectedClass.name : 'class'}`} 
+              title={`Students Directory — ${selectedClass ? formatClass(selectedClass, false) : ''}`} 
+              exportName={`students-${selectedClass ? formatClass(selectedClass, false) : 'class'}`} 
             />
           </div>
         );
@@ -786,7 +787,7 @@ export default function Fees() {
                     return wingName === formWing;
                   })
                   .map((c) => (
-                    <option key={c._id} value={c._id}>{c.name} {c.section}</option>
+                    <option key={c._id} value={c._id}>{formatClass(c, false)}</option>
                   ))}
               </select>
             </Field>
@@ -809,7 +810,7 @@ export default function Fees() {
                   <div className="student-search-results">
                     {filteredStudents.length ? filteredStudents.map((s) => {
                       const klass = classes.find((c) => c._id === s.classId);
-                      const classNameLabel = klass ? `${klass.name} ${klass.section}` : '';
+                      const classNameLabel = klass ? formatClass(klass, false) : '';
                       return (
                         <button
                           type="button"
@@ -837,7 +838,7 @@ export default function Fees() {
             </Field>
             {computed && (
               <>
-                <div className="form-section">Fee Summary ({computed.className})</div>
+                <div className="form-section">Fee Summary ({displayClassName(computed.className)})</div>
                 <div className="full fee-summary-grid" style={{ display: 'grid', gap: 12, marginBottom: 12 }}>
                   <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '12px 14px', textAlign: 'center', border: '1px solid var(--border)' }}>
                     <div className="small text-muted" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Total Annual Fee</div>
@@ -1024,7 +1025,7 @@ export default function Fees() {
                     <td style={{ textAlign: 'right' }}><b>Adm No:</b> {modal.data.admissionNo}</td>
                   </tr>
                   <tr>
-                    <td><b>Class:</b> {modal.data.className}</td>
+                    <td><b>Class:</b> {displayClassName(modal.data.className)}</td>
                     <td style={{ textAlign: 'right' }}><b>Year:</b> {modal.data.academicYear}</td>
                   </tr>
                 </tbody>

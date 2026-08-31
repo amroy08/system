@@ -13,6 +13,7 @@ import { Bar, Line, Doughnut } from 'react-chartjs-2';
 import { api } from '../api';
 import { useApp } from '../context/AppContextValue';
 import { KpiCard, Badge } from '../components/ui';
+import { displayClassName } from '../utils/classNames';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, ArcElement, Tooltip, Legend, Filler);
 
@@ -470,7 +471,7 @@ function TeacherDashboard({ navigate }) {
                 <tr key={i}>
                   <td><Badge value={`P${p.period}`} color="bg-navy" /></td>
                   <td>{p.start} – {p.end}</td>
-                  <td>{p.className}</td>
+                  <td>{displayClassName(p.className)}</td>
                   <td><b>{p.subjectName}</b></td>
                 </tr>
               ))}
@@ -484,7 +485,7 @@ function TeacherDashboard({ navigate }) {
             {data.assignments.map((a) => (
               <div key={a._id} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
                 <Badge value={a.subjectName} color="bg-purple" />
-                <span>{a.className}</span>
+                <span>{displayClassName(a.className)}</span>
                 <span className="small muted" style={{ marginLeft: 'auto' }}>{a.studentCount} students</span>
               </div>
             ))}

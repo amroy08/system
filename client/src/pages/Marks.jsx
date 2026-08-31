@@ -5,6 +5,7 @@ import { api, errMsg } from '../api';
 import { useApp } from '../context/AppContextValue';
 import { useLookups } from '../hooks/useLookups';
 import { Field, Badge } from '../components/ui';
+import { formatClass } from '../utils/classNames';
 
 export default function Marks() {
   const { notify, user } = useApp();
@@ -73,7 +74,7 @@ export default function Marks() {
       td{border-bottom:1px solid #e2e8f0;padding:7px 10px}
     </style></head><body>
       <h1>${exam?.name || ''} — Mark Sheet</h1>
-      <h3>${klass ? `${klass.name} ${klass.section} (${klass.academicYear})` : ''} · ${sheet.subject?.name} (Max: ${sheet.subject?.maxMarks})</h3>
+      <h3>${klass ? formatClass(klass) : ''} · ${sheet.subject?.name} (Max: ${sheet.subject?.maxMarks})</h3>
       <table><thead><tr><th>Roll</th><th>Adm #</th><th>Student</th><th>Marks</th><th>Grade</th></tr></thead><tbody>
       ${sheet.entries.map((e) => `<tr><td>${e.rollNo || ''}</td><td>${e.admissionNo}</td><td>${e.name}</td><td>${e.marks ?? '—'} / ${sheet.subject?.maxMarks}</td><td>${e.grade}</td></tr>`).join('')}
       </tbody></table></body></html>`);
@@ -107,7 +108,7 @@ export default function Marks() {
           <Field label="Class" required>
             <select value={classId} onChange={(e) => { setClassId(e.target.value); setSubjectId(''); }}>
               <option value="">Select class…</option>
-              {classes.filter((c) => c.status === 'active').map((c) => <option key={c._id} value={c._id}>{c.name} {c.section} ({c.academicYear})</option>)}
+              {classes.filter((c) => c.status === 'active').map((c) => <option key={c._id} value={c._id}>{formatClass(c)}</option>)}
             </select>
           </Field>
           <Field label="Subject" required>
@@ -131,7 +132,7 @@ export default function Marks() {
           <div className="academic-table-context">
             <div>
               <span className="academic-eyebrow">Active mark sheet</span>
-              <h3>{selectedExam?.name || 'Exam'} <small>· {selectedClass ? `${selectedClass.name} ${selectedClass.section}` : 'Class'} · {sheet.subject?.name}</small></h3>
+              <h3>{selectedExam?.name || 'Exam'} <small>· {selectedClass ? formatClass(selectedClass, false) : 'Class'} · {sheet.subject?.name}</small></h3>
             </div>
             <div className="academic-context-tags"><span>Max {sheet.subject?.maxMarks}</span><span>{sheet.entries.length} students</span></div>
           </div>

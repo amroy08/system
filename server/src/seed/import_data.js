@@ -67,7 +67,7 @@ function paymentDate(lastPaid) {
 function buildFeeStructures(classes, existingStructures) {
   const idByName = new Map(existingStructures.map((item) => [item.name, item._id]));
   const ids = (predicate) => classes.filter(predicate).map((item) => item._id);
-  const prePrimaryIds = ids((item) => /nursery|kg/i.test(item.name));
+  const prePrimaryIds = ids((item) => /nursery|kg|montessori/i.test(item.name));
   const primaryIds = ids((item) => /^Grade [1-4]$/.test(item.name));
   const secondaryIds = ids((item) => /^Grade (?:[5-9]|10)$/.test(item.name));
   const now = new Date().toISOString();

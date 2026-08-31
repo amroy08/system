@@ -6,6 +6,7 @@ import { api, errMsg } from '../api';
 import { useApp } from '../context/AppContextValue';
 import { useLookups } from '../hooks/useLookups';
 import { DataTable, Field, Modal, Badge, Confirm } from '../components/ui';
+import { formatClass } from '../utils/classNames';
 
 const EMPTY = { name: '', section: 'A', academicYear: '2026-2027', capacity: 30, room: '', classTeacherId: '', status: 'active' };
 
@@ -37,7 +38,7 @@ export default function Classes() {
   const strength = (id) => students.filter((s) => s.classId === id && s.status === 'active').length;
 
   const columns = [
-    { key: 'name', label: 'Class', render: (r) => <b>{r.name} {r.section}</b>, exportValue: (r) => `${r.name} ${r.section}` },
+    { key: 'name', label: 'Class', render: (r) => <b>{formatClass(r, false)}</b>, exportValue: (r) => formatClass(r, false) },
     { key: 'academicYear', label: 'Academic Year', render: (r) => <Badge value={r.academicYear} color="bg-blue" /> },
     { key: 'room', label: 'Location / Room' },
     { key: 'capacity', label: 'Capacity' },
@@ -95,7 +96,7 @@ export default function Classes() {
       )}
 
       {confirmDel && (
-        <Confirm message={`Delete class "${confirmDel.name} ${confirmDel.section} (${confirmDel.academicYear})"?`}
+        <Confirm message={`Delete class "${formatClass(confirmDel)}"?`}
           onNo={() => setConfirmDel(null)}
           onYes={async () => {
             try { await api.delete(`/classes/${confirmDel._id}`); notify('Class deleted'); load(); }

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { col } from '../db/index.js';
 import { authRequired, allowRoles, STAFF, STAFF_TEACHER } from '../middleware/auth.js';
+import { formatClass } from '../utils/classNames.js';
 
 const router = Router();
 router.use(authRequired);
@@ -177,7 +178,7 @@ router.get('/teacher', allowRoles(...STAFF_TEACHER), async (req, res) => {
 
   const classLabel = (id) => {
     const c = classes.find((x) => x._id === id);
-    return c ? `${c.name} ${c.section} (${c.academicYear})` : '?';
+    return c ? formatClass(c) : '?';
   };
 
   const myAssignments = assignments.map((a) => ({

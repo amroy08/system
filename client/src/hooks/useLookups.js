@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api } from '../api';
+import { formatClass } from '../utils/classNames';
 
 const LOOKUP_TTL_MS = 60_000;
 const cache = new Map();
@@ -48,7 +49,7 @@ export function useLookups(keys = ['classes']) {
 
 export const className = (classes, id) => {
   const c = classes.find((x) => x._id === id);
-  return c ? `${c.name} ${c.section} (${c.academicYear})` : '—';
+  return c ? formatClass(c) : '—';
 };
 
 export const studentName = (students, id) => {

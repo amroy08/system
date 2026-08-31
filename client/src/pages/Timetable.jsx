@@ -5,6 +5,7 @@ import { api, errMsg } from '../api';
 import { useApp } from '../context/AppContextValue';
 import { useLookups } from '../hooks/useLookups';
 import { Field } from '../components/ui';
+import { formatClass } from '../utils/classNames';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 const SLOTS = [
@@ -97,7 +98,7 @@ export default function Timetable() {
           <Field label="Class" required>
             <select value={classId} onChange={(e) => setClassId(e.target.value)}>
               <option value="">Select class…</option>
-              {classes.map((c) => <option key={c._id} value={c._id}>{c.name} {c.section} ({c.academicYear})</option>)}
+              {classes.map((c) => <option key={c._id} value={c._id}>{formatClass(c)}</option>)}
             </select>
           </Field>
         </div>
@@ -115,7 +116,7 @@ export default function Timetable() {
           <div className="academic-table-context no-print">
             <div>
               <span className="academic-eyebrow">Current schedule</span>
-              <h3>{selectedClass ? `${selectedClass.name} ${selectedClass.section}` : 'Selected class'}</h3>
+              <h3>{selectedClass ? formatClass(selectedClass, false) : 'Selected class'}</h3>
             </div>
             <div className="academic-context-tags"><span>Monday–Friday</span><span>10 periods</span>{dirty && <span className="is-warning">Unsaved changes</span>}</div>
           </div>

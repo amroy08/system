@@ -7,6 +7,7 @@ import { api, errMsg } from '../api';
 import { useApp } from '../context/AppContextValue';
 import { useLookups } from '../hooks/useLookups';
 import { DataTable, StatusTabs, Field, Modal, Badge, Confirm } from '../components/ui';
+import { formatClass } from '../utils/classNames';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
@@ -91,7 +92,7 @@ export default function Exams() {
 
   const getClassName = (classIds) => {
     if (!classIds || classIds.length === 0) return 'All Classes';
-    const labels = classIds.map((id) => classes.find((item) => item._id === id)).filter(Boolean).map((item) => `${item.name} ${item.section}`);
+    const labels = classIds.map((id) => classes.find((item) => item._id === id)).filter(Boolean).map((item) => formatClass(item, false));
     return labels.length ? `${labels.slice(0, 2).join(', ')}${labels.length > 2 ? ` +${labels.length - 2}` : ''}` : 'N/A';
   };
 
@@ -218,7 +219,7 @@ export default function Exams() {
                           ? [...(current.classIds || []), item._id]
                           : (current.classIds || []).filter((id) => id !== item._id),
                       }))} />
-                      <span>{item.name} {item.section} ({item.academicYear})</span>
+                      <span>{formatClass(item)}</span>
                     </label>
                   );
                 })}
@@ -236,7 +237,7 @@ export default function Exams() {
             <Field label="Filter by class">
               <select value={resultClass} onChange={(e) => openResults(modal.data, e.target.value)}>
                 <option value="">All classes</option>
-                {classes.map((c) => <option key={c._id} value={c._id}>{c.name} {c.section} ({c.academicYear})</option>)}
+                {classes.map((c) => <option key={c._id} value={c._id}>{formatClass(c)}</option>)}
               </select>
             </Field>
           </div>

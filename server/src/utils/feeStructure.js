@@ -1,3 +1,5 @@
+import { isPrePrimaryClassName } from './classNames.js';
+
 export const ADMISSION_CATEGORY = Object.freeze({
   NEW: 'NEW_ADMISSION',
   EXISTING: 'EXISTING',
@@ -14,7 +16,7 @@ export function normalizeAdmissionCategory(value, medicalNotes = '') {
 export function getFeeWing(className = '') {
   const name = String(className).toLowerCase();
   if (name.includes('old') || name.includes('alumni') || name.includes('passed-out')) return 'FORMER';
-  if (name.includes('nursery') || name.includes('kg') || name.includes('pre-primary')) return 'PRE_PRIMARY';
+  if (isPrePrimaryClassName(name)) return 'PRE_PRIMARY';
   const grade = Number(name.match(/\d+/)?.[0]);
   if (grade >= 1 && grade <= 4) return 'PRIMARY';
   return 'SECONDARY';

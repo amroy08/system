@@ -5,6 +5,7 @@ import { api, errMsg } from '../api';
 import { useApp } from '../context/AppContextValue';
 import { useLookups } from '../hooks/useLookups';
 import { DataTable, StatusTabs, Field, Modal, Badge, CredentialsModal } from '../components/ui';
+import { displayClassName, formatClass } from '../utils/classNames';
 
 const EMPTY = {
   firstName: '', lastName: '', gender: 'Male', dob: '', nationality: '', curriculum: 'IB PYP',
@@ -70,7 +71,7 @@ export default function Admissions() {
     { key: 'firstName', label: 'Applicant', render: (r) => <b>{r.firstName} {r.lastName}</b>, exportValue: (r) => `${r.firstName} ${r.lastName}` },
     { key: 'gender', label: 'Gender' },
     { key: 'dob', label: 'DOB' },
-    { key: 'classAppliedFor', label: 'Class Applied' },
+    { key: 'classAppliedFor', label: 'Class Applied', render: (r) => displayClassName(r.classAppliedFor), exportValue: (r) => displayClassName(r.classAppliedFor) },
     { key: 'academicYear', label: 'Academic Year' },
     { key: 'parentName', label: 'Parent / Guardian', render: (r) => <div>{r.parentName}<div className="small muted">{r.parentMobile}</div></div> },
     { key: 'status', label: 'Status', render: (r) => (
@@ -133,7 +134,10 @@ export default function Admissions() {
             <Field label="Class Applied For" required>
               <select value={form.classAppliedFor} onChange={(e) => setForm({ ...form, classAppliedFor: e.target.value })}>
                 <option value="">Select…</option>
-                {[...new Set(classes.map((c) => c.name))].map((n) => <option key={n}>{n}</option>)}
+                {form.classAppliedFor && form.classAppliedFor !== displayClassName(form.classAppliedFor) && (
+                  <option value={form.classAppliedFor}>{displayClassName(form.classAppliedFor)}</option>
+                )}
+                {[...new Set(classes.map((c) => displayClassName(c.name)))].map((n) => <option key={n} value={n}>{n}</option>)}
               </select>
             </Field>
             <Field label="Academic Year" required><input value={form.academicYear} onChange={(e) => setForm({ ...form, academicYear: e.target.value })} /></Field>
@@ -179,7 +183,7 @@ export default function Admissions() {
             <Field label="Class" required>
               <select value={enroll.classId} onChange={(e) => setEnroll({ ...enroll, classId: e.target.value })}>
                 <option value="">Select class…</option>
-                {classes.filter((c) => c.status === 'active').map((c) => <option key={c._id} value={c._id}>{c.name} {c.section} ({c.academicYear})</option>)}
+                {classes.filter((c) => c.status === 'active').map((c) => <option key={c._id} value={c._id}>{formatClass(c)}</option>)}
               </select>
             </Field>
             <Field label="Roll No"><input value={enroll.rollNo} onChange={(e) => setEnroll({ ...enroll, rollNo: e.target.value })} /></Field>
@@ -228,7 +232,7 @@ export default function Admissions() {
         <Modal title={`${modal.data.firstName} ${modal.data.lastName} — ${modal.data.regNo}`} icon={Eye} onClose={() => setModal(null)}>
           <div className="form-grid">
             {[['Status', modal.data.status], ['Gender', modal.data.gender], ['DOB', modal.data.dob],
-              ['Nationality', modal.data.nationality], ['Class Applied', modal.data.classAppliedFor],
+              ['Nationality', modal.data.nationality], ['Class Applied', displayClassName(modal.data.classAppliedFor)],
               ['Academic Year', modal.data.academicYear], ['Parent', `${modal.data.parentName} (${modal.data.parentRelation})`],
               ['Parent Mobile', modal.data.parentMobile], ['Parent Email', modal.data.parentEmail],
               ['Father', modal.data.fatherName], ['Father Mobile', modal.data.fatherMobile],

@@ -4,6 +4,7 @@ import { api, errMsg } from '../api';
 import { useApp } from '../context/AppContextValue';
 import { useLookups } from '../hooks/useLookups';
 import { Badge, Confirm, DataTable, Field, FilterBar, KpiCard } from '../components/ui';
+import { formatClass, isPrePrimaryClassName } from '../utils/classNames';
 
 export default function Promotions() {
   const { notify, settings } = useApp();
@@ -101,7 +102,7 @@ export default function Promotions() {
   const sourceClass = classes.find((item) => item._id === sourceClassId);
   const targetClass = classes.find((item) => item._id === targetClassId);
   const isPassoutTarget = /old|pass|alumni/i.test(targetClass?.name || '');
-  const isPrePrimaryClass = (item) => /nursery|kg|pre-primary/i.test(item?.name || '');
+  const isPrePrimaryClass = (item) => isPrePrimaryClassName(item?.name || '');
   const isPrePrimaryRollover = isPrePrimaryClass(sourceClass) && isPrePrimaryClass(targetClass);
   const targetGrade = Number(String(targetClass?.name || '').match(/\d+/)?.[0]) || null;
   const isGradeOneTarget = targetGrade === 1;
@@ -164,7 +165,7 @@ export default function Promotions() {
             if (event.target.value === targetClassId) setTargetClassId('');
           }}>
             <option value="">Select current class…</option>
-            {classes.map((item) => <option key={item._id} value={item._id}>{item.name} {item.section} ({item.academicYear})</option>)}
+            {classes.map((item) => <option key={item._id} value={item._id}>{formatClass(item)}</option>)}
           </select>
         </Field>
         <Field label="Target Class" required>
@@ -177,7 +178,7 @@ export default function Promotions() {
             setTargetFeeCategory(nextIsPrePrimary || nextGrade === 1 || nextGrade === 5 ? 'NEW_ADMISSION' : 'EXISTING');
           }}>
             <option value="">Select next class…</option>
-            {classes.filter((item) => item._id !== sourceClassId).map((item) => <option key={item._id} value={item._id}>{item.name} {item.section} ({item.academicYear})</option>)}
+            {classes.filter((item) => item._id !== sourceClassId).map((item) => <option key={item._id} value={item._id}>{formatClass(item)}</option>)}
           </select>
         </Field>
         <Field label="Fee on Rollover">

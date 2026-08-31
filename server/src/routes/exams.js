@@ -6,6 +6,7 @@ import { enqueueEmailEvent } from '../utils/emailOutbox.js';
 import { examTypeOrder, validateExamDetails } from '../utils/examTypes.js';
 import { canAccessClass, teacherClassIds } from '../utils/accessScope.js';
 import { acquireKeyedLock } from '../utils/keyedLock.js';
+import { formatClass } from '../utils/classNames.js';
 
 const router = Router();
 router.use(authRequired);
@@ -74,7 +75,7 @@ router.post('/:id/publish-schedule', allowRoles('admin'), async (req, res) => {
     ? await resolveEmailRecipients({ audience: 'class', classIds })
     : await resolveEmailRecipients({ audience: 'parents' });
   const classes = classIds.length ? await col('classes').find({ _id: { $in: classIds }, ...ACTIVE_CLASS_QUERY }) : [];
-  const className = classes.length ? classes.map((item) => `${item.name} ${item.section}`).join(', ') : 'All Grades / Classes';
+  const className = classes.length ? classes.map((item) => formatClass(item, false)).join(', ') : 'All Grades / Classes';
   const publishedAt = new Date().toISOString();
   const queued = await enqueueEmailEvent({
     eventType: 'exam-schedule', entityType: 'exam', entityId: exam._id, version: publishedAt,
@@ -276,7 +277,7 @@ router.get('/:examId/hall-tickets', async (req, res) => {
     const classSubjects = subjects.filter((x) => (x.classIds || []).includes(s.classId));
     return {
       student: { name: `${s.firstName} ${s.lastName || ''}`.trim(), admissionNo: s.admissionNo, rollNo: s.rollNo },
-      className: klass ? `${klass.name} ${klass.section} (${klass.academicYear})` : '?',
+      className: klass ? formatClass(klass) : '?',
       exam: { name: exam.name, startDate: exam.startDate, endDate: exam.endDate },
       subjects: classSubjects.map((x) => x.name),
       school: settings?.value?.schoolName || 'School',

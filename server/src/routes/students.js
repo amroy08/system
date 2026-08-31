@@ -6,6 +6,7 @@ import { ADMISSION_CATEGORY, normalizeAdmissionCategory, resolveFeeAssignment } 
 import { ensureParentUser, findParentByMobile } from '../utils/parentAccounts.js';
 import { generateTemporaryPassword, isStrongPassword } from '../utils/credentials.js';
 import { teacherClassIds } from '../utils/accessScope.js';
+import { formatClass } from '../utils/classNames.js';
 
 const router = Router();
 router.use(authRequired);
@@ -142,7 +143,7 @@ router.get('/fee-preview', allowRoles(...STAFF), async (req, res) => {
   const structures = await col('feeStructures').find({ status: 'active' });
   const assignment = resolveFeeAssignment(structures, klass, category);
   res.json({
-    className: `${klass.name} ${klass.section}`,
+    className: formatClass(klass, false),
     admissionCategory: category,
     annualFee: assignment.annualFee,
     components: assignment.components,

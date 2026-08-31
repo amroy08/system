@@ -4,6 +4,7 @@ import { api, errMsg } from '../api';
 import { useApp } from '../context/AppContextValue';
 import { useLookups } from '../hooks/useLookups';
 import { DataTable, Badge } from '../components/ui';
+import { formatClass } from '../utils/classNames';
 
 export default function Outstanding() {
   const { notify, settings } = useApp();
@@ -357,7 +358,7 @@ export default function Outstanding() {
           >
             <option value="ALL">All Grades / Standards</option>
             {classes.map((c) => (
-              <option key={c._id} value={c.name}>{c.name} {c.section} ({c.academicYear})</option>
+              <option key={c._id} value={c.name}>{formatClass(c)}</option>
             ))}
           </select>
 

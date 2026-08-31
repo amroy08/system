@@ -4,6 +4,7 @@ import { api, errMsg } from '../api';
 import { useApp } from '../context/AppContextValue';
 import { useLookups } from '../hooks/useLookups';
 import { Field } from '../components/ui';
+import { displayClassName, formatClass } from '../utils/classNames';
 
 export default function HallTickets() {
   const { notify, user } = useApp();
@@ -47,7 +48,7 @@ export default function HallTickets() {
             <Field label="Class">
               <select value={classId} onChange={(e) => setClassId(e.target.value)}>
                 <option value="">All classes</option>
-                {classes.map((c) => <option key={c._id} value={c._id}>{c.name} {c.section} ({c.academicYear})</option>)}
+                {classes.map((c) => <option key={c._id} value={c._id}>{formatClass(c)}</option>)}
               </select>
             </Field>
           )}
@@ -68,7 +69,7 @@ export default function HallTickets() {
                 <p><b>Student:</b> {t.student.name}</p>
                 <p><b>Admission #:</b> <span className="mono">{t.student.admissionNo}</span></p>
                 <p><b>Roll No:</b> {t.student.rollNo || '—'}</p>
-                <p><b>Class:</b> {t.className}</p>
+                <p><b>Class:</b> {displayClassName(t.className)}</p>
               </div>
               <div>
                 <p><b>Exam:</b> {t.exam.name}</p>

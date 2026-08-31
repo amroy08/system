@@ -5,6 +5,7 @@ import { api, errMsg } from '../api';
 import { useApp } from '../context/AppContextValue';
 import { useLookups, className } from '../hooks/useLookups';
 import { DataTable, StatusTabs, Field, Modal, Badge, KpiCard } from '../components/ui';
+import { formatClass } from '../utils/classNames';
 
 export default function Teachers() {
   const { notify, user } = useApp();
@@ -128,7 +129,7 @@ export default function Teachers() {
             <Field label="Class">
               <select value={newAssign.classId} onChange={(e) => setNewAssign({ ...newAssign, classId: e.target.value })}>
                 <option value="">Select class…</option>
-                {classes.filter((c) => c.status === 'active').map((c) => <option key={c._id} value={c._id}>{c.name} {c.section} ({c.academicYear})</option>)}
+                {classes.filter((c) => c.status === 'active').map((c) => <option key={c._id} value={c._id}>{formatClass(c)}</option>)}
               </select>
             </Field>
             <Field label="Subject">

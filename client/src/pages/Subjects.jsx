@@ -5,6 +5,7 @@ import { api, errMsg } from '../api';
 import { useApp } from '../context/AppContextValue';
 import { useLookups } from '../hooks/useLookups';
 import { DataTable, Field, Modal, Badge, Confirm, KpiCard } from '../components/ui';
+import { formatClass } from '../utils/classNames';
 
 const EMPTY = { name: '', code: '', maxMarks: 100, passingMarks: 33, classIds: [] };
 
@@ -67,7 +68,7 @@ export default function Subjects() {
       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
         {(r.classIds || []).slice(0, 4).map((id) => {
           const c = classes.find((x) => x._id === id);
-          return c ? <Badge key={id} value={`${c.name} ${c.section}`} color="bg-blue" /> : null;
+          return c ? <Badge key={id} value={formatClass(c, false)} color="bg-blue" /> : null;
         })}
         {(r.classIds || []).length > 4 && <Badge value={`+${r.classIds.length - 4} more`} color="bg-gray" />}
         {!(r.classIds || []).length && <span className="muted">All / none</span>}
@@ -130,7 +131,7 @@ export default function Subjects() {
                       <button type="button" key={item._id} className={`class-choice ${selected ? 'selected' : ''}`} onClick={() => toggleClass(item._id)}>
                         <span className="class-choice-check">{selected && <Check size={13} />}</span>
                         <span>
-                          <b>{item.name} {item.section}</b>
+                          <b>{formatClass(item, false)}</b>
                           <small>{item.academicYear}</small>
                         </span>
                       </button>
