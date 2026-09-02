@@ -5,9 +5,12 @@ import { spawn } from 'node:child_process';
 import { MongoClient } from 'mongodb';
 import { config } from '../config.js';
 import { flushDb, reloadDb } from '../db/index.js';
-import { isOffsiteBackupConfigured, replicateBackup } from './backupReplica.js';
+import { isOffsiteBackupConfigured, removeBackupReplica, replicateBackup } from './backupReplica.js';
 
 const FORMAT_VERSION = 1;
+const MAX_SCHEDULED_BACKUPS = 15;
+const PRE_RESTORE_BACKUP_RETENTION = 10;
+const MANUAL_BACKUP_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 const backupRoot = path.join(config.dataDir, 'backups', 'system');
 const auditFile = path.join(backupRoot, 'backup-audit.jsonl');
 let operationRunning = false;
@@ -131,14 +134,31 @@ async function dumpMongo(destination) {
   }
 }
 
-function applyRetention() {
-  const groups = { scheduled: config.backupRetention, 'pre-restore': 10 };
+async function deleteBackupForRetention(backup, reason = '') {
+  fs.rmSync(assertBackupId(backup.id), { recursive: true, force: true });
+  try {
+    const offsite = await removeBackupReplica(backup.id);
+    appendAudit({ action: 'retention-delete', backupId: backup.id, actor: 'System', reason, offsite });
+  } catch (error) {
+    appendAudit({ action: 'retention-delete', backupId: backup.id, actor: 'System', reason, result: 'offsite-delete-failed', error: error.message });
+  }
+}
+
+async function applyRetention() {
+  const groups = {
+    scheduled: Math.min(config.backupRetention, MAX_SCHEDULED_BACKUPS),
+    'pre-restore': PRE_RESTORE_BACKUP_RETENTION,
+  };
   const backups = listBackups();
   for (const [type, keep] of Object.entries(groups)) {
     for (const backup of backups.filter((item) => item.type === type).slice(keep)) {
-      fs.rmSync(assertBackupId(backup.id), { recursive: true, force: true });
-      appendAudit({ action: 'retention-delete', backupId: backup.id, actor: 'System' });
+      await deleteBackupForRetention(backup);
     }
+  }
+  const manualCutoff = Date.now() - MANUAL_BACKUP_RETENTION_MS;
+  for (const backup of backups.filter((item) => item.type === 'manual')) {
+    if (!backup.createdAt || new Date(backup.createdAt).getTime() >= manualCutoff) continue;
+    await deleteBackupForRetention(backup, 'Manual backup older than 7 days');
   }
 }
 
@@ -193,7 +213,7 @@ async function createBackupUnsafe({ type = 'manual', createdBy = 'System', reaso
     throw new Error(`Local backup created but off-site replication failed: ${error.message}`);
   }
   appendAudit({ action: 'create', backupId: id, type, actor: manifest.createdBy, reason: manifest.reason });
-  applyRetention();
+  await applyRetention();
   return manifest;
 }
 

@@ -33,7 +33,7 @@ export const config = {
   s3ForcePathStyle: process.env.S3_FORCE_PATH_STYLE === 'true',
   backupEnabled: process.env.BACKUP_ENABLED !== 'false',
   backupIntervalHours: Math.max(1, parseInt(process.env.BACKUP_INTERVAL_HOURS || '6', 10)),
-  backupRetention: Math.max(1, parseInt(process.env.BACKUP_RETENTION || '30', 10)),
+  backupRetention: Math.max(1, parseInt(process.env.BACKUP_RETENTION || '15', 10)),
   backupS3Endpoint: process.env.BACKUP_S3_ENDPOINT || '',
   backupS3Region: process.env.BACKUP_S3_REGION || 'auto',
   backupS3Bucket: process.env.BACKUP_S3_BUCKET || '',

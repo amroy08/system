@@ -1,6 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  DeleteObjectsCommand,
+  ListObjectsV2Command,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { config } from '../config.js';
 
 let backupClient;
@@ -41,4 +46,28 @@ export async function replicateBackup(directory, manifest) {
     }));
   }
   return { status: 'replicated', replicatedAt: new Date().toISOString() };
+}
+
+export async function removeBackupReplica(backupId) {
+  if (!isOffsiteBackupConfigured()) return { status: 'not-configured' };
+  const prefix = `${config.backupS3Prefix}/${backupId}/`;
+  let deleted = 0;
+  let continuationToken;
+  do {
+    const listed = await client().send(new ListObjectsV2Command({
+      Bucket: config.backupS3Bucket,
+      Prefix: prefix,
+      ContinuationToken: continuationToken,
+    }));
+    const objects = (listed.Contents || []).map((object) => ({ Key: object.Key })).filter((object) => object.Key);
+    if (objects.length) {
+      await client().send(new DeleteObjectsCommand({
+        Bucket: config.backupS3Bucket,
+        Delete: { Objects: objects },
+      }));
+      deleted += objects.length;
+    }
+    continuationToken = listed.IsTruncated ? listed.NextContinuationToken : undefined;
+  } while (continuationToken);
+  return { status: 'deleted', deleted };
 }
