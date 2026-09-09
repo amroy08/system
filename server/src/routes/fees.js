@@ -223,7 +223,7 @@ router.get('/', allowRoles(...STAFF), async (req, res) => {
   const query = {};
   if (req.query.status) query.status = req.query.status;
   if (req.query.studentId) query.studentId = req.query.studentId;
-  const result = await col('feeReceipts').find(query, { sort: { createdAt: -1 }, projection: RECEIPT_SUMMARY_PROJECTION });
+  const result = await col('feeReceipts').find(query, { sort: { date: -1, receiptNo: -1, createdAt: -1 }, projection: RECEIPT_SUMMARY_PROJECTION });
   receiptsCache.set(cacheKey, result);
   receiptsCacheAt = Date.now();
   res.json(result);
