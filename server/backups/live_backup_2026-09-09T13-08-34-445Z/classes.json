@@ -1,0 +1,180 @@
+[
+  {
+    "_id": "hYjMdhj_YDDJ",
+    "name": "Nursery",
+    "section": "A",
+    "academicYear": "2026-2027",
+    "capacity": 70,
+    "room": "Room N1",
+    "status": "active",
+    "createdAt": "2026-08-10T05:49:29.854Z",
+    "classTeacherId": "AG5ZoL6dMr3H",
+    "updatedAt": "2026-08-15T11:34:03.496Z"
+  },
+  {
+    "_id": "R3vMa_HnvWZq",
+    "name": "Junior KG",
+    "section": "A",
+    "academicYear": "2026-2027",
+    "capacity": 70,
+    "room": "Room JK1",
+    "status": "active",
+    "createdAt": "2026-08-10T05:49:29.854Z"
+  },
+  {
+    "_id": "252OotiAxRMM",
+    "name": "Senior KG",
+    "section": "A",
+    "academicYear": "2026-2027",
+    "capacity": 70,
+    "room": "Room SK1",
+    "status": "active",
+    "createdAt": "2026-08-10T05:49:29.854Z"
+  },
+  {
+    "_id": "YsjIoYOTlf4j",
+    "name": "Grade 1",
+    "section": "A",
+    "academicYear": "2026-2027",
+    "capacity": 70,
+    "room": "Room 101",
+    "status": "active",
+    "createdAt": "2026-08-10T05:49:29.854Z"
+  },
+  {
+    "_id": "3xTUc-aC1Zye",
+    "name": "Grade 2",
+    "section": "A",
+    "academicYear": "2026-2027",
+    "capacity": 70,
+    "room": "Room 201",
+    "status": "active",
+    "createdAt": "2026-08-10T05:49:29.854Z"
+  },
+  {
+    "_id": "TyU_R7v-6_If",
+    "name": "Grade 3",
+    "section": "A",
+    "academicYear": "2026-2027",
+    "capacity": 70,
+    "room": "Room 301",
+    "status": "active",
+    "createdAt": "2026-08-10T05:49:29.854Z"
+  },
+  {
+    "_id": "tZnn5SENXILN",
+    "name": "Grade 4",
+    "section": "A",
+    "academicYear": "2026-2027",
+    "capacity": 70,
+    "room": "Room 401",
+    "status": "active",
+    "createdAt": "2026-08-10T05:49:29.854Z"
+  },
+  {
+    "_id": "QsK5u2iDbqBa",
+    "name": "Grade 5",
+    "section": "A",
+    "academicYear": "2026-2027",
+    "capacity": 70,
+    "room": "Room 501",
+    "status": "active",
+    "createdAt": "2026-08-10T05:49:29.854Z"
+  },
+  {
+    "_id": "HwhGEn7waNkF",
+    "name": "Grade 6",
+    "section": "A",
+    "academicYear": "2026-2027",
+    "capacity": 70,
+    "room": "Room 601",
+    "status": "active",
+    "createdAt": "2026-08-10T05:49:29.854Z"
+  },
+  {
+    "_id": "lQ5VxpK42r27",
+    "name": "Grade 7",
+    "section": "A",
+    "academicYear": "2026-2027",
+    "capacity": 90,
+    "room": "Room 701",
+    "status": "active",
+    "createdAt": "2026-08-10T05:49:29.854Z",
+    "classTeacherId": "",
+    "updatedAt": "2026-08-24T07:44:32.226Z"
+  },
+  {
+    "_id": "6obhh7tvoVUA",
+    "name": "Grade 8",
+    "section": "A",
+    "academicYear": "2026-2027",
+    "capacity": 90,
+    "room": "Room 801",
+    "status": "active",
+    "createdAt": "2026-08-10T05:49:29.854Z",
+    "classTeacherId": "",
+    "updatedAt": "2026-08-24T07:44:44.975Z"
+  },
+  {
+    "_id": "3k53h0rH-dTd",
+    "name": "Grade 9",
+    "section": "A",
+    "academicYear": "2026-2027",
+    "capacity": 70,
+    "room": "Room 901",
+    "status": "active",
+    "createdAt": "2026-08-10T05:49:29.854Z"
+  },
+  {
+    "_id": "e9Z1-nJGsyW9",
+    "name": "Grade 10",
+    "section": "A",
+    "academicYear": "2026-2027",
+    "capacity": 70,
+    "room": "Room 1001",
+    "status": "active",
+    "createdAt": "2026-08-10T05:49:29.854Z"
+  },
+  {
+    "_id": "8W-zgnxjx6Q9",
+    "name": "Old Students",
+    "section": "A",
+    "academicYear": "2026-2027",
+    "capacity": 90,
+    "room": "Alumni Room",
+    "status": "active",
+    "createdAt": "2026-08-10T05:49:29.854Z",
+    "classTeacherId": "",
+    "updatedAt": "2026-08-24T07:44:52.215Z"
+  },
+  {
+    "_id": "2J6kQalB1e8o",
+    "name": "Grade 10",
+    "section": "B",
+    "academicYear": "2026-2027",
+    "capacity": 70,
+    "room": "",
+    "status": "active",
+    "createdAt": "2026-08-10T14:29:19.570Z"
+  },
+  {
+    "_id": "w7Ta6OAQh5td",
+    "name": "Grade 9",
+    "section": "B",
+    "academicYear": "2026-2027",
+    "capacity": 70,
+    "room": "",
+    "status": "active",
+    "createdAt": "2026-08-10T14:29:19.570Z"
+  },
+  {
+    "_id": "ikcNTYgnq7FJ",
+    "name": "Grade 6",
+    "section": "B",
+    "academicYear": "2026-2027",
+    "capacity": 70,
+    "room": "",
+    "status": "active",
+    "createdAt": "2026-08-10T14:29:19.570Z"
+  }
+]
