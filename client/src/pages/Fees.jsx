@@ -356,14 +356,18 @@ export default function Fees() {
     const renderSingleCopy = (copyType, data) => {
       const totalDemand = data.totalDemand || (Number(data.subTotal || 0) + Number(data.balance || 0)) || 0;
       const name = String(data.className || '').toLowerCase();
+      const isGrade1 = /\b(grade|class)\s*1\b/i.test(name);
+      const isGrade2to4 = /\b(grade|class)\s*[2-4]\b/i.test(name);
+      const isGrade5 = /\b(grade|class)\s*5\b/i.test(name);
+
       let standardDemand = 23500;
       if (isPrePrimaryClassName(name)) {
         standardDemand = 29500;
-      } else if (name.includes('grade 1') || name.includes('class 1')) {
+      } else if (isGrade1) {
         standardDemand = 25500;
-      } else if (name.includes('grade 2') || name.includes('class 2') || name.includes('grade 3') || name.includes('class 3') || name.includes('grade 4') || name.includes('class 4')) {
+      } else if (isGrade2to4) {
         standardDemand = 23500;
-      } else if (name.includes('grade 5') || name.includes('class 5')) {
+      } else if (isGrade5) {
         standardDemand = 31000;
       } else {
         standardDemand = 28800;

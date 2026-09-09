@@ -169,14 +169,18 @@ export default function Students() {
     const renderSingleCopy = (copyType, r) => {
       const totalDemand = r.totalDemand || (Number(r.subTotal || 0) + Number(r.balance || 0)) || 0;
       const name = String(r.className || '').toLowerCase();
+      const isGrade1 = /\b(grade|class)\s*1\b/i.test(name);
+      const isGrade2to4 = /\b(grade|class)\s*[2-4]\b/i.test(name);
+      const isGrade5 = /\b(grade|class)\s*5\b/i.test(name);
+
       let standardDemand = 23500;
       if (isPrePrimaryClassName(name)) {
         standardDemand = 29500;
-      } else if (name.includes('grade 1') || name.includes('class 1')) {
+      } else if (isGrade1) {
         standardDemand = 25500;
-      } else if (name.includes('grade 2') || name.includes('class 2') || name.includes('grade 3') || name.includes('class 3') || name.includes('grade 4') || name.includes('class 4')) {
+      } else if (isGrade2to4) {
         standardDemand = 23500;
-      } else if (name.includes('grade 5') || name.includes('class 5')) {
+      } else if (isGrade5) {
         standardDemand = 31000;
       } else {
         standardDemand = 28800;
@@ -625,11 +629,14 @@ export default function Students() {
         
         const classNameLower = String(className(classes, student.classId) || '').toLowerCase();
         const isPP = isPrePrimaryClassName(classNameLower);
-        const isP = !isPP && (classNameLower.includes('grade 1') || classNameLower.includes('class 1') || classNameLower.includes('grade 2') || classNameLower.includes('class 2') || classNameLower.includes('grade 3') || classNameLower.includes('class 3') || classNameLower.includes('grade 4') || classNameLower.includes('class 4') || classNameLower.includes('primary'));
+        const isGrade1 = /\b(grade|class)\s*1\b/i.test(classNameLower);
+        const isGrade2to4 = /\b(grade|class)\s*[2-4]\b/i.test(classNameLower);
+        const isGrade5 = /\b(grade|class)\s*5\b/i.test(classNameLower);
+        const isP = !isPP && (isGrade1 || isGrade2to4 || classNameLower.includes('primary'));
         
         const hasAdmission = isPP
-          || classNameLower.includes('grade 1') || classNameLower.includes('class 1')
-          || classNameLower.includes('grade 5') || classNameLower.includes('class 5')
+          || isGrade1
+          || isGrade5
           || getAdmissionCategory(student) === 'NEW_ADMISSION';
 
         const isOld = classNameLower.includes('old') || classNameLower.includes('alumni') || classNameLower.includes('passed-out');
