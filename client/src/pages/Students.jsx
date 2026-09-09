@@ -751,27 +751,88 @@ export default function Students() {
               </div>
             </div>
 
-            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Transaction History (Receipts)</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, marginTop: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>Transaction History (Receipts)</span>
+                <span className="badge bg-blue" style={{ fontSize: 10 }}>AY 2026-27 (Current Year)</span>
+              </div>
+            </div>
             <div className="table-wrap">
-            <table className="data-table">
-              <thead><tr><th>Receipt #</th><th>Date</th><th>Due</th><th>Paid</th><th>Balance</th><th>Status</th><th>Actions</th></tr></thead>
-            <tbody>
-              {modal.data.receipts.length === 0 && <tr className="empty-row"><td colSpan={7}>No receipts yet</td></tr>}
-              {modal.data.receipts.map((r) => (
-                <tr key={r._id}>
-                  <td className="mono">{r.receiptNo}</td><td>{r.date}</td>
-                  <td>{cur}{r.amountDue?.toLocaleString()}</td><td>{cur}{r.amountPaid?.toLocaleString()}</td>
-                  <td className={r.balance > 0 ? 'txt-red' : 'txt-green'}>{cur}{r.balance?.toLocaleString()}</td>
-                  <td><Badge value={r.status} /></td>
-                  <td>
-                    <button className="btn btn-navy" style={{ padding: '2px 6px', fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => printReceipt(r)}>
-                      <Printer size={12} /> Print
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+              <table className="data-table">
+                <thead><tr><th>Receipt #</th><th>Date</th><th>Due</th><th>Paid</th><th>Balance</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody>
+                  {(modal.data.receipts || []).length === 0 && <tr className="empty-row"><td colSpan={7}>No receipts for current year (2026-27)</td></tr>}
+                  {(modal.data.receipts || []).map((r) => (
+                    <tr key={r._id}>
+                      <td className="mono">{r.receiptNo}</td><td>{r.date}</td>
+                      <td>{cur}{r.amountDue?.toLocaleString()}</td><td>{cur}{r.amountPaid?.toLocaleString()}</td>
+                      <td className={r.balance > 0 ? 'txt-red' : 'txt-green'}>{cur}{r.balance?.toLocaleString()}</td>
+                      <td><Badge value={r.status} /></td>
+                      <td>
+                        <button className="btn btn-navy" style={{ padding: '2px 6px', fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => printReceipt(r)}>
+                          <Printer size={12} /> Print
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Financial Year: 2025-26 Previous Year Section */}
+            <div style={{ marginTop: 24, borderTop: '1px dashed var(--border)', paddingTop: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--txt-orange)' }}>Financial Year : 2025-26</span>
+                  <span className="badge bg-orange" style={{ fontSize: 10 }}>Previous Year Archive</span>
+                </div>
+                {(modal.data.archivedReceipts || []).length > 0 && (
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--txt-green)' }}>
+                    Total Paid (2025-26): {cur}{(modal.data.archivedReceipts || []).reduce((sum, r) => sum + (r.amount || 0), 0).toLocaleString()}
+                  </span>
+                )}
+              </div>
+
+              <div className="table-wrap">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: '6%' }}>Sr. No.</th>
+                      <th>Paid Date</th>
+                      <th>Amount</th>
+                      <th>Split Structure</th>
+                      <th>Transaction Mode</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(!modal.data.archivedReceipts || modal.data.archivedReceipts.length === 0) ? (
+                      <tr className="empty-row"><td colSpan={6}>No previous year records found (Newly admitted or no legacy payments in 2025-26)</td></tr>
+                    ) : (
+                      modal.data.archivedReceipts.map((ar, idx) => {
+                        const b = ar.breakdown || {};
+                        const splitParts = [];
+                        if (b.admissionFees > 0) splitParts.push(`Admission: ${cur}${b.admissionFees.toLocaleString()}`);
+                        if (b.monthlyFees > 0) splitParts.push(`Monthly: ${cur}${b.monthlyFees.toLocaleString()}`);
+                        if (b.termFees > 0) splitParts.push(`Term: ${cur}${b.termFees.toLocaleString()}`);
+                        if (b.msFees > 0) splitParts.push(`MS: ${cur}${b.msFees.toLocaleString()}`);
+                        const splitText = splitParts.length > 0 ? splitParts.join(' | ') : `Fee: ${cur}${ar.amount?.toLocaleString()}`;
+
+                        return (
+                          <tr key={ar._id || idx}>
+                            <td>{idx + 1}</td>
+                            <td><b>{ar.date}</b></td>
+                            <td style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--txt-green)' }}>{cur}{ar.amount?.toLocaleString()}</td>
+                            <td style={{ fontSize: 11, color: 'var(--txt-muted)' }}>{splitText}</td>
+                            <td><span className="badge bg-navy" style={{ textTransform: 'uppercase', fontSize: 10 }}>{ar.paymentMode || 'CASH'}</span></td>
+                            <td><Badge value="Archived" color="bg-solid-green" /></td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
         </Modal>
       );

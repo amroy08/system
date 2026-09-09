@@ -318,13 +318,16 @@ router.put('/:id', allowRoles(...STAFF), async (req, res) => {
   res.json(updatedDoc);
 });
 
-// Quick views used by the action icons on the students table
 router.get('/:id/fees', async (req, res) => {
   const student = await col('students').findOne({ _id: req.params.id, status: { $ne: 'deleted' } });
   if (!student || !(await mayReadStudent(req, student))) return res.status(404).json({ error: 'Student not found' });
   const receipts = await col('feeReceipts').find({ studentId: req.params.id }, { sort: { date: -1 } });
+  const archivedQuery = student.legacyStudentId
+    ? { $or: [{ studentId: req.params.id }, { legacyStudentId: student.legacyStudentId }] }
+    : { studentId: req.params.id };
+  const archivedReceipts = await col('archivedFeeReceipts').find(archivedQuery, { sort: { date: -1 } });
   const structures = await col('feeStructures').find({});
-  res.json({ receipts, structures, student: publicStudent(student, req.user.role) });
+  res.json({ receipts, archivedReceipts, structures, student: publicStudent(student, req.user.role) });
 });
 
 router.get('/:id/attendance', async (req, res) => {
