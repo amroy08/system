@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api } from '../api';
-import { formatClass } from '../utils/classNames';
+import { formatClass, sortClasses } from '../utils/classNames';
 
 const LOOKUP_TTL_MS = 60_000;
 const cache = new Map();
@@ -15,8 +15,10 @@ async function fetchLookup(key, force = false) {
     const url = key === 'teachers' ? '/teachers' : `/${key}`;
     const params = key === 'students' ? { lean: true } : undefined;
     const { data } = await api.get(url, { params });
-    cache.set(key, { data, loadedAt: Date.now() });
-    return data;
+    // Sort classes numerically (Grade 1 → 2 → ... → 10 → Montessori) to fix alphabetic ordering
+    const processed = key === 'classes' ? sortClasses(data) : data;
+    cache.set(key, { data: processed, loadedAt: Date.now() });
+    return processed;
   })().finally(() => inflight.delete(key));
 
   inflight.set(key, promise);
