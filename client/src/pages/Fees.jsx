@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Wallet, Plus, Eye, Printer, Undo2, Mail } from 'lucide-react';
+import { Wallet, Plus, Eye, Printer, Undo2, Mail, ChevronDown, ChevronUp } from 'lucide-react';
 import { api, errMsg } from '../api';
 import { useApp } from '../context/AppContextValue';
 import { useLookups } from '../hooks/useLookups';
@@ -90,6 +90,11 @@ export default function Fees() {
   const [viewMode, setViewMode] = useState('grades');
   const [activeClassDrillDown, setActiveClassDrillDown] = useState(null);
   const [studentReceiptsModal, setStudentReceiptsModal] = useState(null);
+  const [studentFeeDetailModal, setStudentFeeDetailModal] = useState(null);
+  const [feeDetailData, setFeeDetailData] = useState(null);
+  const [feeDetailLoading, setFeeDetailLoading] = useState(false);
+  const [payModalHistoryOpen, setPayModalHistoryOpen] = useState(false);
+  const [payModalFeeData, setPayModalFeeData] = useState(null);
 
   const getClassWing = (className) => {
     const name = String(className || '').toLowerCase();
@@ -126,6 +131,21 @@ export default function Fees() {
   }, [students, formClassId, searchQuery]);
 
   const load = () => api.get('/fees').then(({ data }) => setRows(data));
+
+  const openStudentFeeDetail = async (student) => {
+    setStudentFeeDetailModal(student);
+    setFeeDetailData(null);
+    setFeeDetailLoading(true);
+    try {
+      const { data } = await api.get(`/students/${student._id}/fees`);
+      setFeeDetailData(data);
+    } catch (e) {
+      setFeeDetailData(null);
+    } finally {
+      setFeeDetailLoading(false);
+    }
+  };
+
   useEffect(() => { 
     load(); 
     const handleOuterClick = () => setShowDropdown(false);
@@ -156,11 +176,14 @@ export default function Fees() {
   }, [params, students, classes]);
 
   useEffect(() => {
-    if (!studentId) { setComputed(null); return; }
+    if (!studentId) { setComputed(null); setPayModalFeeData(null); setPayModalHistoryOpen(false); return; }
     api.get(`/fees/compute/${studentId}`).then(({ data }) => {
       setComputed(data);
       setSplitEdited(false);
     });
+    api.get(`/students/${studentId}/fees`).then(({ data }) => {
+      setPayModalFeeData(data);
+    }).catch(() => setPayModalFeeData(null));
   }, [studentId]);
 
   const autoSplitPreview = useMemo(
@@ -721,10 +744,17 @@ export default function Fees() {
                 </button>
                 <button 
                   className="act-btn-modern act-btn-receipts" 
+                  title="View Fee Details" 
+                  onClick={() => openStudentFeeDetail(s)}
+                >
+                  <Eye size={13} /> View
+                </button>
+                <button 
+                  className="act-btn-modern act-btn-receipts" 
                   title="View Receipts" 
                   onClick={() => setStudentReceiptsModal(s)}
                 >
-                  <Eye size={13} /> Receipts
+                  <Printer size={13} /> Receipts
                 </button>
               </div>
             )
@@ -960,6 +990,103 @@ export default function Fees() {
                 )}
                 <Field label="Date"><input type="date" value={pay.date} onChange={(e) => setPay({ ...pay, date: e.target.value })} /></Field>
                 <Field label="Remarks"><input value={pay.remarks} onChange={(e) => setPay({ ...pay, remarks: e.target.value })} /></Field>
+
+                {/* ── Inline Fee History Section ── */}
+                <div className="full" style={{ marginTop: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => setPayModalHistoryOpen((v) => !v)}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8,
+                      padding: '10px 14px', cursor: 'pointer', fontWeight: 700, fontSize: 13, color: 'var(--txt)'
+                    }}
+                  >
+                    <span>📋 Fee Payment History — {computed?.studentName || 'Student'}</span>
+                    {payModalHistoryOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  </button>
+
+                  {payModalHistoryOpen && (
+                    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 8px 8px', padding: 14 }}>
+                      {!payModalFeeData ? (
+                        <div style={{ textAlign: 'center', padding: 20, color: 'var(--txt-muted)', fontSize: 13 }}>Loading fee history...</div>
+                      ) : (
+                        <>
+                          {/* Current Year Receipts */}
+                          <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span>Transaction History</span>
+                            <span className="badge bg-blue" style={{ fontSize: 10 }}>AY 2026-27 (Current Year)</span>
+                          </div>
+                          <div className="table-wrap" style={{ marginBottom: 16 }}>
+                            <table className="data-table">
+                              <thead><tr><th>Receipt #</th><th>Date</th><th>Paid</th><th>Balance</th><th>Mode</th><th>Status</th></tr></thead>
+                              <tbody>
+                                {(payModalFeeData.receipts || []).length === 0 && (
+                                  <tr className="empty-row"><td colSpan={6}>No receipts for current year</td></tr>
+                                )}
+                                {(payModalFeeData.receipts || []).map((r) => (
+                                  <tr key={r._id}>
+                                    <td className="mono" style={{ fontSize: 11 }}>{r.receiptNo}</td>
+                                    <td>{r.date}</td>
+                                    <td style={{ color: '#16a34a', fontWeight: 700 }}>{cur}{r.amountPaid?.toLocaleString()}</td>
+                                    <td className={r.balance > 0 ? 'txt-red' : 'txt-green'}>{cur}{r.balance?.toLocaleString()}</td>
+                                    <td><span className="badge bg-gray" style={{ fontSize: 10, textTransform: 'uppercase' }}>{r.mode}</span></td>
+                                    <td><Badge value={r.status} /></td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          {/* Previous Year Archive */}
+                          <div style={{ borderTop: '1px dashed var(--border)', paddingTop: 12 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--txt-orange)' }}>Financial Year: 2025-26</span>
+                                <span className="badge bg-orange" style={{ fontSize: 10 }}>Previous Year Archive</span>
+                              </div>
+                              {(payModalFeeData.archivedReceipts || []).length > 0 && (
+                                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt-green)' }}>
+                                  Total: {cur}{(payModalFeeData.archivedReceipts || []).reduce((s, r) => s + (r.amount || 0), 0).toLocaleString()}
+                                </span>
+                              )}
+                            </div>
+                            <div className="table-wrap">
+                              <table className="data-table">
+                                <thead><tr><th>#</th><th>Date</th><th>Amount</th><th>Split</th><th>Mode</th><th>Status</th></tr></thead>
+                                <tbody>
+                                  {(payModalFeeData.archivedReceipts || []).length === 0 ? (
+                                    <tr className="empty-row"><td colSpan={6}>No previous year records</td></tr>
+                                  ) : (
+                                    (payModalFeeData.archivedReceipts || []).map((ar, idx) => {
+                                      const b = ar.breakdown || {};
+                                      const parts = [];
+                                      if (b.admissionFees > 0) parts.push(`Admission: ${cur}${b.admissionFees.toLocaleString()}`);
+                                      if (b.monthlyFees > 0) parts.push(`Monthly: ${cur}${b.monthlyFees.toLocaleString()}`);
+                                      if (b.termFees > 0) parts.push(`Term: ${cur}${b.termFees.toLocaleString()}`);
+                                      if (b.msFees > 0) parts.push(`MS: ${cur}${b.msFees.toLocaleString()}`);
+                                      const splitText = parts.length > 0 ? parts.join(' | ') : `Fee: ${cur}${ar.amount?.toLocaleString()}`;
+                                      return (
+                                        <tr key={ar._id || idx}>
+                                          <td>{idx + 1}</td>
+                                          <td><b>{ar.date}</b></td>
+                                          <td style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--txt-green)' }}>{cur}{ar.amount?.toLocaleString()}</td>
+                                          <td style={{ fontSize: 11, color: 'var(--txt-muted)' }}>{splitText}</td>
+                                          <td><span className="badge bg-navy" style={{ textTransform: 'uppercase', fontSize: 10 }}>{ar.paymentMode || 'CASH'}</span></td>
+                                          <td><Badge value="Archived" color="bg-solid-green" /></td>
+                                        </tr>
+                                      );
+                                    })
+                                  )}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>
@@ -1008,6 +1135,110 @@ export default function Fees() {
           </Modal>
         );
       })()}
+
+      {/* Student Full Fee Detail Modal (View button from drill-down) */}
+      {studentFeeDetailModal && (
+        <Modal
+          title={`Fee Summary — ${studentFeeDetailModal.firstName} ${studentFeeDetailModal.lastName || ''}`}
+          icon={Wallet}
+          size="lg"
+          onClose={() => { setStudentFeeDetailModal(null); setFeeDetailData(null); }}
+        >
+          {feeDetailLoading && (
+            <div style={{ textAlign: 'center', padding: 30, color: 'var(--txt-muted)' }}>Loading fee details...</div>
+          )}
+          {!feeDetailLoading && feeDetailData && (() => {
+            const receipts = feeDetailData.receipts || [];
+            const archivedReceipts = feeDetailData.archivedReceipts || [];
+            const totalDemand = studentFeeDetailModal.totalDemand || 0;
+            const totalPaid = receipts.filter(r => r.status !== 'refunded').reduce((s, r) => s + (r.amountPaid || 0), 0);
+            const outstanding = Math.max(0, totalDemand - totalPaid);
+            return (
+              <>
+                {/* KPI Cards */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, marginBottom: 16, fontSize: 12 }}>
+                  {[['Total Annual Demand', `${cur}${totalDemand.toLocaleString()}`, ''], ['Total Paid (Lifetime)', `${cur}${totalPaid.toLocaleString()}`, 'var(--txt-green)'], ['Outstanding Balance', `${cur}${outstanding.toLocaleString()}`, outstanding > 0 ? 'var(--txt-red)' : 'var(--txt-green)']].map(([label, val, color]) => (
+                    <div key={label} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px' }}>
+                      <p style={{ margin: 0, color: 'var(--txt-muted)', fontSize: 11 }}>{label}</p>
+                      <b style={{ fontSize: 15, color: color || 'var(--txt)' }}>{val}</b>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Current Year Receipts */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, fontWeight: 700, fontSize: 13 }}>
+                  <span>Transaction History (Receipts)</span>
+                  <span className="badge bg-blue" style={{ fontSize: 10 }}>AY 2026-27 (Current Year)</span>
+                </div>
+                <div className="table-wrap" style={{ marginBottom: 20 }}>
+                  <table className="data-table">
+                    <thead><tr><th>Receipt #</th><th>Date</th><th>Due</th><th>Paid</th><th>Balance</th><th>Mode</th><th>Status</th></tr></thead>
+                    <tbody>
+                      {receipts.length === 0 && <tr className="empty-row"><td colSpan={7}>No receipts for current year (2026-27)</td></tr>}
+                      {receipts.map((r) => (
+                        <tr key={r._id}>
+                          <td className="mono">{r.receiptNo}</td>
+                          <td>{r.date}</td>
+                          <td>{cur}{r.amountDue?.toLocaleString()}</td>
+                          <td style={{ color: '#16a34a', fontWeight: 700 }}>{cur}{r.amountPaid?.toLocaleString()}</td>
+                          <td className={r.balance > 0 ? 'txt-red' : 'txt-green'}>{cur}{r.balance?.toLocaleString()}</td>
+                          <td><span className="badge bg-gray" style={{ textTransform: 'uppercase', fontSize: 10 }}>{r.mode}</span></td>
+                          <td><Badge value={r.status} /></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Previous Year Archive */}
+                <div style={{ borderTop: '1px dashed var(--border)', paddingTop: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--txt-orange)' }}>Financial Year: 2025-26</span>
+                      <span className="badge bg-orange" style={{ fontSize: 10 }}>Previous Year Archive</span>
+                    </div>
+                    {archivedReceipts.length > 0 && (
+                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--txt-green)' }}>
+                        Total Paid (2025-26): {cur}{archivedReceipts.reduce((s, r) => s + (r.amount || 0), 0).toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                  <div className="table-wrap">
+                    <table className="data-table">
+                      <thead><tr><th style={{ width: '6%' }}>Sr. No.</th><th>Paid Date</th><th>Amount</th><th>Split Structure</th><th>Transaction Mode</th><th>Status</th></tr></thead>
+                      <tbody>
+                        {archivedReceipts.length === 0 ? (
+                          <tr className="empty-row"><td colSpan={6}>No previous year records found</td></tr>
+                        ) : (
+                          archivedReceipts.map((ar, idx) => {
+                            const b = ar.breakdown || {};
+                            const parts = [];
+                            if (b.admissionFees > 0) parts.push(`Admission: ${cur}${b.admissionFees.toLocaleString()}`);
+                            if (b.monthlyFees > 0) parts.push(`Monthly: ${cur}${b.monthlyFees.toLocaleString()}`);
+                            if (b.termFees > 0) parts.push(`Term: ${cur}${b.termFees.toLocaleString()}`);
+                            if (b.msFees > 0) parts.push(`MS: ${cur}${b.msFees.toLocaleString()}`);
+                            const splitText = parts.length > 0 ? parts.join(' | ') : `Fee: ${cur}${ar.amount?.toLocaleString()}`;
+                            return (
+                              <tr key={ar._id || idx}>
+                                <td>{idx + 1}</td>
+                                <td><b>{ar.date}</b></td>
+                                <td style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--txt-green)' }}>{cur}{ar.amount?.toLocaleString()}</td>
+                                <td style={{ fontSize: 11, color: 'var(--txt-muted)' }}>{splitText}</td>
+                                <td><span className="badge bg-navy" style={{ textTransform: 'uppercase', fontSize: 10 }}>{ar.paymentMode || 'CASH'}</span></td>
+                                <td><Badge value="Archived" color="bg-solid-green" /></td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+        </Modal>
+      )}
 
       {/* Receipt */}
       {modal?.type === 'receipt' && (
