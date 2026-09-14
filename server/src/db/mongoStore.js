@@ -7,8 +7,8 @@ import { ensureMongoIndexes } from './indexes.js';
 // so switching drivers requires zero changes elsewhere in the app.
 // We use string _ids (nanoid) instead of ObjectId so data is portable between drivers.
 
-let client;
-let db;
+let client = global._mongoClient;
+let db = global._mongoDb;
 
 function objectIdCandidate(value) {
   return typeof value === 'string' && ObjectId.isValid(value) && String(new ObjectId(value)) === value;
@@ -90,20 +90,26 @@ class MongoCollection {
     return this.col.countDocuments(normalizeMongoQuery(query));
   }
 }
-
 const collections = new Map();
 
 export const mongoStore = {
   async init() {
-    client = new MongoClient(config.mongoUri, {
-      maxPoolSize: 20,
-      serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000,
-    });
-    await client.connect();
-    db = client.db(config.mongoDbName);
-    await ensureMongoIndexes(db);
-    console.log(`[db] Connected to MongoDB: ${config.mongoDbName}`);
+    if (!client) {
+      client = new MongoClient(config.mongoUri, {
+        maxPoolSize: 10,
+        serverSelectionTimeoutMS: 10000,
+        connectTimeoutMS: 10000,
+        socketTimeoutMS: 45000,
+      });
+      await client.connect();
+      global._mongoClient = client;
+      global._mongoDb = client.db(config.mongoDbName);
+      db = global._mongoDb;
+      await ensureMongoIndexes(db);
+      console.log(`[db] Connected to MongoDB: ${config.mongoDbName}`);
+    } else {
+      db = global._mongoDb;
+    }
   },
   collection(name) {
     if (!collections.has(name)) collections.set(name, new MongoCollection(name));
