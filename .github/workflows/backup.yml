@@ -1,0 +1,47 @@
+name: Automated Cloudflare R2 Database Backup
+
+on:
+  schedule:
+    # Runs every 6 hours: 00:00, 06:00, 12:00, 18:00 UTC
+    - cron: '0 */6 * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+
+jobs:
+  backup:
+    name: Run MongoDB Backup & Replicate to Cloudflare R2
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install dependencies
+        working-directory: server
+        run: npm ci
+
+      - name: Execute Backup & Upload to Cloudflare R2
+        working-directory: server
+        env:
+          NODE_ENV: production
+          DB_DRIVER: mongo
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+          MONGO_DB_NAME: mvhs_production
+          STORAGE_DRIVER: s3
+          BACKUP_ENABLED: true
+          BACKUP_RETENTION: 30
+          BACKUP_S3_ENDPOINT: ${{ secrets.BACKUP_S3_ENDPOINT }}
+          BACKUP_S3_REGION: auto
+          BACKUP_S3_BUCKET: mvhs-backups
+          BACKUP_S3_PREFIX: school-backups
+          BACKUP_S3_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
+          BACKUP_S3_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
+          BACKUP_S3_FORCE_PATH_STYLE: true
+        run: node src/seed/runBackup.js
