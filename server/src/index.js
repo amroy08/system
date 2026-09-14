@@ -65,6 +65,15 @@ app.use(cors({
 }));
 app.use(cookieParser());
 app.use(express.json({ limit: '12mb' }));
+app.use(async (req, res, next) => {
+  try {
+    await readyPromise;
+    next();
+  } catch (err) {
+    console.error('[Serverless] DB readiness error:', err);
+    res.status(500).json({ error: 'Database initializing or unavailable', details: err.message });
+  }
+});
 app.use(requestContext);
 app.use(requestTiming);
 app.use(csrfProtect);
@@ -212,5 +221,6 @@ readyPromise.catch(async (error) => {
 });
 
 export { app, readyPromise };
+export default app;
 
 // Nodemon trigger reload comment
