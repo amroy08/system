@@ -137,7 +137,7 @@ async function assertNoDefaultProductionCredentials() {
   }
 }
 
-initDb().then(async () => {
+const readyPromise = initDb().then(async () => {
   await assertNoDefaultProductionCredentials();
 
   // Auto-patch school details database settings in production if they are old defaults
@@ -170,38 +170,47 @@ initDb().then(async () => {
     console.error('[db] Failed to patch school settings:', err);
   }
 
-  startBackupScheduler();
-  processEmailOutbox().catch((error) => console.error('[Email Outbox]', error));
-  const emailWorker = setInterval(() => processEmailOutbox().catch((error) => console.error('[Email Outbox]', error)), 15_000);
-  emailWorker.unref();
-  const server = app.listen(config.port, () => {
-    console.log(`[server] School Management API running on http://localhost:${config.port}`);
-  });
-  let shutdownStarted = false;
-  const shutdown = (signal) => {
-    if (shutdownStarted) return;
-    shutdownStarted = true;
-    console.log(`[server] ${signal} received; closing HTTP server`);
-    server.close(async () => {
-      await flushDb();
-      await closeDb();
-      process.exit(0);
+  if (!process.env.VERCEL) {
+    startBackupScheduler();
+    processEmailOutbox().catch((error) => console.error('[Email Outbox]', error));
+    const emailWorker = setInterval(() => processEmailOutbox().catch((error) => console.error('[Email Outbox]', error)), 15_000);
+    emailWorker.unref();
+    const server = app.listen(config.port, () => {
+      console.log(`[server] School Management API running on http://localhost:${config.port}`);
     });
-    setTimeout(() => process.exit(1), 10_000).unref();
-  };
-  process.once('SIGTERM', () => shutdown('SIGTERM'));
-  process.once('SIGINT', () => shutdown('SIGINT'));
-  process.once('uncaughtException', (error) => {
-    console.error('[server] Uncaught exception:', error);
-    shutdown('uncaughtException');
-  });
-  process.once('unhandledRejection', (error) => {
-    console.error('[server] Unhandled rejection:', error);
-    shutdown('unhandledRejection');
-  });
-}).catch(async (error) => {
+    let shutdownStarted = false;
+    const shutdown = (signal) => {
+      if (shutdownStarted) return;
+      shutdownStarted = true;
+      console.log(`[server] ${signal} received; closing HTTP server`);
+      server.close(async () => {
+        await flushDb();
+        await closeDb();
+        process.exit(0);
+      });
+      setTimeout(() => process.exit(1), 10_000).unref();
+    };
+    process.once('SIGTERM', () => shutdown('SIGTERM'));
+    process.once('SIGINT', () => shutdown('SIGINT'));
+    process.once('uncaughtException', (error) => {
+      console.error('[server] Uncaught exception:', error);
+      shutdown('uncaughtException');
+    });
+    process.once('unhandledRejection', (error) => {
+      console.error('[server] Unhandled rejection:', error);
+      shutdown('unhandledRejection');
+    });
+  }
+});
+
+readyPromise.catch(async (error) => {
   console.error('[server] Startup failed:', error.message);
   await closeDb().catch(() => {});
-  process.exit(1);
+  if (!process.env.VERCEL) {
+    process.exit(1);
+  }
 });
+
+export { app, readyPromise };
+
 // Nodemon trigger reload comment
