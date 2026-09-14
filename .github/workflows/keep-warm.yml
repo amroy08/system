@@ -1,0 +1,26 @@
+name: School Hours Keep-Warm
+
+on:
+  schedule:
+    # Runs every 10 minutes from 7:30 AM to 6:30 PM IST (Mon-Sat)
+    # UTC: 2:00 to 13:00 (IST is UTC + 5:30)
+    - cron: '*/10 2-13 * * 1-6'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+
+jobs:
+  keep-warm:
+    name: Keep Vercel Serverless Backend Warm
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+
+    steps:
+      - name: Ping School ERP Health Endpoint
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://www.mvhighschoolerp.in/api/health)
+          echo "HTTP Status: $STATUS"
+          if [ "$STATUS" -eq 200 ]; then
+            echo "Server is warm and ready!"
+          else
+            echo "Warning: Health check returned status $STATUS"
+            exit 1
+          fi

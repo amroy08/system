@@ -7,3 +7,4 @@ data/backups/system/
 .env.*
 !.env.example
 .DS_Store
+vercel-env.txt
