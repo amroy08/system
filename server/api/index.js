@@ -1,6 +1,8 @@
 import { app, readyPromise } from '../src/index.js';
 
-export default async function handler(req, res) {
+app.use(async (req, res, next) => {
   await readyPromise;
-  return app(req, res);
-}
+  next();
+});
+
+export default app;
