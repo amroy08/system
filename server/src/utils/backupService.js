@@ -5,7 +5,7 @@ import { spawn } from 'node:child_process';
 import { MongoClient } from 'mongodb';
 import { config } from '../config.js';
 import { flushDb, reloadDb } from '../db/index.js';
-import { isOffsiteBackupConfigured, removeBackupReplica, replicateBackup } from './backupReplica.js';
+import { isOffsiteBackupConfigured, listOffsiteBackups, removeBackupReplica, replicateBackup } from './backupReplica.js';
 
 const FORMAT_VERSION = 1;
 const MAX_SCHEDULED_BACKUPS = 15;
@@ -227,18 +227,28 @@ async function exclusive(operation) {
   }
 }
 
-export function listBackups() {
-  if (!fs.existsSync(backupRoot)) return [];
-  const rows = [];
-  for (const entry of fs.readdirSync(backupRoot, { withFileTypes: true })) {
-    if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
+export async function listBackups() {
+  if (isOffsiteBackupConfigured()) {
     try {
-      rows.push(readManifest(path.join(backupRoot, entry.name)));
-    } catch {
-      rows.push({ id: entry.name, type: 'unknown', createdAt: null, valid: false });
+      const offsite = await listOffsiteBackups();
+      if (offsite.length > 0) return offsite;
+    } catch (err) {
+      console.error('[Backup List] Failed to query offsite backups:', err);
     }
   }
-  return rows.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+  if (fs.existsSync(backupRoot)) {
+    const localRows = [];
+    for (const entry of fs.readdirSync(backupRoot, { withFileTypes: true })) {
+      if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
+      try {
+        localRows.push(readManifest(path.join(backupRoot, entry.name)));
+      } catch {
+        localRows.push({ id: entry.name, type: 'unknown', createdAt: null, valid: false });
+      }
+    }
+    return localRows.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+  }
+  return [];
 }
 
 export async function createBackup(options) {
@@ -322,8 +332,8 @@ export function getBackupDirectory(id) {
   return directory;
 }
 
-export function getBackupHealth() {
-  const backups = listBackups();
+export async function getBackupHealth() {
+  const backups = await listBackups();
   const dataBytes = fs.existsSync(config.dataDir) ? fs.readdirSync(config.dataDir, { withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
     .reduce((sum, entry) => sum + fs.statSync(path.join(config.dataDir, entry.name)).size, 0) : 0;
@@ -339,7 +349,7 @@ export function getBackupHealth() {
     lastBackupAt: backups[0]?.createdAt || null,
     backupCount: backups.length,
     offsiteConfigured: isOffsiteBackupConfigured(),
-    lastOffsiteStatus: backups[0]?.offsite?.status || 'not-configured',
+    lastOffsiteStatus: backups[0]?.offsite?.status || (backups.length ? 'replicated' : 'not-configured'),
     dataBytes,
     uploadCount: uploadFiles.length,
     uploadBytes: uploadFiles.reduce((sum, file) => sum + fs.statSync(file.absolute).size, 0),

@@ -18,8 +18,9 @@ async function run() {
       createdBy: 'GitHub Actions Automated Backup',
       reason: 'Scheduled 6-hour Cloudflare R2 backup',
     });
-    console.log(`[Backup Cron] Backup successful: ${manifest.id}`);
-    console.log(`[Backup Cron] Offsite R2 status: ${manifest.offsite?.status || 'N/A'}`);
+    const { applyOffsiteRetention } = await import('../utils/backupReplica.js');
+    await applyOffsiteRetention(15);
+    console.log('[Backup Cron] Enforced 15-backup Cloudflare R2 retention limit.');
     process.exit(0);
   } catch (err) {
     console.error('[Backup Cron] Backup failed:', err);

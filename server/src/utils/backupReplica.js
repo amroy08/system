@@ -71,3 +71,96 @@ export async function removeBackupReplica(backupId) {
   } while (continuationToken);
   return { status: 'deleted', deleted };
 }
+
+export async function listOffsiteBackups() {
+  if (!isOffsiteBackupConfigured()) return [];
+  const prefix = `${config.backupS3Prefix}/`;
+  const dirs = new Set();
+  let continuationToken;
+  do {
+    const listed = await client().send(new ListObjectsV2Command({
+      Bucket: config.backupS3Bucket,
+      Prefix: prefix,
+      ContinuationToken: continuationToken,
+    }));
+    for (const object of listed.Contents || []) {
+      const remainder = object.Key.slice(prefix.length);
+      const snapshotId = remainder.split('/')[0];
+      if (snapshotId && snapshotId.includes('-')) dirs.add(snapshotId);
+    }
+    continuationToken = listed.IsTruncated ? listed.NextContinuationToken : undefined;
+  } while (continuationToken);
+
+  const sortedIds = Array.from(dirs).sort().reverse();
+  const manifests = await Promise.all(
+    sortedIds.slice(0, 30).map(async (id) => {
+      try {
+        return await getOffsiteManifest(id);
+      } catch {
+        return {
+          id,
+          type: id.startsWith('manual') ? 'manual' : id.startsWith('pre-restore') ? 'pre-restore' : 'scheduled',
+          createdAt: null,
+          createdBy: 'Cloudflare R2 Snapshot',
+          fileCount: 0,
+          totalBytes: 0,
+          valid: true,
+        };
+      }
+    })
+  );
+
+  return manifests.sort((a, b) => String(b.createdAt || b.id).localeCompare(String(a.createdAt || a.id)));
+}
+
+export async function getOffsiteManifest(backupId) {
+  if (!isOffsiteBackupConfigured()) throw new Error('Offsite backup not configured');
+  const key = `${config.backupS3Prefix}/${backupId}/manifest.json`;
+  const { GetObjectCommand } = await import('@aws-sdk/client-s3');
+  const res = await client().send(new GetObjectCommand({
+    Bucket: config.backupS3Bucket,
+    Key: key,
+  }));
+  const body = await res.Body.transformToString();
+  return JSON.parse(body);
+}
+
+export async function getOffsiteFileStream(backupId, filePath) {
+  if (!isOffsiteBackupConfigured()) throw new Error('Offsite backup not configured');
+  const key = `${config.backupS3Prefix}/${backupId}/${filePath}`;
+  const { GetObjectCommand } = await import('@aws-sdk/client-s3');
+  const res = await client().send(new GetObjectCommand({
+    Bucket: config.backupS3Bucket,
+    Key: key,
+  }));
+  return res.Body;
+}
+
+export async function applyOffsiteRetention(maxRetention = 15) {
+  if (!isOffsiteBackupConfigured()) return;
+  const prefix = `${config.backupS3Prefix}/`;
+  const dirs = new Set();
+  let continuationToken;
+  do {
+    const listed = await client().send(new ListObjectsV2Command({
+      Bucket: config.backupS3Bucket,
+      Prefix: prefix,
+      ContinuationToken: continuationToken,
+    }));
+    for (const object of listed.Contents || []) {
+      const remainder = object.Key.slice(prefix.length);
+      const snapshotId = remainder.split('/')[0];
+      if (snapshotId && snapshotId.includes('-')) dirs.add(snapshotId);
+    }
+    continuationToken = listed.IsTruncated ? listed.NextContinuationToken : undefined;
+  } while (continuationToken);
+
+  const sorted = Array.from(dirs).sort(); // chronological order: oldest first
+  if (sorted.length > maxRetention) {
+    const toDelete = sorted.slice(0, sorted.length - maxRetention);
+    console.log(`[R2 Retention] Purging ${toDelete.length} old snapshots to maintain ${maxRetention} limit:`, toDelete);
+    for (const id of toDelete) {
+      await removeBackupReplica(id);
+    }
+  }
+}

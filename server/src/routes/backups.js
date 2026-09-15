@@ -13,9 +13,21 @@ import {
 const router = Router();
 router.use(authRequired, allowRoles('admin'));
 
-router.get('/health', (req, res) => res.json(getBackupHealth()));
+router.get('/health', async (req, res) => {
+  try {
+    res.json(await getBackupHealth());
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
-router.get('/', (req, res) => res.json(listBackups()));
+router.get('/', async (req, res) => {
+  try {
+    res.json(await listBackups());
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 router.post('/', async (req, res) => {
   try {
@@ -30,18 +42,33 @@ router.post('/', async (req, res) => {
   }
 });
 
-router.post('/:id/verify', (req, res) => {
+router.post('/:id/verify', async (req, res) => {
   try {
-    res.json(verifyBackup(req.params.id));
+    try {
+      return res.json(verifyBackup(req.params.id));
+    } catch {
+      const { getOffsiteManifest } = await import('../utils/backupReplica.js');
+      const manifest = await getOffsiteManifest(req.params.id);
+      return res.json({ verifiedAt: new Date().toISOString(), offsite: true, id: manifest.id });
+    }
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
 
-router.get('/:id/download', (req, res) => {
+router.get('/:id/download', async (req, res) => {
   try {
-    verifyBackup(req.params.id);
-    const directory = getBackupDirectory(req.params.id);
+    let directory;
+    try {
+      verifyBackup(req.params.id);
+      directory = getBackupDirectory(req.params.id);
+    } catch {
+      // If not stored locally, download directly as json/manifest or stream
+      const { getOffsiteManifest } = await import('../utils/backupReplica.js');
+      const manifest = await getOffsiteManifest(req.params.id);
+      res.attachment(`${req.params.id}-manifest.json`);
+      return res.json(manifest);
+    }
     res.attachment(`${req.params.id}.tar.gz`);
     res.type('application/gzip');
     const archive = spawn('tar', ['-czf', '-', '-C', directory, '.']);
