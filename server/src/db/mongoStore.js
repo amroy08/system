@@ -92,16 +92,35 @@ class MongoCollection {
 }
 const collections = new Map();
 
+// Direct standard replica set URI (bypasses DNS SRV lookups in serverless environments)
+const DIRECT_REPLICA_URI =
+  'mongodb://mvhs_user:4OVCJkSGTnSpXxIO@ac-alxiilz-shard-00-00.ebevlic.mongodb.net:27017,ac-alxiilz-shard-00-01.ebevlic.mongodb.net:27017,ac-alxiilz-shard-00-02.ebevlic.mongodb.net:27017/mvhs_production?ssl=true&replicaSet=atlas-lpgh00-shard-0&authSource=admin&retryWrites=true&w=majority';
+
 export const mongoStore = {
   async init() {
     if (!client) {
-      client = new MongoClient(config.mongoUri, {
+      const primaryUri = config.mongoUri || DIRECT_REPLICA_URI;
+      const clientOptions = {
         maxPoolSize: 10,
-        serverSelectionTimeoutMS: 10000,
-        connectTimeoutMS: 10000,
+        serverSelectionTimeoutMS: 8000,
+        connectTimeoutMS: 8000,
         socketTimeoutMS: 45000,
-      });
-      await client.connect();
+        family: 4,
+      };
+
+      try {
+        client = new MongoClient(primaryUri, clientOptions);
+        await client.connect();
+      } catch (firstErr) {
+        if (primaryUri !== DIRECT_REPLICA_URI) {
+          console.warn('[db] Primary MongoDB URI connection timed out or failed; falling back to direct replica set hosts...', firstErr.message);
+          client = new MongoClient(DIRECT_REPLICA_URI, clientOptions);
+          await client.connect();
+        } else {
+          throw firstErr;
+        }
+      }
+
       global._mongoClient = client;
       global._mongoDb = client.db(config.mongoDbName);
       db = global._mongoDb;
