@@ -92,14 +92,30 @@ class MongoCollection {
 }
 const collections = new Map();
 
-// Direct standard replica set URI (bypasses DNS SRV lookups in serverless environments)
-const DIRECT_REPLICA_URI =
-  'mongodb://mvhs_user:4OVCJkSGTnSpXxIO@ac-alxiilz-shard-00-00.ebevlic.mongodb.net:27017,ac-alxiilz-shard-00-01.ebevlic.mongodb.net:27017,ac-alxiilz-shard-00-02.ebevlic.mongodb.net:27017/mvhs_production?ssl=true&replicaSet=atlas-lpgh00-shard-0&authSource=admin&retryWrites=true&w=majority';
+// Derive direct shard replica set URI dynamically from mongoUri without hardcoding credentials in code
+function getDirectReplicaUri(sourceUri) {
+  if (!sourceUri || !sourceUri.startsWith('mongodb+srv://')) return sourceUri;
+  const match = sourceUri.match(/^mongodb\+srv:\/\/([^:]+):([^@]+)@([^/?]+)(.*)$/);
+  if (!match) return sourceUri;
+  const [, user, pass, host, rest] = match;
+  if (host.includes('cluster0.ebevlic.mongodb.net')) {
+    const query = rest.includes('?') ? rest.split('?')[1] : '';
+    const params = new URLSearchParams(query);
+    params.set('ssl', 'true');
+    params.set('replicaSet', 'atlas-lpgh00-shard-0');
+    params.set('authSource', 'admin');
+    params.set('retryWrites', 'true');
+    params.set('w', 'majority');
+    return `mongodb://${user}:${pass}@ac-alxiilz-shard-00-00.ebevlic.mongodb.net:27017,ac-alxiilz-shard-00-01.ebevlic.mongodb.net:27017,ac-alxiilz-shard-00-02.ebevlic.mongodb.net:27017/${config.mongoDbName}?${params.toString()}`;
+  }
+  return sourceUri;
+}
 
 export const mongoStore = {
   async init() {
     if (!client) {
-      const primaryUri = config.mongoUri || DIRECT_REPLICA_URI;
+      const primaryUri = config.mongoUri;
+      const directUri = getDirectReplicaUri(config.mongoUri);
       const clientOptions = {
         maxPoolSize: 10,
         serverSelectionTimeoutMS: 8000,
@@ -112,9 +128,9 @@ export const mongoStore = {
         client = new MongoClient(primaryUri, clientOptions);
         await client.connect();
       } catch (firstErr) {
-        if (primaryUri !== DIRECT_REPLICA_URI) {
-          console.warn('[db] Primary MongoDB URI connection timed out or failed; falling back to direct replica set hosts...', firstErr.message);
-          client = new MongoClient(DIRECT_REPLICA_URI, clientOptions);
+        if (directUri && directUri !== primaryUri) {
+          console.warn('[db] Primary MongoDB URI connection timed out; attempting direct replica set hosts...');
+          client = new MongoClient(directUri, clientOptions);
           await client.connect();
         } else {
           throw firstErr;

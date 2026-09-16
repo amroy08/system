@@ -97,11 +97,27 @@ function runProcess(command, args) {
   });
 }
 
-const DIRECT_REPLICA_URI =
-  'mongodb://mvhs_user:4OVCJkSGTnSpXxIO@ac-alxiilz-shard-00-00.ebevlic.mongodb.net:27017,ac-alxiilz-shard-00-01.ebevlic.mongodb.net:27017,ac-alxiilz-shard-00-02.ebevlic.mongodb.net:27017/mvhs_production?ssl=true&replicaSet=atlas-lpgh00-shard-0&authSource=admin&retryWrites=true&w=majority';
+function getDirectReplicaUri(sourceUri) {
+  if (!sourceUri || !sourceUri.startsWith('mongodb+srv://')) return sourceUri;
+  const match = sourceUri.match(/^mongodb\+srv:\/\/([^:]+):([^@]+)@([^/?]+)(.*)$/);
+  if (!match) return sourceUri;
+  const [, user, pass, host, rest] = match;
+  if (host.includes('cluster0.ebevlic.mongodb.net')) {
+    const query = rest.includes('?') ? rest.split('?')[1] : '';
+    const params = new URLSearchParams(query);
+    params.set('ssl', 'true');
+    params.set('replicaSet', 'atlas-lpgh00-shard-0');
+    params.set('authSource', 'admin');
+    params.set('retryWrites', 'true');
+    params.set('w', 'majority');
+    return `mongodb://${user}:${pass}@ac-alxiilz-shard-00-00.ebevlic.mongodb.net:27017,ac-alxiilz-shard-00-01.ebevlic.mongodb.net:27017,ac-alxiilz-shard-00-02.ebevlic.mongodb.net:27017/${config.mongoDbName}?${params.toString()}`;
+  }
+  return sourceUri;
+}
 
 async function dumpMongoJson(destination) {
-  const uri = config.mongoUri || DIRECT_REPLICA_URI;
+  const uri = config.mongoUri;
+  const directUri = getDirectReplicaUri(config.mongoUri);
   const client = new MongoClient(uri, {
     serverSelectionTimeoutMS: 10000,
     connectTimeoutMS: 10000,
@@ -111,9 +127,9 @@ async function dumpMongoJson(destination) {
     try {
       await client.connect();
     } catch (connErr) {
-      if (uri !== DIRECT_REPLICA_URI) {
-        console.warn('[backup] Primary URI connection failed; falling back to direct replica set hosts...', connErr.message);
-        const fallbackClient = new MongoClient(DIRECT_REPLICA_URI, {
+      if (directUri && directUri !== uri) {
+        console.warn('[backup] Primary URI connection failed; falling back to direct replica set hosts...');
+        const fallbackClient = new MongoClient(directUri, {
           serverSelectionTimeoutMS: 10000,
           connectTimeoutMS: 10000,
           family: 4,
@@ -147,9 +163,10 @@ async function dumpCollections(connectedClient, destination) {
 }
 
 async function dumpMongo(destination) {
+  const directUri = getDirectReplicaUri(config.mongoUri);
   try {
     await runProcess('mongodump', [
-      `--uri=${config.mongoUri || DIRECT_REPLICA_URI}`,
+      `--uri=${directUri || config.mongoUri}`,
       `--db=${config.mongoDbName}`,
       `--archive=${path.join(destination, 'mongo.archive.gz')}`,
       '--gzip',
