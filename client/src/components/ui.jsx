@@ -122,24 +122,49 @@ export function FilterBar({ children, onClear }) {
   );
 }
 
-/* ---------------- CSV / print helpers ---------------- */
+function extractNodeText(val) {
+  if (val == null || typeof val === 'boolean') return '';
+  if (typeof val === 'string' || typeof val === 'number') return String(val).trim();
+  if (Array.isArray(val)) return val.map(extractNodeText).filter(Boolean).join(' ').trim();
+  if (val && typeof val === 'object' && 'props' in val) {
+    return extractNodeText(val.props?.children);
+  }
+  return String(val).trim();
+}
+
+function plainValue(col, row) {
+  if (typeof col.exportValue === 'function') return col.exportValue(row);
+  if (typeof col.value === 'function') {
+    const computed = col.value(row);
+    return computed == null ? '' : computed;
+  }
+  if (col.key && row[col.key] !== undefined && row[col.key] !== null) {
+    return row[col.key];
+  }
+  if (typeof col.render === 'function') {
+    try {
+      const rendered = col.render(row);
+      const text = extractNodeText(rendered);
+      if (text) return text;
+    } catch {
+      // ignore
+    }
+  }
+  return '';
+}
+
 function exportCSV(columns, rows, filename) {
   const cols = columns.filter((c) => !c.noExport);
   const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const lines = [cols.map((c) => esc(c.label)).join(',')];
   for (const r of rows) {
-    lines.push(cols.map((c) => esc(c.exportValue ? c.exportValue(r) : plainValue(c, r))).join(','));
+    lines.push(cols.map((c) => esc(plainValue(c, r))).join(','));
   }
   const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `${filename}.csv`;
   a.click();
-}
-
-function plainValue(col, row) {
-  const v = typeof col.value === 'function' ? col.value(row) : row[col.key];
-  return v == null ? '' : v;
 }
 
 function printTable(columns, rows, title) {
@@ -153,7 +178,7 @@ function printTable(columns, rows, title) {
   </style></head><body><h2>${title}</h2><table><thead><tr>${
     cols.map((c) => `<th>${c.label}</th>`).join('')
   }</tr></thead><tbody>${
-    rows.map((r) => `<tr>${cols.map((c) => `<td>${c.exportValue ? c.exportValue(r) : plainValue(c, r)}</td>`).join('')}</tr>`).join('')
+    rows.map((r) => `<tr>${cols.map((c) => `<td>${plainValue(c, r)}</td>`).join('')}</tr>`).join('')
   }</tbody></table></body></html>`);
   w.document.close();
   w.focus();

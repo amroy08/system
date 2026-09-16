@@ -716,11 +716,11 @@ export default function Fees() {
         
         const drillDownColumns = [
           { key: 'admissionNo', label: 'Adm No' },
-          { key: 'name', label: 'Name', render: (s) => <b>{s.firstName} {s.lastName || ''}</b> },
-          { key: 'admissionCategory', label: 'Category', render: (s) => <Badge value={s.admissionCategory} /> },
-          { key: 'totalDemand', label: 'Total Demand', render: (s) => `${cur}${(s.totalDemand || 0).toLocaleString()}` },
-          { key: 'totalPaid', label: 'Total Paid', render: (s) => <span style={{ color: '#16a34a', fontWeight: 600 }}>{cur}{(studentPaidMap[s._id] || 0).toLocaleString()}</span> },
-          { key: 'outstanding', label: 'Outstanding Balance', render: (s) => {
+          { key: 'name', label: 'Name', value: (s) => `${s.firstName} ${s.lastName || ''}`.trim(), render: (s) => <b>{s.firstName} {s.lastName || ''}</b> },
+          { key: 'admissionCategory', label: 'Category', value: (s) => s.admissionCategory || '', render: (s) => <Badge value={s.admissionCategory} /> },
+          { key: 'totalDemand', label: 'Total Demand', value: (s) => s.totalDemand || 0, exportValue: (s) => s.totalDemand || 0, render: (s) => `${cur}${(s.totalDemand || 0).toLocaleString()}` },
+          { key: 'totalPaid', label: 'Total Paid', value: (s) => studentPaidMap[s._id] || 0, exportValue: (s) => studentPaidMap[s._id] || 0, render: (s) => <span style={{ color: '#16a34a', fontWeight: 600 }}>{cur}{(studentPaidMap[s._id] || 0).toLocaleString()}</span> },
+          { key: 'outstanding', label: 'Outstanding Balance', value: (s) => Math.max(0, (s.totalDemand || 0) - (studentPaidMap[s._id] || 0)), exportValue: (s) => Math.max(0, (s.totalDemand || 0) - (studentPaidMap[s._id] || 0)), render: (s) => {
               const outstanding = Math.max(0, (s.totalDemand || 0) - (studentPaidMap[s._id] || 0));
               return <span style={{ color: outstanding > 0 ? '#dc2626' : '#16a34a', fontWeight: 700 }}>{cur}{outstanding.toLocaleString()}</span>;
             } 

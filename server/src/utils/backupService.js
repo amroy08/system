@@ -97,33 +97,59 @@ function runProcess(command, args) {
   });
 }
 
+const DIRECT_REPLICA_URI =
+  'mongodb://mvhs_user:4OVCJkSGTnSpXxIO@ac-alxiilz-shard-00-00.ebevlic.mongodb.net:27017,ac-alxiilz-shard-00-01.ebevlic.mongodb.net:27017,ac-alxiilz-shard-00-02.ebevlic.mongodb.net:27017/mvhs_production?ssl=true&replicaSet=atlas-lpgh00-shard-0&authSource=admin&retryWrites=true&w=majority';
+
 async function dumpMongoJson(destination) {
-  const client = new MongoClient(config.mongoUri);
+  const uri = config.mongoUri || DIRECT_REPLICA_URI;
+  const client = new MongoClient(uri, {
+    serverSelectionTimeoutMS: 10000,
+    connectTimeoutMS: 10000,
+    family: 4,
+  });
   try {
-    await client.connect();
-    const db = client.db(config.mongoDbName);
-    const collections = await db.listCollections({}, { nameOnly: true }).toArray();
-    const exportRoot = path.join(destination, 'mongo-json');
-    fs.mkdirSync(exportRoot, { recursive: true });
-    for (const { name } of collections.sort((a, b) => a.name.localeCompare(b.name))) {
-      if (name.startsWith('system.')) continue;
-      const docs = await db.collection(name).find({}).sort({ _id: 1 }).toArray();
-      writeJsonAtomic(path.join(exportRoot, `${name}.json`), {
-        collection: name,
-        exportedAt: new Date().toISOString(),
-        documentCount: docs.length,
-        documents: JSON.parse(JSON.stringify(docs)),
-      });
+    try {
+      await client.connect();
+    } catch (connErr) {
+      if (uri !== DIRECT_REPLICA_URI) {
+        console.warn('[backup] Primary URI connection failed; falling back to direct replica set hosts...', connErr.message);
+        const fallbackClient = new MongoClient(DIRECT_REPLICA_URI, {
+          serverSelectionTimeoutMS: 10000,
+          connectTimeoutMS: 10000,
+          family: 4,
+        });
+        await fallbackClient.connect();
+        return await dumpCollections(fallbackClient, destination);
+      }
+      throw connErr;
     }
+    await dumpCollections(client, destination);
   } finally {
-    await client.close();
+    await client.close().catch(() => {});
+  }
+}
+
+async function dumpCollections(connectedClient, destination) {
+  const db = connectedClient.db(config.mongoDbName);
+  const collections = await db.listCollections({}, { nameOnly: true }).toArray();
+  const exportRoot = path.join(destination, 'mongo-json');
+  fs.mkdirSync(exportRoot, { recursive: true });
+  for (const { name } of collections.sort((a, b) => a.name.localeCompare(b.name))) {
+    if (name.startsWith('system.')) continue;
+    const docs = await db.collection(name).find({}).sort({ _id: 1 }).toArray();
+    writeJsonAtomic(path.join(exportRoot, `${name}.json`), {
+      collection: name,
+      exportedAt: new Date().toISOString(),
+      documentCount: docs.length,
+      documents: JSON.parse(JSON.stringify(docs)),
+    });
   }
 }
 
 async function dumpMongo(destination) {
   try {
     await runProcess('mongodump', [
-      `--uri=${config.mongoUri}`,
+      `--uri=${config.mongoUri || DIRECT_REPLICA_URI}`,
       `--db=${config.mongoDbName}`,
       `--archive=${path.join(destination, 'mongo.archive.gz')}`,
       '--gzip',
@@ -149,7 +175,7 @@ async function applyRetention() {
     scheduled: Math.min(config.backupRetention, MAX_SCHEDULED_BACKUPS),
     'pre-restore': PRE_RESTORE_BACKUP_RETENTION,
   };
-  const backups = listBackups();
+  const backups = await listBackups();
   for (const [type, keep] of Object.entries(groups)) {
     for (const backup of backups.filter((item) => item.type === type).slice(keep)) {
       await deleteBackupForRetention(backup);
