@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
 import { config } from '../config.js';
 import { displayClassName } from './classNames.js';
+import { getStoredFile } from './storageService.js';
 
 let transporter = null;
 
@@ -193,6 +194,37 @@ export async function sendNoticeEmail(parentEmails, notice) {
   if (!parentEmails.length) return;
   const title = `School Notice: ${notice.title}`;
 
+  let attachments = [];
+  let attachmentSectionHtml = '';
+  const attachObj = notice.attachment;
+
+  if (attachObj && (attachObj.storedName || attachObj._id)) {
+    const fileName = attachObj.fileName || 'Notice_Attachment.pdf';
+    const mimeType = attachObj.mimeType || 'application/pdf';
+    const storedKey = attachObj.storedName || `${attachObj._id}.${mimeType.includes('png') ? 'png' : mimeType.includes('jpeg') || mimeType.includes('jpg') ? 'jpg' : 'pdf'}`;
+    try {
+      const fileBuffer = await getStoredFile(storedKey);
+      if (fileBuffer && fileBuffer.length) {
+        attachments.push({
+          filename: fileName,
+          content: fileBuffer,
+          contentType: mimeType,
+        });
+      }
+    } catch (storageErr) {
+      console.warn('[Notice Email] Could not load attachment for email:', storageErr.message);
+    }
+
+    attachmentSectionHtml = `
+      <div style="margin: 20px 0; padding: 14px 16px; background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <div style="font-weight: 700; font-size: 13px; color: #1e293b;">📎 Attached Document: ${escapeHtml(fileName)}</div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 2px;">This file is attached directly to this email for instant viewing.</div>
+        </div>
+      </div>
+    `;
+  }
+
   const bodyHtml = `
     <div style="border-left: 4px solid #16a34a; padding-left: 14px; margin: 15px 0;">
       <span style="font-size: 11px; text-transform: uppercase; font-weight: bold; color: #16a34a; background-color: #dcfce7; padding: 2px 8px; border-radius: 4px;">
@@ -205,11 +237,17 @@ export async function sendNoticeEmail(parentEmails, notice) {
     <p>Dear Parents,</p>
     <p style="white-space: pre-line; background-color: #f8fafc; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13.5px;">${escapeHtml(notice.content || notice.body || '')}</p>
 
-    <p>Please log in to the Parent Portal to review all upcoming events, notices, and class updates.</p>
+    ${attachmentSectionHtml}
+
+    <p style="font-size: 12.5px; color: #64748b; margin-top: 15px;">
+      You have two ways to view this notice:
+      <br/>1. <b>Direct Attachment:</b> Open/download the attached file at the bottom of this email.
+      <br/>2. <b>School Portal:</b> Click the button below to view all upcoming notices and events.
+    </p>
   `;
 
   const html = wrapHtmlTemplate(title, bodyHtml, `${config.appUrl}/login`, 'View Notices on Portal');
-  const text = `School Notice Announcement!\n\nTitle: ${notice.title}\nCategory: ${notice.category}\nDate: ${notice.date}\n\nContent:\n${notice.content || notice.body || ''}\n\nView on Portal: ${config.appUrl}/login`;
+  const text = `School Notice Announcement!\n\nTitle: ${notice.title}\nCategory: ${notice.category}\nDate: ${notice.date}\n\nContent:\n${notice.content || notice.body || ''}\n${attachObj?.fileName ? `\nAttached Document: ${attachObj.fileName} (included in this email)` : ''}\n\nView on Portal: ${config.appUrl}/login`;
 
   return sendMail({
     from: config.emailFrom,
@@ -217,6 +255,7 @@ export async function sendNoticeEmail(parentEmails, notice) {
     subject: `[Notice] ${notice.title} — MVHS`,
     text,
     html,
+    attachments,
   });
 }
 
@@ -254,6 +293,22 @@ export async function sendDocumentEmail(parentEmails, doc) {
     <p>You can download or view this circular from the Documents section inside the ERP portal.</p>
   `;
 
+  let attachments = [];
+  const attachObj = doc.attachment;
+  if (attachObj && (attachObj.storedName || attachObj._id)) {
+    const fileName = attachObj.fileName || 'Circular.pdf';
+    const mimeType = attachObj.mimeType || 'application/pdf';
+    const storedKey = attachObj.storedName || `${attachObj._id}.${mimeType.includes('png') ? 'png' : mimeType.includes('jpeg') || mimeType.includes('jpg') ? 'jpg' : 'pdf'}`;
+    try {
+      const fileBuffer = await getStoredFile(storedKey);
+      if (fileBuffer && fileBuffer.length) {
+        attachments.push({ filename: fileName, content: fileBuffer, contentType: mimeType });
+      }
+    } catch (storageErr) {
+      console.warn('[Doc Email] Could not load attachment for email:', storageErr.message);
+    }
+  }
+
   const documentUrl = doc.link && doc.link !== '#' ? doc.link : `${config.appUrl}/documents`;
   const html = wrapHtmlTemplate(title, bodyHtml, documentUrl, 'Download Circular');
   const text = `Circular Shared!\n\nTitle: ${doc.title}\nAudience: ${displayClassName(doc.className)}\nDescription: ${doc.description || ''}\n\nOpen: ${documentUrl}`;
@@ -264,6 +319,7 @@ export async function sendDocumentEmail(parentEmails, doc) {
     subject: `[Circular] ${doc.title} shared`,
     text,
     html,
+    attachments,
   });
 }
 
