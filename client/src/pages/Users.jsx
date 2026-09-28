@@ -23,13 +23,19 @@ export default function Users() {
   const [confirmDel, setConfirmDel] = useState(null);
   const [params] = useSearchParams();
   const isAdmin = user?.role === 'admin';
+  const isSupervisor = user?.role === 'supervisor';
+  const canAdd = isAdmin || isSupervisor;
 
   const load = () => api.get('/users').then(({ data }) => setRows(data));
   useEffect(() => { load(); }, []);
   useEffect(() => {
     const add = params.get('add');
-    if (add) { setForm({ ...EMPTY, role: add === '1' ? '' : add }); setModal({ type: 'form' }); }
-  }, [params]);
+    if (add) {
+      const initialRole = isSupervisor ? 'teacher' : (add === '1' ? '' : add);
+      setForm({ ...EMPTY, role: initialRole });
+      setModal({ type: 'form' });
+    }
+  }, [params, isSupervisor]);
 
   const counts = useMemo(() => ({
     all: rows.length,
@@ -49,9 +55,11 @@ export default function Users() {
     return true;
   }), [rows, tab, filters]);
 
-  const editableRoleOptions = modal?.data && !STAFF_ROLES.includes(modal.data.role)
-    ? [modal.data.role]
-    : STAFF_ROLES;
+  const editableRoleOptions = isSupervisor
+    ? ['teacher']
+    : (modal?.data && !STAFF_ROLES.includes(modal.data.role)
+      ? [modal.data.role]
+      : STAFF_ROLES);
 
   const save = async () => {
     try {
@@ -113,7 +121,17 @@ export default function Users() {
       <div className="page-head">
         <h2><UsersIcon size={20} /> Users Management</h2>
         <div className="spacer" />
-        {isAdmin && <button className="btn btn-green" onClick={() => { setForm(EMPTY); setModal({ type: 'form' }); }}><Plus size={15} /> Add</button>}
+        {canAdd && (
+          <button
+            className="btn btn-green"
+            onClick={() => {
+              setForm({ ...EMPTY, role: isSupervisor ? 'teacher' : '' });
+              setModal({ type: 'form' });
+            }}
+          >
+            <Plus size={15} /> {isSupervisor ? 'Add Teacher' : 'Add'}
+          </button>
+        )}
       </div>
 
       <StatusTabs active={tab} onChange={setTab} tabs={[

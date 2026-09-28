@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { col } from '../db/index.js';
 import { authRequired, allowRoles } from '../middleware/auth.js';
 import { isStrongPassword } from '../utils/credentials.js';
+import { invalidateTeachersCache } from './teachers.js';
 
 const router = Router();
 router.use(authRequired);
@@ -45,8 +46,11 @@ router.get('/', allowRoles('admin', 'clerk', 'supervisor'), async (req, res) => 
   res.json(result);
 });
 
-router.post('/', allowRoles('admin'), async (req, res) => {
+router.post('/', allowRoles('admin', 'supervisor'), async (req, res) => {
   const b = req.body;
+  if (req.user.role === 'supervisor' && b.role !== 'teacher') {
+    return res.status(403).json({ error: 'Supervisors are only permitted to create teacher accounts' });
+  }
   if (!b.username || !b.password || !b.fullName || !b.role) {
     return res.status(400).json({ error: 'Username, password, full name and role are required' });
   }
@@ -77,6 +81,7 @@ router.post('/', allowRoles('admin'), async (req, res) => {
   });
   res.status(201).json(publicUser(doc));
   invalidateUsersCache();
+  if (doc.role === 'teacher') invalidateTeachersCache();
 });
 
 router.put('/:id', allowRoles('admin'), async (req, res) => {

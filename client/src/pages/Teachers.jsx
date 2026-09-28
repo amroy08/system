@@ -16,7 +16,7 @@ export default function Teachers() {
   const [assignments, setAssignments] = useState([]);
   const [newAssign, setNewAssign] = useState({ classId: '', subjectId: '' });
   const canWrite = ['admin', 'clerk', 'supervisor'].includes(user?.role);
-  const isAdmin = user?.role === 'admin';
+  const canAddTeacher = ['admin', 'supervisor'].includes(user?.role);
   const navigate = useNavigate();
 
   const load = () => api.get('/teachers').then(({ data }) => setRows(data));
@@ -85,7 +85,7 @@ export default function Teachers() {
       <div className="page-head">
         <h2><UserCog size={20} /> Teachers Management</h2>
         <div className="spacer" />
-        {isAdmin && (
+        {canAddTeacher && (
           <button className="btn btn-green" title="Opens the user form with username & password fields" onClick={() => navigate('/users?add=teacher')}>
             <Plus size={15} /> Add Teacher
           </button>
