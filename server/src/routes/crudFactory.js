@@ -86,11 +86,16 @@ export function crudRouter(collectionName, options = {}) {
       }
       if (beforeCreate) body = await beforeCreate(body, req);
       const doc = await col(collectionName).insertOne(body);
-      res.status(201).json(doc);
 
       if (afterCreate) {
-        afterCreate(doc, req).catch((err) => console.error(`[CRUD Hook Error] afterCreate on ${collectionName}:`, err));
+        try {
+          await afterCreate(doc, req);
+        } catch (err) {
+          console.error(`[CRUD Hook Error] afterCreate on ${collectionName}:`, err);
+        }
       }
+
+      res.status(201).json(doc);
     } catch (e) {
       res.status(400).json({ error: e.message });
     }
@@ -111,11 +116,16 @@ export function crudRouter(collectionName, options = {}) {
       delete body.deletedBy;
       const doc = await col(collectionName).updateOne({ _id: req.params.id }, body);
       if (!doc) return res.status(404).json({ error: 'Not found' });
-      res.json(doc);
 
       if (afterUpdate) {
-        afterUpdate(doc, req).catch((err) => console.error(`[CRUD Hook Error] afterUpdate on ${collectionName}:`, err));
+        try {
+          await afterUpdate(doc, req);
+        } catch (err) {
+          console.error(`[CRUD Hook Error] afterUpdate on ${collectionName}:`, err);
+        }
       }
+
+      res.json(doc);
     } catch (e) {
       res.status(400).json({ error: e.message });
     }

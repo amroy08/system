@@ -468,6 +468,35 @@ export async function sendHomeworkEmail(parentEmails, task, classNameStr, subjec
   const title = `New Assignment Alert: ${task.title}`;
   const className = displayClassName(classNameStr);
 
+  let attachments = [];
+  let attachmentSectionHtml = '';
+  const attachObj = task.attachment;
+
+  if (attachObj && (attachObj.storedName || attachObj._id)) {
+    const fileName = attachObj.fileName || 'Assignment_Worksheet.pdf';
+    const mimeType = attachObj.mimeType || 'application/pdf';
+    const storedKey = attachObj.storedName || `${attachObj._id}.${mimeType.includes('png') ? 'png' : mimeType.includes('jpeg') || mimeType.includes('jpg') ? 'jpg' : 'pdf'}`;
+    try {
+      const fileBuffer = await getStoredFile(storedKey);
+      if (fileBuffer && fileBuffer.length) {
+        attachments.push({
+          filename: fileName,
+          content: fileBuffer,
+          contentType: mimeType,
+        });
+      }
+    } catch (storageErr) {
+      console.warn('[Homework Email] Could not load attachment for email:', storageErr.message);
+    }
+
+    attachmentSectionHtml = `
+      <div style="margin: 20px 0; padding: 14px 16px; background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px;">
+        <div style="font-weight: 700; font-size: 13px; color: #1e293b;">📎 Attached Worksheet / File: ${escapeHtml(fileName)}</div>
+        <div style="font-size: 11px; color: #64748b; margin-top: 2px;">This worksheet is attached directly to this email for instant downloading.</div>
+      </div>
+    `;
+  }
+
   const bodyHtml = `
     <h2>New ${escapeHtml(task.type)} Posted</h2>
     <p>Dear Parents,</p>
@@ -505,6 +534,8 @@ export async function sendHomeworkEmail(parentEmails, task, classNameStr, subjec
       <p style="font-size: 12px; margin-bottom: 0; white-space: pre-wrap; line-height: 1.5; color: #334155;">${escapeHtml(task.description || 'No detailed instructions provided.')}</p>
     </div>
 
+    ${attachmentSectionHtml}
+
     <p>Please guide your child to complete and submit this work by the due date. You can review the details anytime in the student/parent portal.</p>
   `;
 
@@ -515,6 +546,7 @@ export async function sendHomeworkEmail(parentEmails, task, classNameStr, subjec
     to: parentEmails.join(', '),
     subject: `[Assignment Notification] ${task.type}: ${task.title} (Due: ${task.dueDate})`,
     html,
+    attachments,
   });
 }
 

@@ -107,12 +107,17 @@ router.post('/', allowRoles(...STAFF_TEACHER), async (req, res) => {
     };
 
     const doc = await col('homework').insertOne(payload);
-    res.status(201).json(doc);
 
     // Trigger parent email alert if task is active
     if (payload.status === 'active') {
-      notifyClassParents(doc);
+      try {
+        await notifyClassParents(doc);
+      } catch (err) {
+        console.error('[Homework Email Error]', err);
+      }
     }
+
+    res.status(201).json(doc);
   } catch (e) {
     sendInternalError(res, e, 'Homework create');
   }
@@ -139,12 +144,17 @@ router.put('/:id', allowRoles(...STAFF_TEACHER), async (req, res) => {
     }
 
     const updated = await col('homework').updateOne({ _id: req.params.id }, b);
-    res.json(updated);
 
     // Trigger emails if task status is changed from draft to active
     if (b.status === 'active' && existing.status !== 'active') {
-      notifyClassParents({ ...existing, ...b });
+      try {
+        await notifyClassParents({ ...existing, ...b });
+      } catch (err) {
+        console.error('[Homework Email Error]', err);
+      }
     }
+
+    res.json(updated);
   } catch (e) {
     sendInternalError(res, e, 'Homework update');
   }
