@@ -172,7 +172,7 @@ router.get('/teacher', allowRoles(...STAFF_TEACHER), async (req, res) => {
     col('subjects').find({ _deleted: { $ne: true } }),
     col('timetables').find({}),
     col('exams').find({ _deleted: { $ne: true } }),
-    col('marks').find({}),
+    col('marks').find({ status: 'draft' }),
     col('students').find({ status: 'active' }),
   ]);
 

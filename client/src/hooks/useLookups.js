@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { api } from '../api';
 import { formatClass, sortClasses } from '../utils/classNames';
 
-const LOOKUP_TTL_MS = 60_000;
+const LOOKUP_TTL_MS = 5 * 60_000; // 5 minutes — classes/subjects rarely change mid-session
 const cache = new Map();
 const inflight = new Map();
 

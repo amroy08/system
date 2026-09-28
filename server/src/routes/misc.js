@@ -16,8 +16,8 @@ async function userClassIds(req) {
     return student?.classId ? [student.classId] : [];
   }
   if (req.user.role === 'parent') {
-    const students = await col('students').find({ status: 'active' });
-    return [...new Set(students.filter((student) => (student.parentIds || []).includes(req.user.refId)).map((student) => student.classId).filter(Boolean))];
+    const students = await col('students').find({ parentIds: req.user.refId, status: 'active' });
+    return [...new Set(students.map((student) => student.classId).filter(Boolean))];
   }
   return null;
 }

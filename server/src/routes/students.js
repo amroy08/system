@@ -334,7 +334,7 @@ router.get('/:id/attendance', async (req, res) => {
   const student = await col('students').findOne({ _id: req.params.id, status: { $ne: 'deleted' } });
   if (!student || !(await mayReadStudent(req, student))) return res.status(404).json({ error: 'Student not found' });
   const { from, to } = req.query;
-  const all = await col('attendance').find({});
+  const all = await col('attendance').find({ classId: student.classId });
   const records = [];
   for (const day of all) {
     if (from && day.date < from) continue;

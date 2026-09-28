@@ -55,5 +55,12 @@ export async function ensureMongoIndexes(db) {
     // --- NEW: covers library issued books query by memberType + status ---
     db.collection('bookIssues').createIndex({ memberType: 1, status: 1 }, { name: 'book_issues_type_status' }),
     db.collection('bookIssues').createIndex({ memberId: 1, memberType: 1 }, { name: 'book_issues_member' }),
+    // --- NEW: covers portal/notification queries filtering by published/deleted status ---
+    db.collection('notices').createIndex({ _deleted: 1, status: 1, date: -1 }, { name: 'notices_status_date' }),
+    db.collection('activities').createIndex({ _deleted: 1, date: -1 }, { name: 'activities_deleted_date' }),
+    db.collection('ptm').createIndex({ _deleted: 1, date: -1 }, { name: 'ptm_deleted_date' }),
+    db.collection('documents').createIndex({ _deleted: 1, date: -1 }, { name: 'documents_deleted_date' }),
+    // --- NEW: covers global search $regex on studentName and receiptNo ---
+    db.collection('feeReceipts').createIndex({ studentName: 1 }, { name: 'receipts_student_name' }),
   ]);
 }

@@ -34,7 +34,7 @@ import { processEmailOutbox } from './utils/emailOutbox.js';
 import { startBackupScheduler } from './utils/backupService.js';
 import { csrfProtect } from './middleware/auth.js';
 import { mutationAudit, requestContext } from './middleware/mutationAudit.js';
-import { requestTiming } from './middleware/performance.js';
+import { requestTiming, apiCacheHeaders } from './middleware/performance.js';
 
 assertProductionConfig();
 
@@ -76,6 +76,7 @@ app.use(async (req, res, next) => {
 });
 app.use(requestContext);
 app.use(requestTiming);
+app.use(apiCacheHeaders);
 app.use(csrfProtect);
 app.use(mutationAudit);
 

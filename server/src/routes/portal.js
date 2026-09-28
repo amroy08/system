@@ -101,8 +101,7 @@ router.get('/student', allowRoles('student'), async (req, res) => {
 router.get('/parent', allowRoles('parent'), async (req, res) => {
   const parent = await col('parents').findOne({ _id: req.user.refId, status: 'active' });
   if (!parent) return res.status(404).json({ error: 'Parent record not found' });
-  const children = await col('students').find({ status: { $ne: 'deleted' } });
-  const mine = children.filter((s) => (s.parentIds || []).includes(parent._id));
+  const mine = await col('students').find({ parentIds: parent._id, status: { $ne: 'deleted' } });
   const activeMine = mine.filter((student) => student.status === 'active');
   const formerMine = mine.filter((student) => student.status !== 'active');
 
@@ -124,8 +123,7 @@ router.get('/notices', async (req, res) => {
     const student = await col('students').findOne({ _id: req.user.refId, status: 'active' });
     if (student) myClassIds = [student.classId];
   } else if (req.user.role === 'parent') {
-    const students = await col('students').find({ status: 'active' });
-    const children = students.filter(s => (s.parentIds || []).includes(req.user.refId));
+    const children = await col('students').find({ parentIds: req.user.refId, status: 'active' });
     myClassIds = children.map(c => c.classId).filter(Boolean);
   }
 

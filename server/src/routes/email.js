@@ -18,7 +18,7 @@ router.post('/recipient-preview', allowRoles(...STAFF_TEACHER), async (req, res)
 
 router.get('/health', allowRoles('admin'), async (req, res) => {
   const health = await getEmailHealth();
-  const deliveries = await col('emailDeliveries').find({});
+  const deliveries = await col('emailDeliveries').find({}, { projection: { status: 1 } });
   const counts = {};
   for (const delivery of deliveries) counts[delivery.status] = (counts[delivery.status] || 0) + 1;
   res.json({ ...health, counts });
