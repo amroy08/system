@@ -472,10 +472,16 @@ router.post('/', allowRoles(...STAFF), async (req, res) => {
       amount: amountPaid, mode: doc.mode, recordedBy: req.user.name, receiptId: doc._id,
     });
   }
-  res.status(201).json(doc);
+  // Send email receipt to parents immediately before serverless response
+  try {
+    await queueReceiptEmail(doc, student, req.user.name);
+  } catch (err) {
+    console.error('[Receipt Email Queue Error]', err);
+  }
+
   invalidateOutstandingCache(); // new receipt changes balances
   invalidateReceiptsCache();    // new receipt appears in list
-  queueMicrotask(() => queueReceiptEmail(doc, student, req.user.name).catch((err) => console.error('[Receipt Email Queue Error]', err)));
+  res.status(201).json(doc);
   } finally {
     release();
   }
