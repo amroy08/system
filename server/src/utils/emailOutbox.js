@@ -52,7 +52,13 @@ export async function enqueueEmailEvent({ eventType, entityType, entityId, versi
       duplicateCount += 1;
     }
   }
-  if (created.length) queueMicrotask(() => processEmailOutbox().catch((error) => console.error('[Email Outbox]', error)));
+  if (created.length) {
+    try {
+      await processEmailOutbox();
+    } catch (error) {
+      console.error('[Email Outbox]', error);
+    }
+  }
   return { queuedCount: created.length, duplicateCount };
 }
 
