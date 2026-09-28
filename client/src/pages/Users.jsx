@@ -55,11 +55,9 @@ export default function Users() {
     return true;
   }), [rows, tab, filters]);
 
-  const editableRoleOptions = isSupervisor
-    ? ['teacher']
-    : (modal?.data && !STAFF_ROLES.includes(modal.data.role)
-      ? [modal.data.role]
-      : STAFF_ROLES);
+  const editableRoleOptions = modal?.data
+    ? [modal.data.role]
+    : (isSupervisor ? ['teacher'] : STAFF_ROLES);
 
   const save = async () => {
     try {
@@ -104,16 +102,20 @@ export default function Users() {
     { key: 'status', label: 'Status', render: (r) => <Badge value={r.status} /> },
     { key: 'joined', label: 'Joined' },
     { key: 'lastLogin', label: 'Last Login', render: (r) => r.lastLogin ? new Date(r.lastLogin).toLocaleString() : 'N/A' },
-    { label: 'Actions', sortable: false, noExport: true, render: (r) => isAdmin && (
-      <div className="row-actions">
-        <button className="act-orange" title="Reset password" onClick={() => resetPassword(r)}><KeyRound size={15} /></button>
-        {r.status !== 'suspended'
-          ? <button className="act-del" title="Suspend" onClick={() => setStatus(r, 'suspended')}><Ban size={15} /></button>
-          : <button className="act-green" title="Activate" onClick={() => setStatus(r, 'active')}><CheckCircle2 size={15} /></button>}
-        <button className="act-edit" title="Edit" onClick={() => { setForm({ ...EMPTY, ...r, password: '' }); setModal({ type: 'form', data: r }); }}><Pencil size={15} /></button>
-        <button className="act-del" title="Delete" onClick={() => setConfirmDel(r)}><Trash2 size={15} /></button>
-      </div>
-    )},
+    { label: 'Actions', sortable: false, noExport: true, render: (r) => {
+      const canManageRow = isAdmin || (isSupervisor && r.role !== 'admin');
+      if (!canManageRow) return null;
+      return (
+        <div className="row-actions">
+          <button className="act-orange" title="Reset password" onClick={() => resetPassword(r)}><KeyRound size={15} /></button>
+          {r.status !== 'suspended'
+            ? <button className="act-del" title="Suspend" onClick={() => setStatus(r, 'suspended')}><Ban size={15} /></button>
+            : <button className="act-green" title="Activate" onClick={() => setStatus(r, 'active')}><CheckCircle2 size={15} /></button>}
+          <button className="act-edit" title="Edit" onClick={() => { setForm({ ...EMPTY, ...r, password: '' }); setModal({ type: 'form', data: r }); }}><Pencil size={15} /></button>
+          {isAdmin && <button className="act-del" title="Delete" onClick={() => setConfirmDel(r)}><Trash2 size={15} /></button>}
+        </div>
+      );
+    }},
   ];
 
   return (

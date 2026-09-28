@@ -84,10 +84,13 @@ router.post('/', allowRoles('admin', 'supervisor'), async (req, res) => {
   if (doc.role === 'teacher') invalidateTeachersCache();
 });
 
-router.put('/:id', allowRoles('admin'), async (req, res) => {
+router.put('/:id', allowRoles('admin', 'supervisor'), async (req, res) => {
   const b = { ...req.body };
   const current = await col('users').findOne({ _id: req.params.id, status: { $ne: 'deleted' } });
   if (!current) return res.status(404).json({ error: 'User not found' });
+  if (req.user.role === 'supervisor' && current.role === 'admin') {
+    return res.status(403).json({ error: 'Supervisors cannot modify administrator accounts' });
+  }
   delete b._id;
   delete b.passwordHash;
   for (const key of ['loginAttempts', 'lockedUntil', 'tokenVersion', 'credentialVersion', 'legacyCredentialDisabledAt', 'credentialResetAt', 'passwordChangeRequired', 'deletedAt', 'deletedBy', 'deletedPreviousStatus']) delete b[key];
@@ -126,11 +129,14 @@ router.put('/:id', allowRoles('admin'), async (req, res) => {
 });
 
 // Quick actions used from the users table (reset password, suspend, activate)
-router.post('/:id/reset-password', allowRoles('admin'), async (req, res) => {
+router.post('/:id/reset-password', allowRoles('admin', 'supervisor'), async (req, res) => {
   const { newPassword } = req.body;
   if (!isStrongPassword(newPassword)) return res.status(400).json({ error: 'New password must be 6–128 characters and include uppercase, lowercase, number and symbol' });
   const user = await col('users').findOne({ _id: req.params.id, status: { $ne: 'deleted' } });
   if (!user) return res.status(404).json({ error: 'User not found' });
+  if (req.user.role === 'supervisor' && user.role === 'admin') {
+    return res.status(403).json({ error: 'Supervisors cannot modify administrator accounts' });
+  }
   if (await wouldRemoveLastAdmin(user, { status: req.body.status })) {
     return res.status(409).json({ error: 'Create another active administrator before changing this account' });
   }
@@ -155,11 +161,14 @@ router.post('/:id/reset-password', allowRoles('admin'), async (req, res) => {
   res.json({ ok: true });
 });
 
-router.post('/:id/status', allowRoles('admin'), async (req, res) => {
+router.post('/:id/status', allowRoles('admin', 'supervisor'), async (req, res) => {
   const allowedStatuses = new Set(['active', 'inactive', 'suspended']);
   if (!allowedStatuses.has(req.body.status)) return res.status(400).json({ error: 'Invalid account status' });
   const user = await col('users').findOne({ _id: req.params.id, status: { $ne: 'deleted' } });
   if (!user) return res.status(404).json({ error: 'User not found' });
+  if (req.user.role === 'supervisor' && user.role === 'admin') {
+    return res.status(403).json({ error: 'Supervisors cannot modify administrator accounts' });
+  }
   if (await wouldRemoveLastAdmin(user, { status: 'deleted' })) {
     return res.status(409).json({ error: 'Create another active administrator before deleting this account' });
   }
