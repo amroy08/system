@@ -386,8 +386,8 @@ function ClerkDashboard({ stats, cur, navigate }) {
   );
 }
 
-/* ---------------- Supervisor dashboard (operations: attendance + discipline) ---------------- */
-function SupervisorDashboard({ stats, week, navigate }) {
+/* ---------------- Supervisor dashboard (full operations command center) ---------------- */
+function SupervisorDashboard({ stats, week, cur, navigate }) {
   const [incidents, setIncidents] = useState([]);
   useEffect(() => {
     api.get('/discipline', { params: { status: 'open' } }).then(({ data }) => setIncidents(data.slice(0, 6)));
@@ -395,31 +395,136 @@ function SupervisorDashboard({ stats, week, navigate }) {
 
   return (
     <>
-      <GreetBar subtitle="Operations view — attendance, discipline and school day management." />
+      <GreetBar subtitle="Operations command center — full oversight of attendance, academics, fees and school day management." />
       <div className="kpi-grid">
+        <KpiCard color="navy" icon={GraduationCap} value={stats.activeStudents} label="Active Students"
+          onClick={() => navigate('/students')} />
+        <KpiCard color="green" icon={UserCog} value={stats.teachers} label="Teachers"
+          onClick={() => navigate('/teachers')} />
+        <KpiCard color="teal" icon={School} value={stats.classes} label="Classes"
+          onClick={() => navigate('/classes')} />
         <KpiCard color="orange" icon={UserCheck} value={`${stats.attendanceToday.present}/${stats.attendanceToday.marked}`} label="Today's Attendance"
           onAction={() => navigate('/attendance')} actionLabel="Mark Now" />
+        <KpiCard color="green" icon={Wallet} value={`${cur}${stats.todaysCollection.toLocaleString()}`} label="Today's Collection"
+          onAction={() => navigate('/fees?add=1')} actionLabel="+ Record Payment" />
+        <KpiCard color="red" icon={AlertTriangle} value={`${cur}${stats.outstanding.toLocaleString()}`} label="Outstanding Balance"
+          onClick={() => navigate('/outstanding')} />
         <KpiCard color="red" icon={ShieldAlert} value={stats.openIncidents} label="Open Incidents" onClick={() => navigate('/discipline')} />
         <KpiCard color="purple" icon={MessageSquareWarning} value={stats.openComplaints} label="Open Complaints" onClick={() => navigate('/complaints')} />
         <KpiCard color="teal" icon={LifeBuoy} value={stats.openTickets} label="Helpdesk Tickets" onClick={() => navigate('/helpdesk')} />
         <KpiCard color="navy" icon={ClipboardList} value={stats.activeExams} label="Active Exams" onClick={() => navigate('/exams')} />
+        <KpiCard color="orange" icon={UserPlus} value={stats.pendingAdmissions} label="Pending Admissions"
+          onAction={() => navigate('/admissions')} actionLabel="Review" />
+        <KpiCard color="pink" icon={UsersRound} value={stats.parents} label="Parents" onClick={() => navigate('/parents')} />
       </div>
 
-      <div className="grid-2">
-        <div className="chart-box">
-          <div className="card-title">Attendance — Last 7 Days</div>
+      {stats.sheetsAwaitingPublish > 0 && (
+        <div className="card card-pad mb" style={{ borderLeft: '4px solid var(--warning)', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Megaphone size={18} style={{ color: 'var(--warning)' }} />
+          <span><b>{stats.sheetsAwaitingPublish} mark sheet(s)</b> submitted by teachers are waiting for publish approval.</span>
+          <button className="btn btn-sm btn-orange" style={{ marginLeft: 'auto' }} onClick={() => navigate('/exams')}>Review & Publish</button>
+        </div>
+      )}
+
+      {/* Quick Actions */}
+      <div className="card card-pad mb">
+        <div className="card-title"><Send size={15} /> Quick Actions</div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button className="btn btn-sm btn-green" onClick={() => navigate('/attendance')}><UserCheck size={14} /> Mark Attendance</button>
+          <button className="btn btn-sm btn-blue" onClick={() => navigate('/notices')}><Megaphone size={14} /> Post Notice</button>
+          <button className="btn btn-sm btn-navy" onClick={() => navigate('/fees?add=1')}><Wallet size={14} /> Record Fee</button>
+          <button className="btn btn-sm btn-purple" onClick={() => navigate('/homework')}><NotebookPen size={14} /> Homework</button>
+          <button className="btn btn-sm btn-orange" onClick={() => navigate('/marks')}><Award size={14} /> Results / Marks</button>
+          <button className="btn btn-sm btn-red" onClick={() => navigate('/discipline')}><ShieldAlert size={14} /> Report Incident</button>
+        </div>
+      </div>
+
+      <div className="chart-grid">
+        <ChartPanel icon={UserCheck} title="Attendance" subtitle="Daily status totals · last 7 days">
+          <div className="chart-canvas">
           <Bar
             data={{
               labels: week.map((w) => dayLabel(w.date)),
               datasets: [
-                { label: 'Present', data: week.map((w) => w.present), backgroundColor: '#16a34a', stack: 's' },
-                { label: 'Absent', data: week.map((w) => w.absent), backgroundColor: '#ef4444', stack: 's' },
-                { label: 'Late', data: week.map((w) => w.late), backgroundColor: '#f59e0b', stack: 's' },
+                { label: 'Present', data: week.map((w) => w.present), backgroundColor: '#10b981', stack: 's', borderRadius: 4 },
+                { label: 'Late', data: week.map((w) => w.late), backgroundColor: '#fbbf24', stack: 's', borderRadius: 4 },
+                { label: 'Half-day', data: week.map((w) => w.halfday), backgroundColor: '#3b82f6', stack: 's', borderRadius: 4 },
+                { label: 'Leave', data: week.map((w) => w.leave), backgroundColor: '#8b5cf6', stack: 's', borderRadius: 4 },
+                { label: 'Absent', data: week.map((w) => w.absent), backgroundColor: '#ef4444', stack: 's', borderRadius: 4 },
               ],
             }}
-            options={{ responsive: true, plugins: { legend: legendOpts }, scales: { x: { stacked: true }, y: { stacked: true } } }}
+            options={{
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: legendOpts, tooltip: tooltipOpts },
+              scales: {
+                x: { stacked: true, grid: { display: false }, ticks: { font: { family: "'Inter', sans-serif", size: 10 }, color: 'var(--txt-muted)' } },
+                y: { stacked: true, grid: { color: 'rgba(203,213,225,0.25)', borderDash: [4, 4] }, ticks: { font: { family: "'Inter', sans-serif", size: 10 }, color: 'var(--txt-muted)', precision: 0 } }
+              }
+            }}
           />
-        </div>
+          </div>
+        </ChartPanel>
+        <ChartPanel icon={Wallet} title="Fee Collection" subtitle="Daily receipts · last 7 days">
+          <div className="chart-canvas">
+          <Line
+            data={{
+              labels: stats.feeTrend.map((f) => dayLabel(f.date)),
+              datasets: [{
+                label: `Collection (${cur})`, data: stats.feeTrend.map((f) => f.amount),
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16,185,129,0.10)',
+                fill: true,
+                tension: 0.42,
+                borderWidth: 3,
+                pointBackgroundColor: '#10b981',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+              }],
+            }}
+            options={{
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: false },
+                tooltip: { ...tooltipOpts, callbacks: { label: (context) => `${cur}${Number(context.raw || 0).toLocaleString('en-IN')}` } },
+              },
+              scales: {
+                ...commonScales,
+                y: { ...commonScales.y, ticks: { ...commonScales.y.ticks, callback: (value) => `${cur}${compactNumber(value)}` } },
+              }
+            }}
+          />
+          </div>
+        </ChartPanel>
+        <ChartPanel icon={GraduationCap} title="Class-wise Strength" subtitle="Active students by grade">
+          <div className="chart-canvas chart-canvas-tall">
+          <Bar
+            data={{
+              labels: Object.entries(stats.classWiseStrength || {}).filter(([, count]) => count > 0).map(([label]) => label),
+              datasets: [{
+                label: 'Students',
+                data: Object.entries(stats.classWiseStrength || {}).filter(([, count]) => count > 0).map(([, count]) => count),
+                backgroundColor: 'rgba(37,99,235,.82)',
+                borderColor: '#2563eb',
+                borderWidth: 1,
+                borderRadius: 6,
+                barThickness: 14
+              }]
+            }}
+            options={{
+              responsive: true,
+              maintainAspectRatio: false,
+              indexAxis: 'y',
+              plugins: { legend: { display: false }, tooltip: tooltipOpts },
+              scales: horizontalScales
+            }}
+          />
+          </div>
+        </ChartPanel>
+        <Birthdays birthdays={stats.birthdays} />
         <div className="card card-pad">
           <div className="card-title"><ShieldAlert size={15} /> Open Discipline Cases</div>
           {incidents.map((d) => (
@@ -435,10 +540,83 @@ function SupervisorDashboard({ stats, week, navigate }) {
           {incidents.length === 0 && <p className="muted small">No open incidents 🎉</p>}
           <button className="btn btn-sm btn-navy mt" onClick={() => navigate('/discipline')}>Open Discipline Register</button>
         </div>
+        <ChartPanel icon={UsersRound} title="Student Gender Mix"
+          subtitle={stats.genderMix['not specified'] ? `${stats.genderMix['not specified'].toLocaleString()} records require gender data` : 'Active students'}>
+          <div className="chart-doughnut">
+            <Doughnut
+              data={{
+                labels: Object.keys(stats.genderMix).map((g) => g[0].toUpperCase() + g.slice(1)),
+                datasets: [{
+                  data: Object.values(stats.genderMix),
+                  backgroundColor: Object.keys(stats.genderMix).map((gender) => ({ male: '#2563eb', female: '#ec4899', other: '#8b5cf6', 'not specified': '#94a3b8' }[gender])),
+                  borderWidth: 3,
+                  borderColor: 'rgba(255,255,255,0.75)',
+                  hoverOffset: 4
+                }],
+              }}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: legendOpts, tooltip: tooltipOpts },
+                cutout: '70%'
+              }}
+            />
+          </div>
+        </ChartPanel>
+        <ChartPanel icon={Wallet} title="Fee Demand" subtitle="Collected versus outstanding">
+          <div className="chart-doughnut">
+            <Doughnut
+              data={{
+                labels: ['Total Collected (All-Time)', 'Outstanding Balance'],
+                datasets: [{
+                  data: [stats.totalFeeCollected || 0, stats.outstanding || 0],
+                  backgroundColor: ['#10b981', '#ef4444'],
+                  borderWidth: 3,
+                  borderColor: 'rgba(255,255,255,0.75)',
+                  hoverOffset: 4
+                }]
+              }}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: legendOpts,
+                  tooltip: { ...tooltipOpts, callbacks: { label: (context) => `${context.label}: ${cur}${Number(context.raw || 0).toLocaleString('en-IN')}` } },
+                },
+                cutout: '70%'
+              }}
+            />
+          </div>
+        </ChartPanel>
+        <ChartPanel icon={ShieldAlert} title="Discipline Severity" subtitle="Recorded incidents by priority">
+          {Object.values(stats.severity).some((value) => value > 0) ? (
+            <div className="chart-doughnut">
+              <Doughnut
+              data={{
+                labels: Object.keys(stats.severity).map((g) => g[0].toUpperCase() + g.slice(1)),
+                datasets: [{
+                  data: Object.values(stats.severity),
+                  backgroundColor: ['#fbbf24', '#ef4444', '#3b82f6'],
+                  borderWidth: 3,
+                  borderColor: 'rgba(255,255,255,0.75)',
+                  hoverOffset: 4
+                }],
+              }}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: legendOpts, tooltip: tooltipOpts },
+                cutout: '70%'
+              }}
+              />
+            </div>
+          ) : <ChartEmpty message="No discipline incidents recorded" />}
+        </ChartPanel>
       </div>
     </>
   );
 }
+
 
 /* ---------------- Teacher dashboard (my day: periods + classes) ---------------- */
 function TeacherDashboard({ navigate }) {
@@ -566,7 +744,7 @@ export default function Dashboard() {
         </div>
       </div>
       {user?.role === 'clerk' && <ClerkDashboard stats={stats} cur={cur} navigate={navigate} />}
-      {user?.role === 'supervisor' && <SupervisorDashboard stats={stats} week={week} navigate={navigate} />}
+      {user?.role === 'supervisor' && <SupervisorDashboard stats={stats} week={week} cur={cur} navigate={navigate} />}
       {!['clerk', 'supervisor'].includes(user?.role) && <AdminDashboard stats={stats} week={week} cur={cur} navigate={navigate} />}
     </>
   );
