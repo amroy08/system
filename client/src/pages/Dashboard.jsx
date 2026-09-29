@@ -159,6 +159,21 @@ function AdminDashboard({ stats, week, cur, navigate }) {
         </div>
       )}
 
+      {/* Quick Actions */}
+      <div className="card card-pad mb">
+        <div className="card-title"><Send size={15} /> Quick Actions</div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button className="btn btn-sm btn-navy" onClick={() => navigate('/admissions?add=1')}><UserPlus size={14} /> Add Student</button>
+          <button className="btn btn-sm btn-green" onClick={() => navigate('/fees?add=1')}><Wallet size={14} /> Record Fee</button>
+          <button className="btn btn-sm btn-blue" onClick={() => navigate('/notices')}><Megaphone size={14} /> Post Notice</button>
+          <button className="btn btn-sm btn-orange" onClick={() => navigate('/attendance')}><UserCheck size={14} /> Mark Attendance</button>
+          <button className="btn btn-sm btn-purple" onClick={() => navigate('/homework')}><NotebookPen size={14} /> Homework</button>
+          <button className="btn btn-sm btn-teal" onClick={() => navigate('/marks')}><Award size={14} /> Results / Marks</button>
+          <button className="btn btn-sm btn-red" onClick={() => navigate('/discipline')}><ShieldAlert size={14} /> Report Incident</button>
+          <button className="btn btn-sm btn-gray" onClick={() => navigate('/users')}><UserCog size={14} /> Manage Users</button>
+        </div>
+      </div>
+
       <div className="chart-grid">
         <ChartPanel icon={UserCheck} title="Attendance" subtitle="Daily status totals · last 7 days">
           <div className="chart-canvas">
@@ -347,6 +362,19 @@ function ClerkDashboard({ stats, cur, navigate }) {
           onAction={() => navigate('/admissions?add=1')} actionLabel="+ New Registration" />
         <KpiCard color="navy" icon={GraduationCap} value={stats.activeStudents} label="Active Students"
           onClick={() => navigate('/students')} />
+      </div>
+
+      {/* Quick Actions */}
+      <div className="card card-pad mb">
+        <div className="card-title"><Send size={15} /> Quick Actions</div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button className="btn btn-sm btn-green" onClick={() => navigate('/fees?add=1')}><Wallet size={14} /> Record Fee</button>
+          <button className="btn btn-sm btn-navy" onClick={() => navigate('/admissions?add=1')}><UserPlus size={14} /> New Registration</button>
+          <button className="btn btn-sm btn-red" onClick={() => navigate('/outstanding')}><AlertTriangle size={14} /> Outstanding Report</button>
+          <button className="btn btn-sm btn-blue" onClick={() => navigate('/notices')}><Megaphone size={14} /> Post Notice</button>
+          <button className="btn btn-sm btn-orange" onClick={() => navigate('/attendance')}><UserCheck size={14} /> Mark Attendance</button>
+          <button className="btn btn-sm btn-purple" onClick={() => navigate('/students')}><GraduationCap size={14} /> Student Records</button>
+        </div>
       </div>
 
       <div className="grid-2">
