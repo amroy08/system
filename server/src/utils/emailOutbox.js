@@ -54,7 +54,7 @@ export async function enqueueEmailEvent({ eventType, entityType, entityId, versi
   }
   if (created.length) {
     try {
-      await processEmailOutbox();
+      await processEmailOutbox(20, { entityType, entityId, version });
     } catch (error) {
       console.error('[Email Outbox]', error);
     }
@@ -62,7 +62,7 @@ export async function enqueueEmailEvent({ eventType, entityType, entityId, versi
   return { queuedCount: created.length, duplicateCount };
 }
 
-export async function processEmailOutbox(limit = 20) {
+export async function processEmailOutbox(limit = 20, filter = null) {
   if (processing) return;
   processing = true;
   try {
@@ -72,10 +72,16 @@ export async function processEmailOutbox(limit = 20) {
       { status: 'sending', lastAttemptAt: { $lte: staleBefore } },
       { status: 'retry', nextAttemptAt: now, failureReason: 'Delivery worker was interrupted; retrying safely' }
     );
-    const jobs = await col('emailDeliveries').find({
+    const query = {
       status: { $in: ['pending', 'retry'] },
       nextAttemptAt: { $lte: now },
-    }, { sort: { createdAt: 1 }, limit });
+    };
+    if (filter?.entityType && filter?.entityId) {
+      query.entityType = filter.entityType;
+      query.entityId = filter.entityId;
+      if (filter.version) query.version = filter.version;
+    }
+    const jobs = await col('emailDeliveries').find(query, { sort: { createdAt: 1 }, limit });
 
     for (const job of jobs) {
       const attemptCount = Number(job.attemptCount || 0) + 1;
