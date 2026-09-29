@@ -362,9 +362,10 @@ router.get('/:id/results', async (req, res) => {
     if (!entry) continue;
     const exam = exams.find((e) => e._id === m.examId);
     const subject = subjects.find((s) => s._id === m.subjectId);
+    const maxMarks = Number(m.maxMarks || exam?.maxMarks || subject?.maxMarks || 100);
     results.push({
       examId: m.examId, examName: exam?.name || '?', subject: subject?.name || '?',
-      maxMarks: subject?.maxMarks || 100, marks: entry.marks, grade: entry.grade, status: m.status,
+      maxMarks, marks: entry.marks, grade: entry.grade, status: m.status,
     });
   }
   res.json({ student: publicStudent(student, req.user.role), results });

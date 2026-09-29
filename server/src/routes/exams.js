@@ -3,7 +3,7 @@ import { col, nextSeq } from '../db/index.js';
 import { authRequired, allowRoles, STAFF_TEACHER, STAFF } from '../middleware/auth.js';
 import { resolveEmailRecipients } from '../utils/emailRecipients.js';
 import { enqueueEmailEvent } from '../utils/emailOutbox.js';
-import { examTypeOrder, validateExamDetails } from '../utils/examTypes.js';
+import { defaultMarksForExamType, examTypeOrder, validateExamDetails } from '../utils/examTypes.js';
 import { canAccessClass, teacherClassIds } from '../utils/accessScope.js';
 import { acquireKeyedLock } from '../utils/keyedLock.js';
 import { formatClass } from '../utils/classNames.js';
@@ -35,7 +35,14 @@ router.get('/', async (req, res) => {
 
 router.post('/', allowRoles(...STAFF), async (req, res) => {
   try {
-    const b = { status: 'scheduled', ...req.body, classIds: Array.isArray(req.body.classIds) ? [...new Set(req.body.classIds.filter(Boolean))] : [] };
+    const defaults = defaultMarksForExamType(req.body.type);
+    const b = {
+      status: 'scheduled',
+      maxMarks: req.body.maxMarks ? Number(req.body.maxMarks) : defaults.maxMarks,
+      passingMarks: req.body.passingMarks ? Number(req.body.passingMarks) : defaults.passingMarks,
+      ...req.body,
+      classIds: Array.isArray(req.body.classIds) ? [...new Set(req.body.classIds.filter(Boolean))] : [],
+    };
     validateExamDetails(b);
     const doc = await col('exams').insertOne({ ...b, sequenceOrder: examTypeOrder(b.type) });
     res.status(201).json(doc);
@@ -51,6 +58,8 @@ router.put('/:id', allowRoles(...STAFF), async (req, res) => {
     const b = { ...req.body };
     delete b._id;
     if (b.classIds !== undefined) b.classIds = Array.isArray(b.classIds) ? [...new Set(b.classIds.filter(Boolean))] : [];
+    if (b.maxMarks !== undefined) b.maxMarks = Number(b.maxMarks);
+    if (b.passingMarks !== undefined) b.passingMarks = Number(b.passingMarks);
     const merged = { ...existing, ...b };
     validateExamDetails(merged);
     res.json(await col('exams').updateOne({ _id: req.params.id }, { ...b, sequenceOrder: examTypeOrder(merged.type) }));
@@ -123,21 +132,28 @@ async function validateMarksContext(examId, classId, subjectId) {
   return { exam, subject };
 }
 
-async function cleanMarksEntries(classId, entries, subject) {
+function resolveMarksThresholds(exam, subject, sheetOverride = {}) {
+  const maxMarks = Number(sheetOverride.maxMarks || exam.maxMarks || subject.maxMarks || 100);
+  const passingMarks = Number(sheetOverride.passingMarks || exam.passingMarks || subject.passingMarks || 35);
+  return { maxMarks, passingMarks };
+}
+
+async function cleanMarksEntries(classId, entries, thresholds) {
   if (!Array.isArray(entries)) throw new Error('Marks entries are required');
   const roster = await col('students').find({ classId, status: 'active' });
   const rosterIds = new Set(roster.map((student) => student._id));
   const seen = new Set();
+  const { maxMarks, passingMarks } = thresholds;
   return entries.map((entry) => {
     if (!entry?.studentId || !rosterIds.has(entry.studentId)) throw new Error('Marks contain a student outside this class');
     if (seen.has(entry.studentId)) throw new Error('Marks contain a duplicate student');
     seen.add(entry.studentId);
     const empty = entry.marks === '' || entry.marks === null || entry.marks === undefined;
     const marks = empty ? null : Number(entry.marks);
-    if (!empty && (!Number.isFinite(marks) || marks < 0 || marks > Number(subject.maxMarks || 100))) {
-      throw new Error(`Marks must be between 0 and ${Number(subject.maxMarks || 100)}`);
+    if (!empty && (!Number.isFinite(marks) || marks < 0 || marks > maxMarks)) {
+      throw new Error(`Marks must be between 0 and ${maxMarks}`);
     }
-    const grade = computeGrade(marks, subject.maxMarks, subject.passingMarks);
+    const grade = computeGrade(marks, maxMarks, passingMarks);
     return { studentId: entry.studentId, marks, grade: grade.grade, pass: grade.pass };
   });
 }
@@ -148,14 +164,15 @@ router.get('/:examId/marks', allowRoles(...STAFF_TEACHER), async (req, res) => {
   const { classId, subjectId } = req.query;
   if (!classId || !subjectId) return res.status(400).json({ error: 'classId and subjectId are required' });
   if (!(await canAccessClass(req.user, classId))) return res.status(403).json({ error: 'You are not assigned to this class' });
-  let subject;
+  let exam, subject;
   try {
-    ({ subject } = await validateMarksContext(req.params.examId, classId, subjectId));
+    ({ exam, subject } = await validateMarksContext(req.params.examId, classId, subjectId));
   } catch (error) {
     return res.status(400).json({ error: error.message });
   }
   const students = await col('students').find({ classId, status: 'active' }, { sort: { rollNo: 1 } });
   const saved = await col('marks').findOne({ examId: req.params.examId, classId, subjectId });
+  const thresholds = resolveMarksThresholds(exam, subject, saved || {});
   const entries = students.map((s) => {
     const e = saved?.entries?.find((x) => x.studentId === s._id);
     return {
@@ -164,23 +181,42 @@ router.get('/:examId/marks', allowRoles(...STAFF_TEACHER), async (req, res) => {
       marks: e?.marks ?? '', grade: e?.grade || '-',
     };
   });
-  res.json({ status: saved?.status || 'draft', subject, entries });
+  res.json({
+    status: saved?.status || 'draft',
+    subject: { ...subject, maxMarks: thresholds.maxMarks, passingMarks: thresholds.passingMarks },
+    maxMarks: thresholds.maxMarks,
+    passingMarks: thresholds.passingMarks,
+    entries,
+  });
 });
 
 // Save marks: action = draft | submitted | locked  (teacher & staff)
 router.post('/:examId/marks', allowRoles(...STAFF_TEACHER), async (req, res) => {
-  const { classId, subjectId, entries, action } = req.body;
+  const { classId, subjectId, entries, action, maxMarks: reqMax, passingMarks: reqPass } = req.body;
   if (!(await canAccessClass(req.user, classId))) return res.status(403).json({ error: 'You are not assigned to this class' });
   const release = await acquireKeyedLock(`marks:${req.params.examId}:${classId}:${subjectId}`);
   try {
-    const { subject } = await validateMarksContext(req.params.examId, classId, subjectId);
+    const { exam, subject } = await validateMarksContext(req.params.examId, classId, subjectId);
     const existing = await col('marks').findOne({ examId: req.params.examId, classId, subjectId });
     if (existing && ['locked', 'published'].includes(existing.status) && req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Marks are locked. Contact administrator to make changes.' });
     }
-    const graded = await cleanMarksEntries(classId, entries, subject);
+    const thresholds = resolveMarksThresholds(exam, subject, {
+      maxMarks: reqMax || existing?.maxMarks,
+      passingMarks: reqPass || existing?.passingMarks,
+    });
+    const graded = await cleanMarksEntries(classId, entries, thresholds);
     const status = ['draft', 'submitted', 'locked'].includes(action) ? action : 'draft';
-    const payload = { examId: req.params.examId, classId, subjectId, entries: graded, status, enteredBy: req.user.name };
+    const payload = {
+      examId: req.params.examId,
+      classId,
+      subjectId,
+      maxMarks: thresholds.maxMarks,
+      passingMarks: thresholds.passingMarks,
+      entries: graded,
+      status,
+      enteredBy: req.user.name,
+    };
     const doc = existing
       ? await col('marks').updateOne({ _id: existing._id }, payload)
       : await col('marks').insertOne(payload);
@@ -210,6 +246,7 @@ router.get('/:examId/results', allowRoles(...STAFF_TEACHER), async (req, res) =>
   if (req.user.role === 'teacher' && (!classId || !(await canAccessClass(req.user, classId)))) {
     return res.status(403).json({ error: 'Select one of your assigned classes' });
   }
+  const exam = await col('exams').findOne({ _id: req.params.examId });
   const query = { examId: req.params.examId };
   if (classId) query.classId = classId;
   const sheets = await col('marks').find(query);
@@ -222,12 +259,13 @@ router.get('/:examId/results', allowRoles(...STAFF_TEACHER), async (req, res) =>
   const gradeDist = {};
   for (const sheet of sheets) {
     const subj = subjects.find((s) => s._id === sheet.subjectId);
+    const sheetMax = Number(sheet.maxMarks || exam?.maxMarks || subj?.maxMarks || 100);
     for (const e of sheet.entries || []) {
       if (e.marks == null) continue;
       if (!perStudent[e.studentId]) perStudent[e.studentId] = { total: 0, max: 0, subjects: [] };
       perStudent[e.studentId].total += e.marks;
-      perStudent[e.studentId].max += subj?.maxMarks || 100;
-      perStudent[e.studentId].subjects.push({ subject: subj?.name, marks: e.marks, grade: e.grade, maxMarks: subj?.maxMarks });
+      perStudent[e.studentId].max += sheetMax;
+      perStudent[e.studentId].subjects.push({ subject: subj?.name, marks: e.marks, grade: e.grade, maxMarks: sheetMax });
       gradeDist[e.grade] = (gradeDist[e.grade] || 0) + 1;
     }
   }

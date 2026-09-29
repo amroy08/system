@@ -13,7 +13,7 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
 const EXAM_TYPES = ['Weekly Test', 'Unit Test 1', 'First Semester Exam', 'Unit Test 2', 'Second Semester Exam', 'Other / Additional Exam'];
 const LEGACY_EXAM_TYPES = ['Unit Test', 'Quarterly', 'Half Yearly', 'Annual', 'Mock Test'];
-const EMPTY = { name: '', type: 'Unit Test 1', academicYear: '2026-2027', classIds: [], startDate: '', endDate: '', status: 'scheduled' };
+const EMPTY = { name: '', type: 'Unit Test 1', maxMarks: 25, passingMarks: 9, academicYear: '2026-2027', classIds: [], startDate: '', endDate: '', status: 'scheduled' };
 
 export default function Exams() {
   const { notify, user } = useApp();
@@ -118,6 +118,7 @@ export default function Exams() {
   const columns = [
     { key: 'name', label: 'Exam', render: (r) => <b>{r.name}</b> },
     { key: 'type', label: 'Type', render: (r) => <Badge value={r.type} color="bg-purple" /> },
+    { key: 'maxMarks', label: 'Marks (Total / Pass)', render: (r) => <span><b>{r.maxMarks ?? 100}</b> <span className="muted">/ Pass: {r.passingMarks ?? 35}</span></span> },
     { key: 'classIds', label: 'Class / Grade', render: (r) => getClassName(r.classIds) },
     { key: 'academicYear', label: 'Year' },
     { key: 'startDate', label: 'Start Date' },
@@ -194,13 +195,28 @@ export default function Exams() {
           <div className="form-grid">
             <Field label="Exam Name" required><input value={form.name} placeholder="e.g. Unit Test 1" onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
             <Field label="Type">
-              <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+              <select value={form.type} onChange={(e) => {
+                const nextType = e.target.value;
+                const defs = nextType === 'Weekly Test'
+                  ? { maxMarks: 20, passingMarks: 7 }
+                  : nextType.includes('Unit Test')
+                    ? { maxMarks: 25, passingMarks: 9 }
+                    : { maxMarks: 100, passingMarks: 35 };
+                setForm((cur) => ({
+                  ...cur,
+                  type: nextType,
+                  maxMarks: cur.maxMarks && modal.data ? cur.maxMarks : defs.maxMarks,
+                  passingMarks: cur.passingMarks && modal.data ? cur.passingMarks : defs.passingMarks,
+                }));
+              }}>
                 {EXAM_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
                 {modal.data && LEGACY_EXAM_TYPES.includes(form.type) && (
                   <optgroup label="Current legacy type"><option value={form.type}>{form.type}</option></optgroup>
                 )}
               </select>
             </Field>
+            <Field label="Total Marks (Out of)"><input type="number" min="1" value={form.maxMarks ?? 100} onChange={(e) => setForm({ ...form, maxMarks: Number(e.target.value) || 0 })} /></Field>
+            <Field label="Passing Marks"><input type="number" min="0" max={form.maxMarks ?? 100} value={form.passingMarks ?? 35} onChange={(e) => setForm({ ...form, passingMarks: Number(e.target.value) || 0 })} /></Field>
             <Field label="Academic Year"><input value={form.academicYear} onChange={(e) => setForm({ ...form, academicYear: e.target.value })} /></Field>
             <Field label="Status">
               <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>

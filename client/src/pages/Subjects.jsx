@@ -111,8 +111,8 @@ export default function Subjects() {
           <div className="form-grid">
             <Field label="Subject Name" required><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
             <Field label="Subject Code"><input value={form.code} placeholder="e.g. MATH-01" onChange={(e) => setForm({ ...form, code: e.target.value })} /></Field>
-            <Field label="Max Marks"><input type="number" value={form.maxMarks} onChange={(e) => setForm({ ...form, maxMarks: +e.target.value })} /></Field>
-            <Field label="Passing Marks"><input type="number" value={form.passingMarks} onChange={(e) => setForm({ ...form, passingMarks: +e.target.value })} /></Field>
+            <Field label="Default Max Marks" hint="Optional default; can be set per exam (e.g. 25 for Unit Test, 100 for Semester)"><input type="number" value={form.maxMarks} onChange={(e) => setForm({ ...form, maxMarks: +e.target.value })} /></Field>
+            <Field label="Default Passing Marks" hint="Optional default"><input type="number" value={form.passingMarks} onChange={(e) => setForm({ ...form, passingMarks: +e.target.value })} /></Field>
             <Field label="Assign to Classes" full>
               <div className="class-picker">
                 <div className="class-picker-toolbar">

@@ -36,10 +36,11 @@ export default function Marks() {
   const selectedExam = exams.find((item) => item._id === examId);
   const selectedClass = classes.find((item) => item._id === classId);
   const completedFilters = [examId, classId, subjectId].filter(Boolean).length;
+  const currentMax = Number(sheet?.maxMarks || sheet?.subject?.maxMarks || selectedExam?.maxMarks || 100);
+  const currentPass = Number(sheet?.passingMarks || sheet?.subject?.passingMarks || selectedExam?.passingMarks || 35);
 
   const setMark = (studentId, marks) => {
-    const max = sheet.subject?.maxMarks || 100;
-    if (marks !== '' && (Number(marks) < 0 || Number(marks) > max)) return;
+    if (marks !== '' && (Number(marks) < 0 || Number(marks) > currentMax)) return;
     setSheet((s) => ({
       ...s,
       entries: s.entries.map((e) => (e.studentId === studentId ? { ...e, marks } : e)),
@@ -51,6 +52,8 @@ export default function Marks() {
     try {
       const { data } = await api.post(`/exams/${examId}/marks`, {
         classId, subjectId, action,
+        maxMarks: currentMax,
+        passingMarks: currentPass,
         entries: sheet.entries.map((e) => ({ studentId: e.studentId, marks: e.marks })),
       });
       setSheet((s) => ({ ...s, status: data.status, entries: s.entries.map((e) => {
@@ -74,9 +77,9 @@ export default function Marks() {
       td{border-bottom:1px solid #e2e8f0;padding:7px 10px}
     </style></head><body>
       <h1>${exam?.name || ''} — Mark Sheet</h1>
-      <h3>${klass ? formatClass(klass) : ''} · ${sheet.subject?.name} (Max: ${sheet.subject?.maxMarks})</h3>
+      <h3>${klass ? formatClass(klass) : ''} · ${sheet.subject?.name} (Total: ${currentMax}, Pass: ${currentPass})</h3>
       <table><thead><tr><th>Roll</th><th>Adm #</th><th>Student</th><th>Marks</th><th>Grade</th></tr></thead><tbody>
-      ${sheet.entries.map((e) => `<tr><td>${e.rollNo || ''}</td><td>${e.admissionNo}</td><td>${e.name}</td><td>${e.marks ?? '—'} / ${sheet.subject?.maxMarks}</td><td>${e.grade}</td></tr>`).join('')}
+      ${sheet.entries.map((e) => `<tr><td>${e.rollNo || ''}</td><td>${e.admissionNo}</td><td>${e.name}</td><td>${e.marks ?? '—'} / ${currentMax}</td><td>${e.grade}</td></tr>`).join('')}
       </tbody></table></body></html>`);
     w.document.close();
     setTimeout(() => w.print(), 300);
@@ -114,7 +117,7 @@ export default function Marks() {
           <Field label="Subject" required>
             <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)} disabled={!classId}>
               <option value="">Select subject…</option>
-              {classSubjects.map((s) => <option key={s._id} value={s._id}>{s.name} (Max {s.maxMarks})</option>)}
+              {classSubjects.map((s) => <option key={s._id} value={s._id}>{s.name}</option>)}
             </select>
           </Field>
         </div>
@@ -134,7 +137,11 @@ export default function Marks() {
               <span className="academic-eyebrow">Active mark sheet</span>
               <h3>{selectedExam?.name || 'Exam'} <small>· {selectedClass ? formatClass(selectedClass, false) : 'Class'} · {sheet.subject?.name}</small></h3>
             </div>
-            <div className="academic-context-tags"><span>Max {sheet.subject?.maxMarks}</span><span>{sheet.entries.length} students</span></div>
+            <div className="academic-context-tags">
+              <span>Total: <b>{currentMax}</b> marks</span>
+              <span>Pass: <b>{currentPass}</b> marks</span>
+              <span>{sheet.entries.length} students</span>
+            </div>
           </div>
           <div className="table-toolbar">
             <Badge value={sheet.status} />
@@ -147,7 +154,7 @@ export default function Marks() {
           </div>
           <div className="table-wrap">
             <table className="data-table">
-              <thead><tr><th>Roll</th><th>Adm #</th><th>Student</th><th>Marks (out of {sheet.subject?.maxMarks})</th><th>Grade</th></tr></thead>
+              <thead><tr><th>Roll</th><th>Adm #</th><th>Student</th><th>Marks (out of {currentMax})</th><th>Grade</th></tr></thead>
               <tbody>
                 {sheet.entries.length === 0 && <tr className="empty-row"><td colSpan={5}>No active students in this class</td></tr>}
                 {sheet.entries.map((e) => (
@@ -156,7 +163,7 @@ export default function Marks() {
                     <td className="mono">{e.admissionNo}</td>
                     <td><b>{e.name}</b></td>
                     <td>
-                      <input className="marks-score-input" type="number" min="0" max={sheet.subject?.maxMarks} value={e.marks}
+                      <input className="marks-score-input" type="number" min="0" max={currentMax} value={e.marks}
                         disabled={locked}
                         onChange={(ev) => setMark(e.studentId, ev.target.value)} />
                     </td>
