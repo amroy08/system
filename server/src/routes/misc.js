@@ -90,33 +90,12 @@ classesRouterWithCache.get('/', async (req, res, next) => {
 classesRouterWithCache.use(classesRouter);
 router.use('/classes', classesRouterWithCache);
 
-// ---------- Simple CRUD modules ----------
-// Subjects: 10-minute cache — almost never changes
-const SUBJECTS_CACHE_MS = 10 * 60 * 1000;
-let subjectsCache = null;
-let subjectsCacheAt = 0;
-function invalidateSubjectsCache() { subjectsCache = null; subjectsCacheAt = 0; }
+// Subjects: directly served via crudRouter with immediate DB queries
 const subjectsRouter = crudRouter('subjects', {
   writeRoles: STAFF,
   defaultSort: { name: 1 },
-  afterCreate: async () => invalidateSubjectsCache(),
-  afterUpdate: async () => invalidateSubjectsCache(),
 });
-const subjectsRouterWithCache = Router();
-subjectsRouterWithCache.use(authRequired);
-subjectsRouterWithCache.get('/', async (req, res, next) => {
-  if (subjectsCache && Date.now() - subjectsCacheAt < SUBJECTS_CACHE_MS) return res.json(subjectsCache);
-  return next();
-});
-subjectsRouterWithCache.use((req, res, next) => {
-  const originalJson = res.json.bind(res);
-  if (req.method === 'GET' && req.path === '/') {
-    res.json = (data) => { subjectsCache = data; subjectsCacheAt = Date.now(); return originalJson(data); };
-  }
-  next();
-});
-subjectsRouterWithCache.use(subjectsRouter);
-router.use('/subjects', subjectsRouterWithCache);
+router.use('/subjects', subjectsRouter);
 
 const feeStructures = Router();
 feeStructures.use(authRequired);

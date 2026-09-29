@@ -12,34 +12,23 @@ export function requestTiming(req, res, next) {
   next();
 }
 
-// HTTP cache headers for GET API responses — avoids redundant network fetches
-// on back-navigation and tab switching without stale data risk
-const LONG_CACHE_ROUTES = ['/api/classes', '/api/subjects', '/api/settings', '/api/public/settings'];
-const MEDIUM_CACHE_ROUTES = ['/api/students', '/api/fees', '/api/dashboard', '/api/teachers', '/api/parents'];
-const NO_CACHE_ROUTES = ['/api/auth'];
+// HTTP cache headers for GET API responses
+// Only truly static public settings can be cached by the browser.
+// All business data (subjects, classes, students, fees, etc.) must use no-cache
+// so edits immediately reflect across the application without browser stale cache.
+const STATIC_CACHE_ROUTES = ['/api/public/settings'];
 
 export function apiCacheHeaders(req, res, next) {
   if (req.method !== 'GET' || !req.originalUrl?.startsWith('/api')) return next();
 
-  // Never cache auth endpoints
-  if (NO_CACHE_ROUTES.some((r) => req.originalUrl.startsWith(r))) {
-    res.setHeader('Cache-Control', 'no-store');
+  if (STATIC_CACHE_ROUTES.some((r) => req.originalUrl.startsWith(r))) {
+    res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=60');
     return next();
   }
 
-  // Long-lived reference data: 5 min cache + 1 min stale-while-revalidate
-  if (LONG_CACHE_ROUTES.some((r) => req.originalUrl.startsWith(r))) {
-    res.setHeader('Cache-Control', 'private, max-age=300, stale-while-revalidate=60');
-    return next();
-  }
-
-  // Medium-churn data: 30 sec cache + 10 sec stale-while-revalidate
-  if (MEDIUM_CACHE_ROUTES.some((r) => req.originalUrl.startsWith(r))) {
-    res.setHeader('Cache-Control', 'private, max-age=30, stale-while-revalidate=10');
-    return next();
-  }
-
-  // Default for other API GETs: short private cache
-  res.setHeader('Cache-Control', 'private, max-age=10');
+  // All other API responses: no-cache so updates are immediately visible
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   next();
 }
