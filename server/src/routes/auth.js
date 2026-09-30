@@ -37,6 +37,12 @@ function csrfCookieOptions() {
   };
 }
 
+// Browser fingerprint: SHA-256 of user-agent to bind session to a specific browser
+function browserFingerprint(req) {
+  const ua = req.headers['user-agent'] || '';
+  return crypto.createHash('sha256').update(ua).digest('hex').slice(0, 16);
+}
+
 async function recordAuthEvent(event) {
   try {
     await col('authEvents').insertOne({ ...event, occurredAt: new Date().toISOString() });
@@ -76,6 +82,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: lockedUntil ? 'Account temporarily locked. Try again later.' : 'Invalid username or password' });
     }
 
+    const fp = browserFingerprint(req);
     await col('users').updateOne({ _id: user._id }, { lastLogin: new Date().toISOString(), loginAttempts: 0, lockedUntil: null });
     const token = jwt.sign(
       {
@@ -85,6 +92,7 @@ router.post('/login', async (req, res) => {
         name: user.fullName,
         refId: user.refId || null,
         tokenVersion: user.tokenVersion || 0,
+        fp,
       },
       config.jwtSecret,
       { expiresIn: config.jwtExpiresIn }
@@ -92,7 +100,7 @@ router.post('/login', async (req, res) => {
     const csrfToken = crypto.randomBytes(32).toString('hex');
     res.cookie(config.sessionCookieName, token, sessionCookieOptions());
     res.cookie(config.csrfCookieName, csrfToken, csrfCookieOptions());
-    await recordAuthEvent({ type: 'login_succeeded', userId: user._id, username, ip: req.ip });
+    await recordAuthEvent({ type: 'login_succeeded', userId: user._id, username, ip: req.ip, userAgent: (req.headers['user-agent'] || '').slice(0, 200) });
     res.json({ user: publicUser(user) });
   } finally {
     release();

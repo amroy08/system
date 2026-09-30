@@ -1,6 +1,13 @@
 import jwt from 'jsonwebtoken';
+import crypto from 'node:crypto';
 import { config } from '../config.js';
 import { col } from '../db/index.js';
+
+// Re-derive the same fingerprint the login handler embedded in the token
+function browserFingerprint(req) {
+  const ua = req.headers['user-agent'] || '';
+  return crypto.createHash('sha256').update(ua).digest('hex').slice(0, 16);
+}
 
 export async function authRequired(req, res, next) {
   const header = req.headers.authorization || '';
@@ -9,6 +16,10 @@ export async function authRequired(req, res, next) {
   if (!token) return res.status(401).json({ error: 'Authentication required' });
   try {
     const payload = jwt.verify(token, config.jwtSecret);
+    // Verify browser fingerprint — reject stolen tokens used from a different browser
+    if (payload.fp && payload.fp !== browserFingerprint(req)) {
+      return res.status(401).json({ error: 'Session is not valid for this browser' });
+    }
     const user = await col('users').findOne({ _id: payload.id });
     if (!user || user.status !== 'active') {
       return res.status(401).json({ error: 'Session is no longer active' });

@@ -80,14 +80,23 @@ app.use(apiCacheHeaders);
 app.use(csrfProtect);
 app.use(mutationAudit);
 
+// Sustained rate limit: 10 login attempts per 15 minutes per IP
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 30,
+  limit: 10,
   standardHeaders: 'draft-8',
   legacyHeaders: false,
-  message: { error: 'Too many login attempts. Try again later.' },
+  message: { error: 'Too many login attempts. Please wait 15 minutes and try again.' },
 });
-app.use('/api/auth/login', loginLimiter);
+// Burst rate limit: max 5 attempts per minute to block rapid-fire attacks
+const loginBurstLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 5,
+  standardHeaders: false,
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts. Please slow down.' },
+});
+app.use('/api/auth/login', loginBurstLimiter, loginLimiter);
 
 app.get('/api/health', async (req, res) => {
   try {
