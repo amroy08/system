@@ -35,7 +35,7 @@ const NAV = [
   ]},
   { section: 'Daily', items: [
     { to: '/timetable', label: 'Timetable', icon: CalendarRange, roles: ['admin', 'clerk', 'supervisor', 'teacher', 'student', 'parent'] },
-    { to: '/attendance', label: 'Attendance', icon: UserCheck, roles: ['admin', 'clerk', 'supervisor', 'teacher'] },
+    { to: '/attendance', label: 'Attendance', icon: UserCheck, roles: ['admin', 'clerk', 'supervisor', 'teacher', 'student', 'parent'] },
     { to: '/notices', label: 'School Notices', icon: Megaphone, roles: ['admin', 'clerk', 'supervisor', 'teacher', 'student', 'parent'] },
     { to: '/homework', label: 'Homework / Classwork', icon: ClipboardCheck, roles: ['admin', 'clerk', 'supervisor', 'teacher', 'student', 'parent'] },
     { to: '/ptm', label: 'PTM', icon: UsersRound, roles: ['admin', 'clerk', 'supervisor', 'teacher', 'parent'] },
@@ -46,7 +46,7 @@ const NAV = [
   ]},
   { section: 'Academic', items: [
     { to: '/exams', label: 'Exams', icon: ClipboardList, roles: ['admin', 'clerk', 'supervisor', 'teacher'] },
-    { to: '/marks', label: 'Results / Marks', icon: Award, roles: ['admin', 'clerk', 'supervisor', 'teacher'] },
+    { to: '/marks', label: 'Results / Marks', icon: Award, roles: ['admin', 'clerk', 'supervisor', 'teacher', 'student', 'parent'] },
     { to: '/hall-tickets', label: 'Hall Tickets', icon: FileBadge, roles: ['admin', 'clerk', 'supervisor', 'student', 'parent'] },
     { to: '/discipline', label: 'Discipline', icon: ShieldAlert, roles: ['admin', 'clerk', 'supervisor', 'teacher'], badgeKey: 'openIncidents' },
     { to: '/conduct', label: 'Conduct', icon: Award, roles: ['admin', 'clerk', 'supervisor', 'teacher'] },

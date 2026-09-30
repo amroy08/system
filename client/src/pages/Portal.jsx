@@ -81,7 +81,7 @@ function MyLibraryBooks({ studentId, cur, isParent, studentName }) {
   );
 }
 
-function MyAttendanceCard({ attendance }) {
+export function MyAttendanceCard({ attendance }) {
   const [viewMode, setViewMode] = useState('calendar'); // 'calendar' or 'list'
   const [statusFilter, setStatusFilter] = useState('all');
   

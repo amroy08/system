@@ -1,14 +1,188 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Award, Save, Send, Lock, Printer } from 'lucide-react';
+import { Award, Save, Send, Lock, Printer, GraduationCap, Trophy, CheckCheck } from 'lucide-react';
 import { api, errMsg } from '../api';
 import { useApp } from '../context/AppContextValue';
 import { useLookups } from '../hooks/useLookups';
-import { Field, Badge } from '../components/ui';
-import { formatClass } from '../utils/classNames';
+import { Field, Badge, KpiCard } from '../components/ui';
+import { formatClass, displayClassName } from '../utils/classNames';
+
+function StudentParentMarks() {
+  const { user, notify } = useApp();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedChildId, setSelectedChildId] = useState('');
+  const [selectedExamId, setSelectedExamId] = useState('all');
+
+  useEffect(() => {
+    setLoading(true);
+    const url = user?.role === 'parent' ? '/portal/parent' : '/portal/student';
+    api.get(url)
+      .then(({ data }) => {
+        setData(data);
+        if (user?.role === 'parent') {
+          const children = [...(data.children || []), ...(data.formerChildren || [])];
+          if (children.length > 0) setSelectedChildId(children[0].student._id);
+        }
+      })
+      .catch((e) => notify(errMsg(e), 'error'))
+      .finally(() => setLoading(false));
+  }, [user?.role, notify]);
+
+  if (loading) {
+    return <div className="card card-pad">Loading exam results…</div>;
+  }
+
+  const isParent = user?.role === 'parent';
+  const allChildren = isParent ? [...(data?.children || []), ...(data?.formerChildren || [])] : [];
+  const currentSnap = isParent
+    ? allChildren.find((c) => c.student._id === selectedChildId) || allChildren[0]
+    : data;
+
+  if (!currentSnap) {
+    return (
+      <div className="card card-pad muted">
+        No linked student records found.
+      </div>
+    );
+  }
+
+  const results = currentSnap.results || [];
+
+  const examMap = new Map();
+  results.forEach(r => {
+    if (r.examId && !examMap.has(r.examId)) {
+      examMap.set(r.examId, r.examName);
+    }
+  });
+  const distinctExams = Array.from(examMap.entries()).map(([id, name]) => ({ id, name }));
+
+  const filteredResults = selectedExamId === 'all'
+    ? results
+    : results.filter(r => r.examId === selectedExamId);
+
+  const totalSubjects = filteredResults.length;
+  const passedCount = filteredResults.filter(r => r.grade !== 'F').length;
+  const totalMarksScored = filteredResults.reduce((sum, r) => sum + (Number(r.marks) || 0), 0);
+  const totalMaxMarks = filteredResults.reduce((sum, r) => sum + (Number(r.maxMarks) || 0), 0);
+  const overallPct = totalMaxMarks ? Math.round((totalMarksScored / totalMaxMarks) * 100) : 0;
+
+  return (
+    <div style={{ display: 'grid', gap: 14 }}>
+      <div className="page-head no-print">
+        <div>
+          <h2><Award size={20} /> Results & Marks</h2>
+          <p className="muted small" style={{ margin: '4px 0 0 0' }}>
+            {isParent
+              ? `Viewing exam results for ${currentSnap.student.firstName} ${currentSnap.student.lastName || ''} (${currentSnap.className})`
+              : `Viewing your published exam results (${currentSnap.className})`}
+          </p>
+        </div>
+        <div className="spacer" />
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          {isParent && allChildren.length > 1 && (
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <span className="small muted">Child:</span>
+              <select
+                value={selectedChildId}
+                onChange={(e) => setSelectedChildId(e.target.value)}
+                style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '5px 10px', fontSize: 13, background: '#fff' }}
+              >
+                {allChildren.map((child) => (
+                  <option key={child.student._id} value={child.student._id}>
+                    {child.student.firstName} {child.student.lastName || ''} ({child.className})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {results.length > 0 && (
+            <button className="btn btn-navy" onClick={() => window.print()}>
+              <Printer size={15} /> Print Results
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="kpi-grid">
+        <KpiCard color="navy" icon={GraduationCap} value={displayClassName(currentSnap.className)} label="Class / Section" />
+        <KpiCard color="purple" icon={Award} value={results.length} label="Published Results" />
+        <KpiCard color={overallPct >= 40 ? 'green' : 'red'} icon={Trophy} value={`${overallPct}%`} label="Overall Score" />
+        <KpiCard color="teal" icon={CheckCheck} value={`${passedCount} / ${totalSubjects || 1}`} label="Subjects Passed" />
+      </div>
+
+      <div className="card card-pad">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+          <div className="card-title" style={{ margin: 0 }}>
+            <Award size={16} /> Exam Results
+          </div>
+          {distinctExams.length > 1 && (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <span className="small muted">Exam:</span>
+              <select
+                value={selectedExamId}
+                onChange={(e) => setSelectedExamId(e.target.value)}
+                style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', fontSize: 12, background: '#fff' }}
+              >
+                <option value="all">All Exams</option>
+                {distinctExams.map((ex) => (
+                  <option key={ex.id} value={ex.id}>{ex.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Exam Name</th>
+              <th>Subject</th>
+              <th>Marks</th>
+              <th>Max Marks</th>
+              <th>Grade</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredResults.map((r, i) => (
+              <tr key={i}>
+                <td><b>{r.examName}</b></td>
+                <td>{r.subject}</td>
+                <td><b className={r.grade === 'F' ? 'txt-red' : 'txt-green'}>{r.marks}</b></td>
+                <td>{r.maxMarks}</td>
+                <td><Badge value={r.grade} color={r.grade === 'F' ? 'bg-red' : 'bg-green'} /></td>
+                <td>
+                  <Badge
+                    value={r.grade === 'F' ? 'Failed' : 'Passed'}
+                    color={r.grade === 'F' ? 'bg-red' : 'bg-green'}
+                  />
+                </td>
+              </tr>
+            ))}
+            {filteredResults.length === 0 && (
+              <tr className="empty-row">
+                <td colSpan={6} style={{ textAlign: 'center', padding: '24px 12px' }}>
+                  {results.length === 0
+                    ? 'No results have been published yet for this student.'
+                    : 'No results found for the selected exam filter.'}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 
 export default function Marks() {
   const { notify, user } = useApp();
+
+  if (['student', 'parent'].includes(user?.role)) {
+    return <StudentParentMarks />;
+  }
+
   const { classes, subjects } = useLookups(['classes', 'subjects']);
   const [exams, setExams] = useState([]);
   const [examId, setExamId] = useState('');

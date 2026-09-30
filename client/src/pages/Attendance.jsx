@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { UserCheck, Save, CopyCheck, CheckCheck, XCircle } from 'lucide-react';
+import { UserCheck, Save, CopyCheck, CheckCheck, XCircle, CalendarCheck, Clock, GraduationCap } from 'lucide-react';
 import { api, errMsg } from '../api';
 import { useApp } from '../context/AppContextValue';
 import { useLookups } from '../hooks/useLookups';
-import { Field, Badge } from '../components/ui';
-import { formatClass } from '../utils/classNames';
+import { Field, Badge, KpiCard } from '../components/ui';
+import { formatClass, displayClassName } from '../utils/classNames';
+import { MyAttendanceCard } from './Portal';
 
 const STATUSES = [
   { key: 'present', label: 'P', title: 'Present' },
@@ -14,8 +15,100 @@ const STATUSES = [
   { key: 'leave', label: 'LV', title: 'Leave' },
 ];
 
+function StudentParentAttendance() {
+  const { user, notify } = useApp();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedChildId, setSelectedChildId] = useState('');
+
+  useEffect(() => {
+    setLoading(true);
+    const url = user?.role === 'parent' ? '/portal/parent' : '/portal/student';
+    api.get(url)
+      .then(({ data }) => {
+        setData(data);
+        if (user?.role === 'parent') {
+          const children = [...(data.children || []), ...(data.formerChildren || [])];
+          if (children.length > 0) setSelectedChildId(children[0].student._id);
+        }
+      })
+      .catch((e) => notify(errMsg(e), 'error'))
+      .finally(() => setLoading(false));
+  }, [user?.role, notify]);
+
+  if (loading) {
+    return <div className="card card-pad">Loading attendance records…</div>;
+  }
+
+  const isParent = user?.role === 'parent';
+  const allChildren = isParent ? [...(data?.children || []), ...(data?.formerChildren || [])] : [];
+  const currentSnap = isParent
+    ? allChildren.find((c) => c.student._id === selectedChildId) || allChildren[0]
+    : data;
+
+  if (!currentSnap) {
+    return (
+      <div className="card card-pad muted">
+        No linked student records found.
+      </div>
+    );
+  }
+
+  const att = currentSnap.attendance || { summary: {}, recent: [] };
+  const sum = att.summary || {};
+  const totalDays = (sum.present || 0) + (sum.absent || 0) + (sum.late || 0) + (sum.halfday || 0) + (sum.leave || 0);
+  const presentPct = totalDays ? Math.round(((sum.present || 0) / totalDays) * 100) : 0;
+
+  return (
+    <div style={{ display: 'grid', gap: 14 }}>
+      <div className="page-head">
+        <div>
+          <h2><UserCheck size={20} /> Attendance</h2>
+          <p className="muted small" style={{ margin: '4px 0 0 0' }}>
+            {isParent
+              ? `Viewing attendance for ${currentSnap.student.firstName} ${currentSnap.student.lastName || ''} (${currentSnap.className})`
+              : `Viewing your attendance records (${currentSnap.className})`}
+          </p>
+        </div>
+        <div className="spacer" />
+        {isParent && allChildren.length > 1 && (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span className="small muted">Child:</span>
+            <select
+              value={selectedChildId}
+              onChange={(e) => setSelectedChildId(e.target.value)}
+              style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '5px 10px', fontSize: 13, background: '#fff' }}
+            >
+              {allChildren.map((child) => (
+                <option key={child.student._id} value={child.student._id}>
+                  {child.student.firstName} {child.student.lastName || ''} ({child.className})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
+
+      <div className="kpi-grid">
+        <KpiCard color="navy" icon={GraduationCap} value={displayClassName(currentSnap.className)} label="Class / Section" />
+        <KpiCard color={presentPct >= 75 ? 'green' : 'red'} icon={CalendarCheck} value={`${presentPct}%`} label="Overall Attendance" />
+        <KpiCard color="green" icon={CheckCheck} value={sum.present || 0} label="Days Present" />
+        <KpiCard color="red" icon={XCircle} value={sum.absent || 0} label="Days Absent" />
+        <KpiCard color="yellow" icon={Clock} value={(sum.late || 0) + (sum.halfday || 0) + (sum.leave || 0)} label="Late / Leave / Half-day" />
+      </div>
+
+      <MyAttendanceCard attendance={att} />
+    </div>
+  );
+}
+
 export default function Attendance() {
-  const { notify } = useApp();
+  const { notify, user } = useApp();
+
+  if (['student', 'parent'].includes(user?.role)) {
+    return <StudentParentAttendance />;
+  }
+
   const { classes } = useLookups(['classes']);
   const [classId, setClassId] = useState('');
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
