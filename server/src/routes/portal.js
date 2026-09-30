@@ -34,7 +34,7 @@ async function studentSnapshot(studentId) {
     await Promise.all([
       col('classes').findOne({ _id: student.classId, ...ACTIVE_CLASS_QUERY }),
       col('attendance').find({ classId: student.classId }),
-      col('marks').find({ classId: student.classId, status: 'published' }),
+      col('marks').find({ classId: student.classId, status: 'published', _deleted: { $ne: true } }),
       col('exams').find({ _deleted: { $ne: true } }),
       col('subjects').find({ _deleted: { $ne: true } }),
       col('feeReceipts').find({ studentId }, { sort: { date: -1 } }),
@@ -61,11 +61,14 @@ async function studentSnapshot(studentId) {
   // Published results only
   const results = [];
   for (const m of sheets) {
+    if (m._deleted) continue;
+    const exam = exams.find((e) => e._id === m.examId);
+    if (!exam || exam._deleted) continue;
     const entry = (m.entries || []).find((e) => e.studentId === studentId);
     if (!entry) continue;
     results.push({
       examId: m.examId,
-      examName: exams.find((e) => e._id === m.examId)?.name || '?',
+      examName: exam.name,
       subject: subjects.find((s) => s._id === m.subjectId)?.name || '?',
       maxMarks: subjects.find((s) => s._id === m.subjectId)?.maxMarks || 100,
       marks: entry.marks, grade: entry.grade,

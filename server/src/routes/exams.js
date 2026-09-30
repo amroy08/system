@@ -7,6 +7,7 @@ import { defaultMarksForExamType, examTypeOrder, validateExamDetails } from '../
 import { canAccessClass, teacherClassIds } from '../utils/accessScope.js';
 import { acquireKeyedLock } from '../utils/keyedLock.js';
 import { formatClass } from '../utils/classNames.js';
+import { invalidateStatsCache } from './dashboard.js';
 
 const router = Router();
 router.use(authRequired);
@@ -71,7 +72,10 @@ router.put('/:id', allowRoles(...STAFF), async (req, res) => {
 router.delete('/:id', allowRoles('admin'), async (req, res) => {
   const exam = await col('exams').findOne({ _id: req.params.id, _deleted: { $ne: true } });
   if (!exam) return res.status(404).json({ error: 'Exam not found' });
-  await col('exams').updateOne({ _id: req.params.id }, { _deleted: true, deletedAt: new Date().toISOString(), deletedBy: req.user.name });
+  const now = new Date().toISOString();
+  await col('exams').updateOne({ _id: req.params.id }, { _deleted: true, deletedAt: now, deletedBy: req.user.name });
+  await col('marks').updateMany({ examId: req.params.id }, { _deleted: true, deletedAt: now, deletedBy: req.user.name, deletedReason: 'parent_exam_deleted' });
+  invalidateStatsCache();
   res.json({ ok: true });
 });
 

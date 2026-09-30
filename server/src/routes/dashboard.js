@@ -14,7 +14,7 @@ let statsRefresh = null;
 async function buildStats() {
   const today = new Date().toISOString().slice(0, 10);
 
-  const [students, teachers, classList, subjects, parents, receipts, attendanceToday, exams, incidents, helpdesk, complaints, pendingAdmissions, marks] =
+  const [students, teachers, classList, subjects, parents, receipts, attendanceToday, exams, allActiveExams, incidents, helpdesk, complaints, pendingAdmissions, marks] =
     await Promise.all([
       col('students').find({ status: { $in: ['active', 'inactive', 'transferred', 'passed-out', 'suspended'] } }, {
         projection: { _id: 1, firstName: 1, lastName: 1, gender: 1, dob: 1, classId: 1, status: 1, totalDemand: 1 },
@@ -28,11 +28,12 @@ async function buildStats() {
       }),
       col('attendance').find({ date: today }),
       col('exams').find({ _deleted: { $ne: true }, status: { $in: ['scheduled', 'ongoing'] } }),
+      col('exams').find({ _deleted: { $ne: true } }, { projection: { _id: 1 } }),
       col('discipline').find({ _deleted: { $ne: true } }),
       col('helpdesk').count({ status: 'open' }),
       col('complaints').count({ status: 'open' }),
       col('admissions').count({ status: 'registered' }),
-      col('marks').find({ status: 'submitted' }),
+      col('marks').find({ status: 'submitted', _deleted: { $ne: true } }),
     ]);
 
   const activeStudents = students.filter((s) => s.status === 'active');
@@ -130,11 +131,18 @@ async function buildStats() {
     genderMix, severity, feeTrend,
     birthdays,
     pendingAdmissions,
-    sheetsAwaitingPublish: marks.length,
+    sheetsAwaitingPublish: marks.filter((m) => {
+      const activeExamIdSet = new Set(allActiveExams.map((e) => e._id));
+      return activeExamIdSet.has(m.examId);
+    }).length,
     receiptsToday: receipts.filter((r) => r.date === today).length,
     classWiseStrength,
   };
   return data;
+}
+
+export function invalidateStatsCache() {
+  statsCache = null;
 }
 
 function refreshStatsCache() {
@@ -152,6 +160,9 @@ function refreshStatsCache() {
 }
 
 router.get('/stats', allowRoles(...STAFF), async (req, res) => {
+  if (req.query.refresh === 'true') {
+    statsCache = null;
+  }
   const cacheAge = statsCache ? Date.now() - statsCache.createdAt : Infinity;
   if (statsCache && cacheAge < STATS_CACHE_MS) {
     return res.json(statsCache.data);
