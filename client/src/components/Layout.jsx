@@ -53,7 +53,7 @@ const NAV = [
     { to: '/promotions', label: 'Promotions', icon: ArrowUpDown, roles: ['admin'] },
   ]},
   { section: 'Finance', items: [
-    { to: '/fees', label: 'Fees Collection', icon: Wallet, roles: ['admin', 'clerk', 'supervisor'] },
+    { to: '/fees', label: 'Fees Collection', icon: Wallet, roles: ['admin', 'clerk', 'supervisor', 'student', 'parent'] },
     { to: '/outstanding', label: 'Outstanding Dues', icon: Landmark, roles: ['admin', 'clerk', 'supervisor'] },
     { to: '/payroll', label: 'Payroll / Salary', icon: BadgeIndianRupee, roles: ['admin', 'clerk', 'supervisor', 'teacher'] },
     { to: '/daily-accounts', label: 'Daily Accounts', icon: Landmark, roles: ['admin', 'clerk', 'supervisor'] },
@@ -133,7 +133,9 @@ export default function Layout() {
     };
   }, [mobileMenuOpen]);
 
-  const title = TITLES[location.pathname] || 'Dashboard';
+  const title = (['student', 'parent'].includes(user?.role) && location.pathname === '/fees')
+    ? 'Fees & Receipts'
+    : (TITLES[location.pathname] || 'Dashboard');
   const canSearch = ['admin', 'clerk', 'supervisor', 'teacher'].includes(user?.role);
   const initials = user?.fullName ? user.fullName.split(' ').map(n => n[0]).slice(0, 2).join('') : 'U';
 
@@ -185,7 +187,9 @@ export default function Layout() {
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     <i.icon size={16} style={{ flexShrink: 0 }} />
-                    <span className="nav-label">{i.label}</span>
+                    <span className="nav-label">
+                      {(['student', 'parent'].includes(user?.role) && i.to === '/fees') ? 'Fees & Receipts' : i.label}
+                    </span>
                     {i.badgeKey && badges[i.badgeKey] > 0 && (
                       <span className="nav-badge">{badges[i.badgeKey]}</span>
                     )}

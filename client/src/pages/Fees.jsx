@@ -77,8 +77,235 @@ function escapeReceiptText(value) {
     .replaceAll("'", '&#039;');
 }
 
+function StudentParentFees() {
+  const { user, notify, settings } = useApp();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedChildId, setSelectedChildId] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const cur = settings.currency || '₹';
+
+  useEffect(() => {
+    setLoading(true);
+    const url = user?.role === 'parent' ? '/portal/parent' : '/portal/student';
+    api.get(url)
+      .then(({ data }) => {
+        setData(data);
+        if (user?.role === 'parent') {
+          const children = [...(data.children || []), ...(data.formerChildren || [])];
+          if (children.length > 0) setSelectedChildId(children[0].student._id);
+        }
+      })
+      .catch((e) => notify(errMsg(e), 'error'))
+      .finally(() => setLoading(false));
+  }, [user?.role, notify]);
+
+  if (loading) {
+    return <div className="card card-pad">Loading fee details & receipts…</div>;
+  }
+
+  const isParent = user?.role === 'parent';
+  const allChildren = isParent ? [...(data?.children || []), ...(data?.formerChildren || [])] : [];
+  const currentSnap = isParent
+    ? allChildren.find((c) => c.student._id === selectedChildId) || allChildren[0]
+    : data;
+
+  if (!currentSnap) {
+    return (
+      <div className="card card-pad muted">
+        No linked student records found.
+      </div>
+    );
+  }
+
+  const fees = currentSnap.fees || {};
+  const receipts = fees.receipts || [];
+  const balance = Number(fees.balance || 0);
+  const totalPaid = receipts.reduce((sum, r) => sum + (Number(r.amountPaid) || 0), 0);
+  const totalDemand = Number(fees.totalDemand || fees.subTotal || 0) || (totalPaid + balance);
+
+  const filteredReceipts = receipts.filter((r) => {
+    if (statusFilter === 'all') return true;
+    return r.status?.toLowerCase() === statusFilter.toLowerCase();
+  });
+
+  const printSingleReceipt = (r) => {
+    const printWin = window.open('', '', 'width=800,height=600');
+    if (!printWin) return;
+    printWin.document.write(`
+      <html>
+        <head>
+          <title>Fee Receipt - ${r.receiptNo}</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 24px; color: #1e293b; }
+            .receipt-box { max-width: 600px; margin: 0 auto; border: 1px solid #cbd5e1; border-radius: 8px; padding: 24px; }
+            .school-header { text-align: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 16px; }
+            .school-name { font-size: 18px; font-weight: 800; text-transform: uppercase; margin: 0; color: #0f172a; }
+            .school-addr { font-size: 11px; color: #64748b; margin: 4px 0 0; }
+            .row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
+            .receipt-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+            .receipt-table th, .receipt-table td { border: 1px solid #e2e8f0; padding: 8px 12px; text-align: left; }
+            .receipt-table th { background: #f8fafc; font-weight: 600; }
+            .total-row { font-weight: 800; background: #f1f5f9; }
+            .footer { margin-top: 24px; text-align: center; font-size: 11px; color: #94a3b8; }
+          </style>
+        </head>
+        <body>
+          <div class="receipt-box">
+            <div class="school-header">
+              <h2 class="school-name">${settings.schoolName || 'M.V HIGH SCHOOL'}</h2>
+              <p class="school-addr">Enterprise Management Portal · Official Fee Receipt</p>
+            </div>
+            <div class="row">
+              <div><b>Receipt No:</b> ${r.receiptNo}</div>
+              <div><b>Date:</b> ${r.date}</div>
+            </div>
+            <div class="row">
+              <div><b>Student:</b> ${currentSnap.student.firstName} ${currentSnap.student.lastName || ''}</div>
+              <div><b>Adm No:</b> ${currentSnap.student.admissionNo}</div>
+            </div>
+            <div class="row">
+              <div><b>Class:</b> ${currentSnap.className}</div>
+              <div><b>Payment Mode:</b> ${(r.mode || 'Cash').toUpperCase()}</div>
+            </div>
+            <table class="receipt-table">
+              <thead><tr><th>Description</th><th style="text-align:right">Amount</th></tr></thead>
+              <tbody>
+                <tr><td>School Fees Payment</td><td style="text-align:right">${cur}${(r.amountPaid || 0).toLocaleString()}</td></tr>
+                <tr class="total-row"><td>Total Paid</td><td style="text-align:right">${cur}${(r.amountPaid || 0).toLocaleString()}</td></tr>
+                <tr><td>Remaining Fee Balance</td><td style="text-align:right">${cur}${(r.balance || 0).toLocaleString()}</td></tr>
+              </tbody>
+            </table>
+            <div class="footer">This is a computer-generated fee receipt. No signature required.</div>
+          </div>
+        </body>
+      </html>
+    `);
+    printWin.document.close();
+    printWin.focus();
+    setTimeout(() => {
+      printWin.print();
+      printWin.close();
+    }, 250);
+  };
+
+  return (
+    <div style={{ display: 'grid', gap: 14 }}>
+      <div className="page-head no-print">
+        <div>
+          <h2><Wallet size={20} /> Fees & Receipts</h2>
+          <p className="muted small" style={{ margin: '4px 0 0 0' }}>
+            {isParent
+              ? `Viewing fees & payments for ${currentSnap.student.firstName} ${currentSnap.student.lastName || ''} (${currentSnap.className})`
+              : `Viewing your fees statement (${currentSnap.className})`}
+          </p>
+        </div>
+        <div className="spacer" />
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          {isParent && allChildren.length > 1 && (
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <span className="small muted">Child:</span>
+              <select
+                value={selectedChildId}
+                onChange={(e) => setSelectedChildId(e.target.value)}
+                style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '5px 10px', fontSize: 13, background: '#fff' }}
+              >
+                {allChildren.map((child) => (
+                  <option key={child.student._id} value={child.student._id}>
+                    {child.student.firstName} {child.student.lastName || ''} ({child.className})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="kpi-grid">
+        <KpiCard color="navy" icon={Wallet} value={displayClassName(currentSnap.className)} label="Class / Section" />
+        <KpiCard color="purple" icon={Wallet} value={`${cur}${totalDemand.toLocaleString()}`} label="Annual Fee Demand" />
+        <KpiCard color="green" icon={Wallet} value={`${cur}${totalPaid.toLocaleString()}`} label="Total Fees Paid" />
+        <KpiCard color={balance > 0 ? 'red' : 'teal'} icon={Wallet} value={`${cur}${balance.toLocaleString()}`} label={balance > 0 ? 'Outstanding Balance' : 'Fees Cleared (No Dues)'} />
+      </div>
+
+      <div className="card card-pad">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+          <div className="card-title" style={{ margin: 0 }}>
+            <Wallet size={16} /> Fee Payment Receipts
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span className="small muted">Filter:</span>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', fontSize: 12, background: '#fff' }}
+            >
+              <option value="all">All Receipts</option>
+              <option value="paid">Paid</option>
+              <option value="partial">Partial</option>
+            </select>
+          </div>
+        </div>
+
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Receipt #</th>
+              <th>Date</th>
+              <th>Mode</th>
+              <th>Paid Amount</th>
+              <th>Balance Remaining</th>
+              <th>Status</th>
+              <th style={{ textAlign: 'right' }}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredReceipts.map((r) => (
+              <tr key={r._id || r.receiptNo}>
+                <td className="mono font-semibold">{r.receiptNo}</td>
+                <td>{r.date}</td>
+                <td><Badge value={r.mode || 'Cash'} color="bg-purple" /></td>
+                <td><b className="txt-green">{cur}{(r.amountPaid || 0).toLocaleString()}</b></td>
+                <td className={(r.balance || 0) > 0 ? 'txt-red' : 'txt-green'}>
+                  {cur}{(r.balance || 0).toLocaleString()}
+                </td>
+                <td><Badge value={r.status || 'paid'} color={(r.status === 'paid' || r.balance === 0) ? 'bg-green' : 'bg-yellow'} /></td>
+                <td style={{ textAlign: 'right' }}>
+                  <button
+                    type="button"
+                    className="btn btn-xs btn-outline"
+                    onClick={() => printSingleReceipt(r)}
+                    title="Print Receipt"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                  >
+                    <Printer size={13} /> Print
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {filteredReceipts.length === 0 && (
+              <tr className="empty-row">
+                <td colSpan={7} style={{ textAlign: 'center', padding: '24px 12px' }}>
+                  {receipts.length === 0
+                    ? 'No fee payment receipts found for this student.'
+                    : 'No receipts match the selected status filter.'}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export default function Fees() {
   const { notify, settings, user } = useApp();
+
+  if (['student', 'parent'].includes(user?.role)) {
+    return <StudentParentFees />;
+  }
+
   const { students = [], classes = [] } = useLookups(['students', 'classes']);
   const [rows, setRows] = useState([]);
   const [tab, setTab] = useState('all');
