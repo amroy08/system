@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, User, Eye, EyeOff, ArrowRight, ShieldCheck, Fingerprint, KeyRound } from 'lucide-react';
+import { Lock, User, Eye, EyeOff, ArrowRight, ShieldCheck, BookOpen, CalendarCheck, GraduationCap } from 'lucide-react';
 import { useApp } from '../context/AppContextValue';
 import { errMsg } from '../api';
 
@@ -56,16 +56,16 @@ export default function Login() {
           <div className="login-brand-divider" />
           <div className="login-brand-features">
             <div className="login-brand-feature">
-              <ShieldCheck size={18} />
-              <span>End-to-end encrypted sessions</span>
+              <CalendarCheck size={18} />
+              <span>Attendance & Timetable Management</span>
             </div>
             <div className="login-brand-feature">
-              <Fingerprint size={18} />
-              <span>Browser-bound authentication</span>
+              <BookOpen size={18} />
+              <span>Fees, Homework & Library Tracking</span>
             </div>
             <div className="login-brand-feature">
-              <KeyRound size={18} />
-              <span>Brute-force protected access</span>
+              <GraduationCap size={18} />
+              <span>Exams, Results & Student Portal</span>
             </div>
           </div>
         </div>
@@ -79,6 +79,10 @@ export default function Login() {
           <div className="login-mobile-logo">
             <div className="login-brand-monogram login-brand-monogram--sm">MV</div>
             <h2 className="login-mobile-school">{schoolName}</h2>
+          </div>
+
+          <div className="login-form-logo">
+            <img src="/school-logo.jpg" alt={schoolName + ' Logo'} className="login-school-logo" />
           </div>
 
           <div className="login-form-header">
