@@ -128,6 +128,14 @@ export function MyAttendanceCard({ attendance }) {
     }
   };
   
+  const STATUS_CONFIG = {
+    present: { label: 'Present', color: '#16a34a', bg: 'rgba(22, 163, 74, 0.15)', border: '#86efac', text: '#15803d' },
+    absent: { label: 'Absent', color: '#dc2626', bg: 'rgba(220, 38, 38, 0.15)', border: '#fca5a5', text: '#b91c1c' },
+    late: { label: 'Late', color: '#d97706', bg: 'rgba(217, 119, 6, 0.15)', border: '#fde68a', text: '#b45309' },
+    halfday: { label: 'Half Day', color: '#0284c7', bg: 'rgba(2, 132, 199, 0.15)', border: '#7dd3fc', text: '#0369a1' },
+    leave: { label: 'Leave', color: '#7c3aed', bg: 'rgba(124, 58, 237, 0.15)', border: '#d8b4fe', text: '#6d28d9' },
+  };
+
   const getStatusColorClass = (status) => {
     if (!status) return '';
     const s = status.toLowerCase();
@@ -142,11 +150,15 @@ export function MyAttendanceCard({ attendance }) {
   const getStatusStyles = (status) => {
     if (!status) return {};
     const s = status.toLowerCase();
-    if (s === 'present') return { backgroundColor: 'rgba(22, 163, 74, 0.1)', color: 'var(--accent)' };
-    if (s === 'absent') return { backgroundColor: 'rgba(220, 38, 38, 0.1)', color: 'var(--danger)' };
-    if (s === 'late') return { backgroundColor: 'rgba(234, 179, 8, 0.1)', color: 'var(--warning)' };
-    if (s === 'halfday') return { backgroundColor: 'rgba(14, 165, 233, 0.1)', color: '#0ea5e9' };
-    if (s === 'leave') return { backgroundColor: 'rgba(124, 58, 237, 0.1)', color: '#7c3aed' };
+    const cfg = STATUS_CONFIG[s];
+    if (cfg) {
+      return {
+        backgroundColor: cfg.bg,
+        borderColor: cfg.border,
+        color: cfg.text,
+        fontWeight: '700',
+      };
+    }
     return {};
   };
 
@@ -188,13 +200,14 @@ export function MyAttendanceCard({ attendance }) {
         <span>{day}</span>
         {status && (
           <span 
-            className={getStatusColorClass(status)} 
             style={{ 
-              width: 5, 
-              height: 5, 
+              width: 7, 
+              height: 7, 
               borderRadius: '50%', 
+              backgroundColor: STATUS_CONFIG[status.toLowerCase()]?.color || '#16a34a',
               position: 'absolute', 
-              bottom: 4 
+              bottom: 4,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
             }} 
           />
         )}
@@ -249,12 +262,35 @@ export function MyAttendanceCard({ attendance }) {
             {calendarCells}
           </div>
 
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 12, fontSize: 10, justifyContent: 'center', color: 'var(--muted)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span className="bg-green" style={{ width: 6, height: 6, borderRadius: '50%', display: 'inline-block' }} /> Present</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span className="bg-red" style={{ width: 6, height: 6, borderRadius: '50%', display: 'inline-block' }} /> Absent</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span className="bg-yellow" style={{ width: 6, height: 6, borderRadius: '50%', display: 'inline-block' }} /> Late</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span className="bg-blue" style={{ width: 6, height: 6, borderRadius: '50%', display: 'inline-block' }} /> Half Day</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span className="bg-purple" style={{ width: 6, height: 6, borderRadius: '50%', display: 'inline-block' }} /> Leave</div>
+          <div style={{
+            display: 'flex',
+            gap: 12,
+            flexWrap: 'wrap',
+            marginTop: 14,
+            padding: '8px 12px',
+            backgroundColor: '#f8fafc',
+            borderRadius: '8px',
+            border: '1px solid #e2e8f0',
+            fontSize: 12,
+            justifyContent: 'center',
+            alignItems: 'center'
+          }}>
+            {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+              <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, color: '#334155' }}>
+                <span
+                  style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: '50%',
+                    backgroundColor: cfg.color,
+                    display: 'inline-block',
+                    flexShrink: 0,
+                    boxShadow: `0 0 0 2px ${cfg.bg}, 0 1px 2px rgba(0,0,0,0.15)`
+                  }}
+                />
+                <span>{cfg.label}</span>
+              </div>
+            ))}
           </div>
         </div>
       ) : (
