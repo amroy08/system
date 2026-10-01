@@ -205,8 +205,9 @@ export default function Exams() {
                 setForm((cur) => ({
                   ...cur,
                   type: nextType,
-                  maxMarks: cur.maxMarks && modal.data ? cur.maxMarks : defs.maxMarks,
-                  passingMarks: cur.passingMarks && modal.data ? cur.passingMarks : defs.passingMarks,
+                  // When creating a new exam, auto-suggest standard defaults for the chosen type
+                  maxMarks: modal.data ? cur.maxMarks : defs.maxMarks,
+                  passingMarks: modal.data ? cur.passingMarks : defs.passingMarks,
                 }));
               }}>
                 {EXAM_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
@@ -215,8 +216,49 @@ export default function Exams() {
                 )}
               </select>
             </Field>
-            <Field label="Total Marks (Out of)"><input type="number" min="1" value={form.maxMarks ?? 100} onChange={(e) => setForm({ ...form, maxMarks: Number(e.target.value) || 0 })} /></Field>
-            <Field label="Passing Marks"><input type="number" min="0" max={form.maxMarks ?? 100} value={form.passingMarks ?? 35} onChange={(e) => setForm({ ...form, passingMarks: Number(e.target.value) || 0 })} /></Field>
+            <Field label="Total Marks (Out of)" hint="Customizable for any exam">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="e.g. 25, 50, 80, 100"
+                  value={form.maxMarks ?? ''}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? '' : Number(e.target.value);
+                    setForm({ ...form, maxMarks: val });
+                  }}
+                />
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {[20, 25, 40, 50, 80, 100].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      className={`btn btn-xs ${form.maxMarks === preset ? 'btn-navy' : 'btn-gray'}`}
+                      style={{ padding: '2px 8px', fontSize: '11px', borderRadius: 4 }}
+                      onClick={() => {
+                        const pass = preset === 100 ? 35 : preset === 80 ? 28 : preset === 50 ? 18 : preset === 40 ? 14 : preset === 25 ? 9 : 7;
+                        setForm({ ...form, maxMarks: preset, passingMarks: pass });
+                      }}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </Field>
+            <Field label="Passing Marks" hint="Minimum marks needed to pass">
+              <input
+                type="number"
+                min="0"
+                max={form.maxMarks || 100}
+                placeholder="e.g. 9 or 35"
+                value={form.passingMarks ?? ''}
+                onChange={(e) => {
+                  const val = e.target.value === '' ? '' : Number(e.target.value);
+                  setForm({ ...form, passingMarks: val });
+                }}
+              />
+            </Field>
             <Field label="Academic Year"><input value={form.academicYear} onChange={(e) => setForm({ ...form, academicYear: e.target.value })} /></Field>
             <Field label="Status">
               <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
