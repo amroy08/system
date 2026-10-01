@@ -57,7 +57,7 @@ async function filterClassRows(rows, req) {
 const CLASSES_CACHE_MS = 5 * 60 * 1000;
 let classesCache = null;
 let classesCacheAt = 0;
-function invalidateClassesCache() { classesCache = null; classesCacheAt = 0; }
+export function invalidateClassesCache() { classesCache = null; classesCacheAt = 0; }
 
 const classesRouter = crudRouter('classes', {
   writeRoles: STAFF,

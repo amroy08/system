@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { col } from '../db/index.js';
 import { authRequired, allowRoles, STAFF, STAFF_TEACHER } from '../middleware/auth.js';
+import { invalidateClassesCache } from './misc.js';
 
 const router = Router();
 router.use(authRequired);
@@ -75,6 +76,38 @@ router.delete('/assignments/:id', allowRoles(...STAFF), async (req, res) => {
     _deleted: true, deletedAt: new Date().toISOString(), deletedBy: req.user.name,
   });
   res.json({ ok: true });
+});
+
+// Update or unassign Class Teacher for a teacher
+router.put('/:teacherId/class-teacher', allowRoles(...STAFF), async (req, res) => {
+  const { teacherId } = req.params;
+  const { classId } = req.body;
+
+  const teacher = await col('users').findOne({ _id: teacherId, role: 'teacher', status: { $ne: 'deleted' } });
+  if (!teacher) return res.status(404).json({ error: 'Teacher not found' });
+
+  // 1. Remove this teacher from any class they currently lead
+  await col('classes').updateMany(
+    { classTeacherId: teacherId },
+    { $set: { classTeacherId: '' } }
+  );
+
+  // 2. If a target class is provided, assign this teacher to that class
+  if (classId) {
+    const targetClass = await col('classes').findOne({ _id: classId, ...ACTIVE_CLASS_QUERY });
+    if (!targetClass) return res.status(404).json({ error: 'Target class not found or inactive' });
+
+    await col('classes').updateOne(
+      { _id: classId },
+      { $set: { classTeacherId: teacherId } }
+    );
+  }
+
+  // Invalidate caches so UI updates everywhere immediately
+  invalidateTeachersCache();
+  invalidateClassesCache();
+
+  res.json({ ok: true, classId: classId || null });
 });
 
 // Substitutes: load an absent teacher's periods for a date, allocate a substitute

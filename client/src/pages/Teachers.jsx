@@ -9,7 +9,7 @@ import { formatClass } from '../utils/classNames';
 
 export default function Teachers() {
   const { notify, user } = useApp();
-  const { classes, subjects } = useLookups(['classes', 'subjects']);
+  const { classes, subjects, reload: reloadClasses } = useLookups(['classes', 'subjects']);
   const [rows, setRows] = useState([]);
   const [tab, setTab] = useState('all');
   const [modal, setModal] = useState(null);
@@ -33,11 +33,31 @@ export default function Teachers() {
   const totalAssignments = rows.reduce((s, r) => s + r.assignmentCount, 0);
   const classTeachers = rows.filter((r) => r.classTeacherOf).length;
 
+  const [selectedClassTeacher, setSelectedClassTeacher] = useState('');
+  const [savingClassTeacher, setSavingClassTeacher] = useState(false);
+
   const openManage = async (t) => {
     const { data } = await api.get('/teachers/assignments', { params: { teacherId: t._id } });
     setAssignments(data);
     setNewAssign({ classId: '', subjectId: '' });
+    // Find if teacher is class teacher of any class
+    const currentClass = classes.find((c) => c.classTeacherId === t._id);
+    setSelectedClassTeacher(currentClass ? currentClass._id : '');
     setModal({ type: 'manage', data: t });
+  };
+
+  const handleUpdateClassTeacher = async (classId) => {
+    setSelectedClassTeacher(classId);
+    setSavingClassTeacher(true);
+    try {
+      await api.put(`/teachers/${modal.data._id}/class-teacher`, { classId });
+      notify(classId ? 'Class Teacher assigned successfully' : 'Class Teacher designation removed');
+      await Promise.all([load(), reloadClasses()]);
+    } catch (e) {
+      notify(errMsg(e), 'error');
+    } finally {
+      setSavingClassTeacher(false);
+    }
   };
 
   const addAssignment = async () => {
@@ -109,7 +129,39 @@ export default function Teachers() {
       <DataTable columns={columns} rows={filtered} title="Teachers Report" exportName="teachers" />
 
       {modal?.type === 'manage' && (
-        <Modal title={`Assignments — ${modal.data.fullName}`} icon={Settings2} size="lg" onClose={() => setModal(null)}>
+        <Modal title={`Manage Teacher — ${modal.data.fullName}`} icon={Settings2} size="lg" onClose={() => setModal(null)}>
+          <div style={{ marginBottom: 20, padding: '14px 16px', background: 'rgba(241, 245, 249, 0.65)', border: '1px solid #e2e8f0', borderRadius: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <Star size={16} style={{ color: '#f59e0b' }} />
+              <b style={{ fontSize: '0.95rem' }}>Class Teacher Designation</b>
+            </div>
+            <p className="small muted" style={{ margin: '0 0 10px 0' }}>
+              Assign this teacher as the official Class Teacher of a specific grade and section.
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <select
+                style={{ flex: '1 1 240px', maxWidth: 360 }}
+                value={selectedClassTeacher}
+                disabled={savingClassTeacher}
+                onChange={(e) => handleUpdateClassTeacher(e.target.value)}
+              >
+                <option value="">None (Not a Class Teacher)</option>
+                {classes.filter((c) => c.status === 'active').map((c) => {
+                  const currentHolder = rows.find((r) => r._id === c.classTeacherId && r._id !== modal.data._id);
+                  return (
+                    <option key={c._id} value={c._id}>
+                      {formatClass(c)}{currentHolder ? ` (Currently: ${currentHolder.fullName})` : ''}
+                    </option>
+                  );
+                })}
+              </select>
+              {savingClassTeacher && <span className="small muted">Saving...</span>}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <h4 style={{ margin: 0, fontSize: '0.95rem' }}>Subject & Class Teaching Assignments</h4>
+          </div>
           <div className="table-wrap mb">
           <table className="data-table">
             <thead><tr><th>Class</th><th>Subject</th><th></th></tr></thead>
