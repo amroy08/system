@@ -8,6 +8,14 @@ const TAG_COLORS = {
   Receipt: '#16a34a', Asset: '#d97706', Book: '#7c3aed', Exam: '#dc2626', 'Salary Slip': '#0d9488',
 };
 
+const QUICK_ACTIONS = [
+  { type: 'Action', title: 'Add New Student', subtitle: 'Enroll a new student into the school roster', route: '/students' },
+  { type: 'Action', title: 'Record Fee Payment', subtitle: 'Collect fee and generate formal receipt', route: '/fees' },
+  { type: 'Action', title: 'Mark Attendance', subtitle: 'Take daily attendance for any class', route: '/attendance' },
+  { type: 'Action', title: 'Publish School Notice', subtitle: 'Post circular to parents and teachers', route: '/notices' },
+  { type: 'Action', title: 'View Audit Logs', subtitle: 'Inspect recent administrative and financial operations', route: '/audit-logs' },
+];
+
 export default function CommandPalette({ open, onClose }) {
   const [q, setQ] = useState('');
   const [results, setResults] = useState([]);
@@ -16,13 +24,15 @@ export default function CommandPalette({ open, onClose }) {
   const timer = useRef(null);
   const navigate = useNavigate();
 
+  const items = q.trim().length >= 2 ? results : QUICK_ACTIONS;
+
   useEffect(() => {
     if (!open) { setQ(''); setResults([]); setSel(0); }
   }, [open]);
 
   useEffect(() => {
     clearTimeout(timer.current);
-    if (q.trim().length < 2) { setResults([]); return; }
+    if (q.trim().length < 2) { setResults([]); setSel(0); return; }
     setLoading(true);
     timer.current = setTimeout(async () => {
       try {
@@ -42,9 +52,9 @@ export default function CommandPalette({ open, onClose }) {
   }, [navigate, onClose]);
 
   const onKey = (e) => {
-    if (e.key === 'ArrowDown') { e.preventDefault(); setSel((s) => Math.min(s + 1, results.length - 1)); }
+    if (e.key === 'ArrowDown') { e.preventDefault(); setSel((s) => Math.min(s + 1, items.length - 1)); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setSel((s) => Math.max(s - 1, 0)); }
-    else if (e.key === 'Enter') { e.preventDefault(); go(results[sel]); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (items[sel]) go(items[sel]); }
     else if (e.key === 'Escape') onClose();
   };
 
@@ -57,7 +67,7 @@ export default function CommandPalette({ open, onClose }) {
           <Search size={17} />
           <input
             autoFocus
-            placeholder="Search students, teachers, receipts, books, assets…"
+            placeholder="Search students, teachers, receipts, books, or quick actions…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={onKey}
@@ -65,11 +75,15 @@ export default function CommandPalette({ open, onClose }) {
           <span className="kbd">ESC</span>
         </div>
         <div className="cmdk-list">
-          {q.length < 2 && <div className="cmdk-item muted">Type at least 2 characters to search everything…</div>}
-          {q.length >= 2 && !loading && results.length === 0 && (
-            <div className="cmdk-item muted">No results for “{q}”</div>
+          {q.trim().length < 2 && (
+            <div style={{ padding: '8px 14px 4px 14px', fontSize: '0.72rem', fontWeight: 700, color: 'var(--txt-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Quick Navigation Shortcuts
+            </div>
           )}
-          {results.map((r, i) => (
+          {q.length >= 2 && !loading && results.length === 0 && (
+            <div className="cmdk-item muted">No results found for “{q}”</div>
+          )}
+          {items.map((r, i) => (
             <div key={i} className={`cmdk-item ${i === sel ? 'sel' : ''}`}
               onMouseEnter={() => setSel(i)} onClick={() => go(r)}>
               <span className="tag" style={{ background: TAG_COLORS[r.type] || 'var(--primary)' }}>{r.type}</span>

@@ -386,6 +386,12 @@ router.delete('/:id', allowRoles('admin'), async (req, res) => {
     status: 'deleted', deletedAt, deletedBy: req.user.name, deletedPreviousStatus: student.status,
   });
   await col('users').updateMany({ role: 'student', refId: req.params.id }, { status: 'deleted', deletedAt, deletedBy: req.user.name });
+  req.auditDetails = {
+    action: 'STUDENT_DELETE',
+    admissionNo: student.admissionNo,
+    studentName: `${student.firstName} ${student.lastName || ''}`.trim(),
+    classId: student.classId,
+  };
   res.json({ ok: true });
 });
 

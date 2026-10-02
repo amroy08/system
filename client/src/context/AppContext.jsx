@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api } from '../api';
 import { AppCtx } from './AppContextValue';
+import ToastContainer from '../components/ToastContainer';
 
 // Apply the persisted theme immediately so public pages and login also respect it
 if (localStorage.getItem('sms_theme') === 'dark') {
@@ -72,16 +73,7 @@ export function AppProvider({ children }) {
   return (
     <AppCtx.Provider value={{ user, setUser, authReady, login, logout, settings, setSettings, loadSettings, notify }}>
       {children}
-      {toast && (
-        <div style={{
-          position: 'fixed', bottom: 22, right: 22, zIndex: 999,
-          background: toast.type === 'error' ? 'var(--danger)' : 'var(--accent)',
-          color: '#fff', padding: '11px 18px', borderRadius: 8, fontWeight: 600,
-          boxShadow: '0 8px 30px rgba(0,0,0,.25)', fontSize: 13.5, maxWidth: 380,
-        }}>
-          {toast.message}
-        </div>
-      )}
+      <ToastContainer toast={toast} onDismiss={() => setToast(null)} />
     </AppCtx.Provider>
   );
 }

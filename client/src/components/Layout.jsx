@@ -11,6 +11,9 @@ import {
 import { useApp } from '../context/AppContextValue';
 import { api } from '../api';
 import CommandPalette from './CommandPalette';
+import SessionTimeoutModal from './SessionTimeoutModal';
+import PwaInstallPrompt from './PwaInstallPrompt';
+import MobileBottomNav from './MobileBottomNav';
 
 const NAV = [
   { section: 'Overview', items: [
@@ -66,6 +69,7 @@ const NAV = [
   ]},
   { section: 'Administration', items: [
     { to: '/users', label: 'Users / Staff', icon: Users, roles: ['admin', 'clerk', 'supervisor'] },
+    { to: '/audit-logs', label: 'Audit Logs', icon: ShieldAlert, roles: ['admin'] },
     { to: '/backups', label: 'System Backup', icon: DatabaseBackup, roles: ['admin'] },
   ]},
   { section: 'Profile', items: [
@@ -87,6 +91,7 @@ const TITLES = {
   '/promotions': 'Promotions', '/outstanding': 'Outstanding Dues',
   '/helpdesk': 'Helpdesk', '/complaints': 'Complaints', '/documents': 'Documents',
   '/users': 'Users', '/account': 'My Account', '/settings': 'Settings', '/backups': 'System Backup',
+  '/audit-logs': 'Security & Financial Audit Logs',
   '/library': 'Library — Books', '/library-circulation': 'Library — Issue / Return',
   '/payroll': 'Payroll',
 };
@@ -251,6 +256,9 @@ export default function Layout() {
       </div>
 
       <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} />
+      <SessionTimeoutModal />
+      <PwaInstallPrompt />
+      <MobileBottomNav onOpenMenu={() => setMobileMenuOpen(true)} />
     </div>
   );
 }

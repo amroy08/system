@@ -36,6 +36,9 @@ function matchValue(docValue, cond) {
       }
     });
   }
+  if (Array.isArray(docValue) && (cond === null || typeof cond !== 'object')) {
+    return docValue.includes(cond);
+  }
   return docValue === cond;
 }
 

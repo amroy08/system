@@ -1,6 +1,51 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { X, FileText, Printer, FileSpreadsheet, Search, Filter as FilterIcon, XCircle, KeyRound, Copy } from 'lucide-react';
 
+/* ── Shimmer Skeleton Components ────────────────────────── */
+export function Skeleton({ width = '100%', height = '16px', borderRadius = '6px', style = {} }) {
+  return (
+    <div
+      className="skeleton"
+      style={{ width, height, borderRadius, ...style }}
+    />
+  );
+}
+
+export function SkeletonKpi() {
+  return (
+    <div className="skeleton-kpi">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Skeleton width="36px" height="36px" borderRadius="10px" />
+        <Skeleton width="60px" height="24px" borderRadius="6px" />
+      </div>
+      <div style={{ marginTop: '8px' }}>
+        <Skeleton width="80px" height="28px" borderRadius="6px" style={{ marginBottom: 6 }} />
+        <Skeleton width="110px" height="14px" borderRadius="4px" />
+      </div>
+    </div>
+  );
+}
+
+export function SkeletonTable({ rows = 5, cols = 4 }) {
+  return (
+    <div className="table-card">
+      <div style={{ padding: '16px', display: 'flex', gap: 12 }}>
+        <Skeleton width="120px" height="32px" />
+        <Skeleton width="180px" height="32px" style={{ marginLeft: 'auto' }} />
+      </div>
+      <div style={{ padding: '0 16px 16px 16px' }}>
+        {Array.from({ length: rows }).map((_, r) => (
+          <div key={r} style={{ display: 'flex', gap: 16, padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+            {Array.from({ length: cols }).map((_, c) => (
+              <Skeleton key={c} width={c === 0 ? '30%' : `${70 / (cols - 1)}%`} height="18px" />
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function KpiCard({ color = 'navy', icon: Icon, value, label, onAction, actionLabel, onClick }) {
   return (
     <div className={`kpi-card kpi-${color}`} onClick={onClick} style={onClick ? { cursor: 'pointer' } : undefined}>

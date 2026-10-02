@@ -111,6 +111,7 @@ test('cookie sessions enforce CSRF, RBAC, password changes, and lockout', async 
       PORT: String(port),
       DATA_DIR: dataDir,
       UPLOADS_DIR: uploadsDir,
+      DB_DRIVER: 'file',
       BACKUP_ENABLED: 'false',
       JWT_SECRET: 'integration-test-secret-that-is-long-enough',
       APP_URL: 'http://localhost:5173',

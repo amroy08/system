@@ -30,6 +30,7 @@ import emailRoutes from './routes/email.js';
 import attachmentRoutes from './routes/attachments.js';
 import backupRoutes from './routes/backups.js';
 import recoveryRoutes from './routes/recovery.js';
+import auditLogsRoutes from './routes/auditLogs.js';
 import { processEmailOutbox } from './utils/emailOutbox.js';
 import { startBackupScheduler } from './utils/backupService.js';
 import { csrfProtect } from './middleware/auth.js';
@@ -141,6 +142,7 @@ app.use('/api/email', emailRoutes);
 app.use('/api/attachments', attachmentRoutes);
 app.use('/api/backups', backupRoutes);
 app.use('/api/recovery', recoveryRoutes);
+app.use('/api/audit-logs', auditLogsRoutes);
 app.use('/api', miscRoutes);
 
 app.use((err, req, res, next) => {

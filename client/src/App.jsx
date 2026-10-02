@@ -30,6 +30,7 @@ const Settings = lazy(() => import('./pages/Settings'));
 const Account = lazy(() => import('./pages/Account'));
 const About = lazy(() => import('./pages/About'));
 const Backups = lazy(() => import('./pages/Backups'));
+const AuditLogs = lazy(() => import('./pages/AuditLogs'));
 const Homework = lazy(() => import('./pages/Homework'));
 const Portal = lazy(() => import('./pages/Portal'));
 const LibraryBooks = lazy(() => import('./pages/Library').then((module) => ({ default: module.LibraryBooks })));
@@ -122,6 +123,7 @@ export default function App() {
             <Route path="/account" element={<Account />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/backups" element={<AdminOnly><Backups /></AdminOnly>} />
+            <Route path="/audit-logs" element={<AdminOnly><AuditLogs /></AdminOnly>} />
             <Route path="/about" element={<About />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

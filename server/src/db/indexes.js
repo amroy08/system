@@ -62,5 +62,11 @@ export async function ensureMongoIndexes(db) {
     db.collection('documents').createIndex({ _deleted: 1, date: -1 }, { name: 'documents_deleted_date' }),
     // --- NEW: covers global search $regex on studentName and receiptNo ---
     db.collection('feeReceipts').createIndex({ studentName: 1 }, { name: 'receipts_student_name' }),
+    // --- Performance indexes for high-frequency portal and administrative queries ---
+    db.collection('students').createIndex({ classId: 1, rollNo: 1, status: 1 }, { name: 'students_class_roll_status' }),
+    db.collection('teachers').createIndex({ status: 1 }, { name: 'teachers_status' }),
+    db.collection('homework').createIndex({ classId: 1, dueDate: -1 }, { name: 'homework_class_due' }),
+    db.collection('attendance').createIndex({ classId: 1, date: -1 }, { name: 'attendance_class_date_desc' }),
+    db.collection('auditLogs').createIndex({ action: 1, occurredAt: -1 }, { name: 'audit_logs_action_date' }),
   ]);
 }

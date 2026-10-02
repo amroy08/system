@@ -21,6 +21,7 @@ export function mutationAudit(req, res, next) {
       actorName: req.user.name,
       actorRole: req.user.role,
       targetId: req.params?.id || null,
+      details: req.auditDetails || null,
       ip: req.ip,
       userAgent: String(req.get('user-agent') || '').slice(0, 300),
       occurredAt: new Date().toISOString(),

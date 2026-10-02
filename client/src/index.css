@@ -4,7 +4,7 @@
    backdrop-filter blurred, letting the animated gradient shine through.
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+/* Fonts loaded via index.html with preconnect for optimal performance */
 
 /* ── Design Tokens ─────────────────────────────────────────── */
 :root {
@@ -2267,3 +2267,122 @@ body {
   transform: translateY(-1px) !important;
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1) !important;
 }
+
+/* ── Shimmer Skeleton Loaders ──────────────────────────────── */
+@keyframes toastSlideIn {
+  from { opacity: 0; transform: translateY(-14px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes shimmerAnim {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(226, 232, 240, 0.45) 25%,
+    rgba(241, 245, 249, 0.85) 37%,
+    rgba(226, 232, 240, 0.45) 63%
+  );
+  background-size: 200% 100%;
+  animation: shimmerAnim 1.6s ease-in-out infinite;
+  border-radius: 6px;
+  display: inline-block;
+}
+
+html.dark .skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(30, 41, 59, 0.5) 25%,
+    rgba(51, 65, 85, 0.75) 37%,
+    rgba(30, 41, 59, 0.5) 63%
+  );
+  background-size: 200% 100%;
+}
+
+.skeleton-kpi {
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 110px;
+}
+
+/* ── Mobile Bottom Navigation Bar ─────────────────────────── */
+.mobile-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: var(--glass-bg-strong);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-top: 1px solid var(--glass-border-soft);
+    z-index: 999;
+    justify-content: space-around;
+    align-items: center;
+    padding: 0 6px;
+    box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.08);
+  }
+
+  .mobile-bottom-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    color: var(--txt-muted);
+    font-size: 0.68rem;
+    font-weight: 500;
+    gap: 3px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    flex: 1;
+    transition: all 0.15s ease;
+  }
+
+  .mobile-bottom-nav-item.active {
+    color: var(--primary);
+    font-weight: 700;
+  }
+
+  .mobile-bottom-nav-item.active svg {
+    stroke-width: 2.4px;
+  }
+
+  /* Add padding bottom to page-content on mobile so content isn't obscured */
+  .page-content {
+    padding-bottom: 74px !important;
+  }
+
+  /* Responsive cards on mobile */
+  .mobile-card-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .mobile-record-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: var(--shadow-xs);
+  }
+}
+

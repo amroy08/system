@@ -4,7 +4,7 @@ import { api, errMsg } from '../api';
 import { useApp } from '../context/AppContextValue';
 
 const ACCEPT = '.pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg';
-const MAX_BYTES = 8 * 1024 * 1024;
+const MAX_BYTES = 5 * 1024 * 1024; // Strict 5MB limit
 
 function readAsDataUrl(file) {
   return new Promise((resolve, reject) => {

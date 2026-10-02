@@ -13,7 +13,7 @@ const ALLOWED_TYPES = {
   'image/png': { extension: 'png', label: 'PNG' },
   'image/jpeg': { extension: 'jpg', label: 'JPG' },
 };
-const MAX_BYTES = 8 * 1024 * 1024;
+const MAX_BYTES = 5 * 1024 * 1024; // Strict 5MB limit for school documents and photos
 const scopeCollections = {
   lessonPlan: 'lessonPlans',
   homework: 'homework',

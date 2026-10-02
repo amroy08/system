@@ -479,6 +479,17 @@ router.post('/', allowRoles(...STAFF), async (req, res) => {
     console.error('[Receipt Email Queue Error]', err);
   }
 
+  req.auditDetails = {
+    action: 'FEE_PAYMENT',
+    receiptNo: doc.receiptNo,
+    studentName: doc.studentName,
+    admissionNo: doc.admissionNo,
+    amountPaid: doc.amountPaid,
+    mode: doc.mode,
+    discount: doc.discount,
+    balance: doc.balance,
+  };
+
   invalidateOutstandingCache(); // new receipt changes balances
   invalidateReceiptsCache();    // new receipt appears in list
   res.status(201).json(doc);
@@ -510,6 +521,14 @@ router.post('/:id/refund', allowRoles('admin', 'clerk'), async (req, res) => {
     );
     if (!doc) return res.status(409).json({ error: 'Receipt was already refunded' });
     await ensureRefundLedger(doc);
+    req.auditDetails = {
+      action: 'FEE_REFUND',
+      receiptNo: doc.receiptNo,
+      studentName: doc.studentName,
+      admissionNo: doc.admissionNo,
+      amountRefunded: doc.amountPaid,
+      reason: refundReason,
+    };
     res.json(doc);
   } finally {
     release();
