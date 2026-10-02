@@ -4,6 +4,7 @@ import { AppProvider } from './context/AppContext';
 import { useApp } from './context/AppContextValue';
 import Layout from './components/Layout';
 import Login from './pages/Login';
+import PwaInstallPrompt from './components/PwaInstallPrompt';
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Reports = lazy(() => import('./pages/Reports'));
@@ -74,6 +75,7 @@ export default function App() {
   return (
     <AppProvider>
       <BrowserRouter>
+        <PwaInstallPrompt />
         <Suspense fallback={<div role="status" aria-live="polite" style={{ padding: '2rem' }}>Loading…</div>}>
           <Routes>
           <Route path="/login" element={<Login />} />

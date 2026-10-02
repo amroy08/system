@@ -1579,25 +1579,42 @@ html.dark .public-section h2 { color:var(--txt); }
   .sidebar-overlay {
     position:fixed; top:0; left:0;
     width:100vw; height:100vh;
-    background:rgba(15,23,42,0.45);
+    background:rgba(15,23,42,0.55);
     backdrop-filter:blur(4px);
     -webkit-backdrop-filter:blur(4px);
-    z-index:998;
+    z-index:1002;
   }
 
   /* Sidebar responsive sliding drawer drawer overlay */
   .sidebar-shell {
     position:fixed; top:0; left:0;
     height:100vh;
-    width:260px !important;
+    height:100dvh;
+    width:280px !important;
     transform:translateX(-100%);
     transition:transform .3s cubic-bezier(0.16,1,0.3,1);
-    z-index:999;
-    box-shadow:0 10px 40px rgba(0,0,0,0.25);
+    z-index:1003;
+    box-shadow:0 10px 40px rgba(0,0,0,0.35);
+    display:flex;
+    flex-direction:column;
+    background:var(--glass-bg-strong);
   }
 
   .sidebar-shell.mobile-open {
     transform:translateX(0);
+  }
+
+  .sidebar-shell .sidebar-nav {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sidebar-shell .sidebar-foot {
+    padding-bottom: calc(75px + env(safe-area-inset-bottom, 0px)) !important;
+    background: var(--glass-bg-strong);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
   }
 
   /* Force display sidebar texts inside drawer */

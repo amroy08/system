@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, User, Eye, EyeOff, ArrowRight, ShieldCheck, BookOpen, CalendarCheck, GraduationCap } from 'lucide-react';
+import { Lock, User, Eye, EyeOff, ArrowRight, ShieldCheck, BookOpen, CalendarCheck, GraduationCap, Smartphone } from 'lucide-react';
 import { useApp } from '../context/AppContextValue';
 import { errMsg } from '../api';
+import { usePwa } from '../components/PwaInstallPrompt';
 
 export default function Login() {
   const { login, settings, user } = useApp();
@@ -38,6 +39,19 @@ export default function Login() {
       setError(errMsg(err));
     } finally {
       setBusy(false);
+    }
+  };
+
+  const { isInstalled, triggerInstall, isIos } = usePwa();
+
+  const handleInstallClick = async () => {
+    if (isIos) {
+      alert("To install on iPhone/iPad:\n1. Tap the Safari Share button (square with arrow) at the bottom.\n2. Scroll down and tap 'Add to Home Screen'.\n3. Tap 'Add'!");
+      return;
+    }
+    const outcome = await triggerInstall();
+    if (!outcome) {
+      alert("To install in Chrome:\nClick the 'Install App' icon at the top right of your address bar, or tap Chrome menu (3 dots) > 'Install M.V High School ERP'.");
     }
   };
 
@@ -156,6 +170,25 @@ export default function Login() {
             <ShieldCheck size={14} className="login-shield-icon" />
             <span>Secure Encrypted Session · AY {acadYear}</span>
           </div>
+
+          {!isInstalled && (
+            <div style={{ marginTop: 14, textAlign: 'center' }}>
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={handleInstallClick}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  fontSize: '0.82rem', padding: '6px 16px', borderRadius: '20px',
+                  background: 'rgba(37, 99, 235, 0.08)', border: '1px solid rgba(37, 99, 235, 0.25)',
+                  color: 'var(--primary)', cursor: 'pointer', fontWeight: 600,
+                }}
+              >
+                <Smartphone size={14} />
+                Install School App
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

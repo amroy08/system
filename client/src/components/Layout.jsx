@@ -6,14 +6,14 @@ import {
   Award, Trophy, Wallet, Receipt, Landmark, LifeBuoy, MessageSquareWarning, FolderOpen,
   UsersRound, CircleUser, Settings, Megaphone, CalendarDays, CalendarRange,
   NotebookPen, BookMarked, LogOut, ChevronLeft, ChevronRight, RefreshCw,
-  Library, BadgeIndianRupee, Search, ArrowUpDown, Bell, Menu, DatabaseBackup,
+  Library, BadgeIndianRupee, Search, ArrowUpDown, Bell, Menu, DatabaseBackup, DownloadCloud,
 } from 'lucide-react';
 import { useApp } from '../context/AppContextValue';
 import { api } from '../api';
 import CommandPalette from './CommandPalette';
 import SessionTimeoutModal from './SessionTimeoutModal';
-import PwaInstallPrompt from './PwaInstallPrompt';
 import MobileBottomNav from './MobileBottomNav';
+import { usePwa } from './PwaInstallPrompt';
 
 const NAV = [
   { section: 'Overview', items: [
@@ -98,12 +98,24 @@ const TITLES = {
 
 export default function Layout() {
   const { user, logout, settings } = useApp();
+  const { isInstalled, triggerInstall, isIos } = usePwa();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [badges, setBadges] = useState({});
   const [cmdOpen, setCmdOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+
+  const handleInstallApp = async () => {
+    if (isIos) {
+      alert("To install on iPhone/iPad: Tap the Safari Share button (square with arrow) at the bottom, then scroll down and tap 'Add to Home Screen'!");
+      return;
+    }
+    const outcome = await triggerInstall();
+    if (!outcome) {
+      alert("To install on Chrome: Look at the top right of your address bar and click the 'Install App' icon, or open the 3 dots menu and tap 'Install M.V High School ERP'.");
+    }
+  };
 
   useEffect(() => {
     if (!['admin', 'clerk', 'supervisor', 'teacher'].includes(user?.role)) return;
@@ -207,6 +219,22 @@ export default function Layout() {
 
         {/* Footer */}
         <div className="sidebar-foot">
+          {!isInstalled && (
+            <button
+              type="button"
+              className="foot-btn"
+              onClick={handleInstallApp}
+              style={{
+                color: 'var(--primary)',
+                fontWeight: 600,
+                background: 'rgba(37, 99, 235, 0.08)',
+                marginBottom: 6,
+              }}
+            >
+              <DownloadCloud size={15} />
+              <span className="nav-label">Install School App</span>
+            </button>
+          )}
           <div className="ay-label nav-label">Academic Year 2026–27</div>
           <button className="foot-btn logout-btn" onClick={() => { logout(); navigate('/login'); setMobileMenuOpen(false); }}>
             <LogOut size={14} />
@@ -257,7 +285,6 @@ export default function Layout() {
 
       <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} />
       <SessionTimeoutModal />
-      <PwaInstallPrompt />
       <MobileBottomNav onOpenMenu={() => setMobileMenuOpen(true)} />
     </div>
   );
