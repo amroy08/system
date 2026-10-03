@@ -72,7 +72,7 @@ function Barcode({ code }) {
 }
 
 const EMPTY = {
-  firstName: '', lastName: '', gender: 'Male', dob: '', nationality: '', curriculum: 'IB PYP',
+  firstName: '', lastName: '', gender: 'Male', dob: '', nationality: '', curriculum: 'State Board',
   englishLevel: 'NATIVE', house: 'Red', classId: '', rollNo: '', admissionDate: '',
   admissionCategory: 'NEW_ADMISSION',
   transportRequired: false, transportRoute: '', allergies: '', medicalNotes: '', languages: '',
