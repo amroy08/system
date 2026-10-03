@@ -11,6 +11,7 @@ import { useLookups, className } from '../hooks/useLookups';
 import { DataTable, StatusTabs, FilterBar, Field, Modal, Badge, Confirm, CredentialsModal } from '../components/ui';
 import { AttachmentField, AttachmentImage, AttachmentLink } from '../components/Attachment';
 import { displayClassName, formatClass, isPrePrimaryClassName } from '../utils/classNames';
+import { MyAttendanceCard } from './Portal';
 
 const HOUSE_COLORS = { Red: 'bg-solid-red', Blue: 'bg-solid-blue', Green: 'bg-solid-green', Yellow: 'bg-solid-orange' };
 const HOUSE_HEX = { Red: '#dc2626', Blue: '#2563eb', Green: '#16a34a', Yellow: '#f59e0b' };
@@ -997,21 +998,21 @@ export default function Students() {
       );
     })()}
 
-      {/* ------- Quick: Attendance ------- */}
+      {/* ------- Quick: Attendance (Full Calendar Tracker) ------- */}
       {modal?.type === 'attendance' && (
-        <Modal title={`Attendance — ${modal.student.firstName} ${modal.student.lastName}`} icon={CalendarCheck} onClose={() => setModal(null)}>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
-            {Object.entries(modal.data.summary).map(([k, v]) => <Badge key={k} value={`${k}: ${v}`} color={{ present: 'bg-green', absent: 'bg-red', late: 'bg-yellow', halfday: 'bg-blue', leave: 'bg-purple' }[k]} />)}
-          </div>
-          <div className="table-wrap">
-          <table className="data-table">
-            <thead><tr><th>Date</th><th>Status</th></tr></thead>
-            <tbody>
-              {modal.data.records.slice(0, 30).map((r, i) => (
-                <tr key={i}><td>{r.date}</td><td><Badge value={r.status} /></td></tr>
+        <Modal title={`Attendance Calendar — ${modal.student.firstName} ${modal.student.lastName || ''}`} icon={CalendarCheck} size="lg" onClose={() => setModal(null)}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <span className="small muted" style={{ fontWeight: 700 }}>Summary:</span>
+              {Object.entries(modal.data.summary || {}).map(([k, v]) => (
+                <Badge key={k} value={`${k.toUpperCase()}: ${v}`} color={{ present: 'bg-green', absent: 'bg-red', late: 'bg-yellow', halfday: 'bg-blue', leave: 'bg-purple' }[k]} />
               ))}
-            </tbody>
-          </table>
+            </div>
+
+            <MyAttendanceCard attendance={{
+              summary: modal.data.summary || {},
+              recent: modal.data.records || [],
+            }} />
           </div>
         </Modal>
       )}
