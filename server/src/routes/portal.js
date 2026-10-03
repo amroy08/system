@@ -25,18 +25,36 @@ function portalStudent(student) {
   return visible;
 }
 
+// Short-lived shared cache for rarely-changing portal reference data (exams, subjects)
+let sharedRefCache = null;
+let sharedRefCacheAt = 0;
+const SHARED_REF_CACHE_MS = 60_000;
+
+async function getSharedPortalRefs() {
+  const now = Date.now();
+  if (sharedRefCache && now - sharedRefCacheAt < SHARED_REF_CACHE_MS) {
+    return sharedRefCache;
+  }
+  const [exams, subjects] = await Promise.all([
+    col('exams').find({ _deleted: { $ne: true } }, { projection: { name: 1, status: 1, classIds: 1, startDate: 1, endDate: 1 } }),
+    col('subjects').find({ _deleted: { $ne: true } }, { projection: { name: 1, maxMarks: 1, code: 1 } }),
+  ]);
+  sharedRefCache = { exams, subjects };
+  sharedRefCacheAt = now;
+  return sharedRefCache;
+}
+
 async function studentSnapshot(studentId) {
   const student = await col('students').findOne({ _id: studentId, status: { $ne: 'deleted' } });
   if (!student) return null;
 
-  // Fire all independent queries concurrently with sensible limits
-  const [klass, allAttendance, sheets, exams, subjects, receipts, notices, meetings, activities, documents, homework, lessonPlans] =
+  // Fire all queries concurrently, leveraging cached shared refs and lean projections
+  const [refs, klass, allAttendance, sheets, receipts, notices, meetings, activities, documents, homework, lessonPlans] =
     await Promise.all([
+      getSharedPortalRefs(),
       col('classes').findOne({ _id: student.classId, ...ACTIVE_CLASS_QUERY }),
-      col('attendance').find({ classId: student.classId }),
-      col('marks').find({ classId: student.classId, status: 'published', _deleted: { $ne: true } }),
-      col('exams').find({ _deleted: { $ne: true } }, { projection: { name: 1, status: 1, classIds: 1, startDate: 1, endDate: 1 } }),
-      col('subjects').find({ _deleted: { $ne: true } }, { projection: { name: 1, maxMarks: 1, code: 1 } }),
+      col('attendance').find({ classId: student.classId }, { projection: { date: 1, classId: 1, records: 1 } }),
+      col('marks').find({ classId: student.classId, status: 'published', _deleted: { $ne: true } }, { projection: { examId: 1, subjectId: 1, entries: 1 } }),
       col('feeReceipts').find({ studentId }, { sort: { date: -1 } }),
       col('notices').find({ _deleted: { $ne: true }, status: 'published' }, { sort: { date: -1 }, limit: 20 }),
       col('ptm').find({ _deleted: { $ne: true } }, { sort: { date: -1 }, limit: 10 }),
@@ -45,6 +63,8 @@ async function studentSnapshot(studentId) {
       col('homework').find({ _deleted: { $ne: true }, status: 'active' }, { sort: { dueDate: 1 }, limit: 25 }),
       col('lessonPlans').find({ _deleted: { $ne: true }, shareWithFamilies: true }, { sort: { date: -1 }, limit: 15 }),
     ]);
+
+  const { exams, subjects } = refs;
 
   // Attendance summary
   const summary = { present: 0, absent: 0, late: 0, halfday: 0, leave: 0 };

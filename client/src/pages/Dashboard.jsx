@@ -713,12 +713,15 @@ function TeacherDashboard({ navigate }) {
   );
 }
 
+// In-memory session cache for instant Dashboard rendering
+let dashboardSessionCache = { stats: null, week: [] };
+
 /* ---------------- Entry ---------------- */
 export default function Dashboard() {
   const { user, settings } = useApp();
-  const [stats, setStats] = useState(null);
-  const [week, setWeek] = useState([]);
-  const [lastUpdated, setLastUpdated] = useState(null);
+  const [stats, setStats] = useState(() => dashboardSessionCache.stats);
+  const [week, setWeek] = useState(() => dashboardSessionCache.week);
+  const [lastUpdated, setLastUpdated] = useState(() => (dashboardSessionCache.stats ? new Date() : null));
   const [refreshing, setRefreshing] = useState(false);
   const navigate = useNavigate();
   const cur = settings.currency || '₹';
@@ -733,6 +736,7 @@ export default function Dashboard() {
       ]);
       setStats(s.data);
       setWeek(w.data);
+      dashboardSessionCache = { stats: s.data, week: w.data };
       setLastUpdated(new Date());
     } finally {
       setRefreshing(false);

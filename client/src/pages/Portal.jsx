@@ -689,10 +689,13 @@ function FamilyOverview({ activeChildren, formerChildren, cur, onSelect }) {
   );
 }
 
+// In-memory session cache for instant tab transitions
+let portalSessionCache = { data: null, notices: null, role: null };
+
 export default function Portal() {
   const { user, settings, notify } = useApp();
-  const [data, setData] = useState(null);
-  const [notices, setNotices] = useState([]);
+  const [data, setData] = useState(() => (portalSessionCache.role === user?.role ? portalSessionCache.data : null));
+  const [notices, setNotices] = useState(() => (portalSessionCache.role === user?.role ? portalSessionCache.notices || [] : []));
   const [childId, setChildId] = useState('all');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [familyNoticeSearch, setFamilyNoticeSearch] = useState('');
@@ -714,8 +717,20 @@ export default function Portal() {
 
   useEffect(() => {
     const url = user.role === 'parent' ? '/portal/parent' : '/portal/student';
-    api.get(url).then(({ data }) => setData(data)).catch((e) => notifyRef.current(errMsg(e), 'error'));
-    api.get('/portal/notices').then(({ data }) => setNotices(data)).catch(() => {});
+    api.get(url)
+      .then(({ data: resData }) => {
+        setData(resData);
+        portalSessionCache.data = resData;
+        portalSessionCache.role = user.role;
+      })
+      .catch((e) => notifyRef.current(errMsg(e), 'error'));
+
+    api.get('/portal/notices')
+      .then(({ data: resNotices }) => {
+        setNotices(resNotices);
+        portalSessionCache.notices = resNotices;
+      })
+      .catch(() => {});
   }, [user.role]);
 
   if (!data) return <div className="card card-pad">Loading your dashboard…</div>;

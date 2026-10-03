@@ -140,7 +140,8 @@ export const mongoStore = {
       global._mongoClient = client;
       global._mongoDb = client.db(config.mongoDbName);
       db = global._mongoDb;
-      await ensureMongoIndexes(db);
+      // Run index checks in background so it never blocks the request path on cold starts
+      ensureMongoIndexes(db).catch((err) => console.warn('[db] Background index sync notice:', err?.message));
       console.log(`[db] Connected to MongoDB: ${config.mongoDbName}`);
     } else {
       db = global._mongoDb;

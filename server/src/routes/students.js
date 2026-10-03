@@ -334,7 +334,7 @@ router.get('/:id/attendance', async (req, res) => {
   const student = await col('students').findOne({ _id: req.params.id, status: { $ne: 'deleted' } });
   if (!student || !(await mayReadStudent(req, student))) return res.status(404).json({ error: 'Student not found' });
   const { from, to } = req.query;
-  const all = await col('attendance').find({ classId: student.classId });
+  const all = await col('attendance').find({ classId: student.classId }, { projection: { date: 1, classId: 1, records: 1 } });
   const records = [];
   for (const day of all) {
     if (from && day.date < from) continue;
@@ -351,9 +351,9 @@ router.get('/:id/attendance', async (req, res) => {
 router.get('/:id/results', async (req, res) => {
   const student = await col('students').findOne({ _id: req.params.id, status: { $ne: 'deleted' } });
   if (!student || !(await mayReadStudent(req, student))) return res.status(404).json({ error: 'Student not found' });
-  const allMarks = await col('marks').find({ classId: student.classId });
-  const exams = await col('exams').find({ _deleted: { $ne: true } });
-  const subjects = await col('subjects').find({ _deleted: { $ne: true } });
+  const allMarks = await col('marks').find({ classId: student.classId }, { projection: { examId: 1, subjectId: 1, status: 1, entries: 1 } });
+  const exams = await col('exams').find({ _deleted: { $ne: true } }, { projection: { name: 1, status: 1 } });
+  const subjects = await col('subjects').find({ _deleted: { $ne: true } }, { projection: { name: 1, maxMarks: 1, code: 1 } });
   const visible = req.user.role === 'student' || req.user.role === 'parent';
   const results = [];
   for (const m of allMarks) {

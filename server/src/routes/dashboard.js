@@ -26,7 +26,7 @@ async function buildStats() {
       col('feeReceipts').find({ status: { $in: ['paid', 'partial', 'unpaid'] } }, {
         projection: { _id: 1, studentId: 1, date: 1, amountPaid: 1 },
       }),
-      col('attendance').find({ date: today }),
+      col('attendance').find({ date: today }, { projection: { date: 1, records: 1 } }),
       col('exams').find({ _deleted: { $ne: true }, status: { $in: ['scheduled', 'ongoing'] } }),
       col('exams').find({ _deleted: { $ne: true } }, { projection: { _id: 1 } }),
       col('discipline').find({ _deleted: { $ne: true } }),

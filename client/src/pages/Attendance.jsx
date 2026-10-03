@@ -15,21 +15,32 @@ const STATUSES = [
   { key: 'leave', label: 'LV', title: 'Leave' },
 ];
 
+let studentAttendanceSessionCache = null;
+
 function StudentParentAttendance() {
   const { user, notify } = useApp();
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [selectedChildId, setSelectedChildId] = useState('');
+  const [data, setData] = useState(() => studentAttendanceSessionCache);
+  const [loading, setLoading] = useState(() => !studentAttendanceSessionCache);
+  const [selectedChildId, setSelectedChildId] = useState(() => {
+    if (studentAttendanceSessionCache && user?.role === 'parent') {
+      const children = [...(studentAttendanceSessionCache.children || []), ...(studentAttendanceSessionCache.formerChildren || [])];
+      return children[0]?.student?._id || '';
+    }
+    return '';
+  });
 
   useEffect(() => {
-    setLoading(true);
+    if (!studentAttendanceSessionCache) setLoading(true);
     const url = user?.role === 'parent' ? '/portal/parent' : '/portal/student';
     api.get(url)
-      .then(({ data }) => {
-        setData(data);
+      .then(({ data: resData }) => {
+        setData(resData);
+        studentAttendanceSessionCache = resData;
         if (user?.role === 'parent') {
-          const children = [...(data.children || []), ...(data.formerChildren || [])];
-          if (children.length > 0) setSelectedChildId(children[0].student._id);
+          const children = [...(resData.children || []), ...(resData.formerChildren || [])];
+          if (children.length > 0) {
+            setSelectedChildId((prev) => prev || children[0].student._id);
+          }
         }
       })
       .catch((e) => notify(errMsg(e), 'error'))
