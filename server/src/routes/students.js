@@ -53,6 +53,8 @@ const STUDENT_LIST_PROJECTION = {
   city: 1,
   state: 1,
   pinCode: 1,
+  profilePhoto: 1,
+  documents: 1,
 };
 
 function compactAddress(source) {

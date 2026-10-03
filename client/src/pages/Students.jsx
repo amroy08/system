@@ -2,13 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   GraduationCap, Plus, Eye, Wallet, CalendarCheck, Award, UsersRound, Pencil, Trash2,
-  CreditCard, Printer, FileText, Receipt, Camera, FolderLock,
+  CreditCard, Printer, FileText, Receipt, Camera, FolderLock, MapPin, Phone, ShieldCheck,
+  HeartPulse, User, BookOpen,
 } from 'lucide-react';
 import { api, errMsg } from '../api';
 import { useApp } from '../context/AppContextValue';
 import { useLookups, className } from '../hooks/useLookups';
 import { DataTable, StatusTabs, FilterBar, Field, Modal, Badge, Confirm, CredentialsModal } from '../components/ui';
-import { AttachmentField, AttachmentImage } from '../components/Attachment';
+import { AttachmentField, AttachmentImage, AttachmentLink } from '../components/Attachment';
 import { displayClassName, formatClass, isPrePrimaryClassName } from '../utils/classNames';
 
 const HOUSE_COLORS = { Red: 'bg-solid-red', Blue: 'bg-solid-blue', Green: 'bg-solid-green', Yellow: 'bg-solid-orange' };
@@ -91,6 +92,7 @@ export default function Students() {
   const [tab, setTab] = useState('all');
   const [filters, setFilters] = useState({ search: '', classId: '', gender: '', curriculum: '', englishLevel: '', house: '', hasAllergies: false });
   const [modal, setModal] = useState(null); // {type: 'form'|'fees'|'attendance'|'results'|'parents'|'view', data}
+  const [profileTab, setProfileTab] = useState('overview');
   const [form, setForm] = useState(EMPTY);
   const [formTab, setFormTab] = useState('details');
   const [feePreview, setFeePreview] = useState(null);
@@ -598,26 +600,183 @@ export default function Students() {
         <CredentialsModal credentials={modal.data} name={modal.name} onClose={() => setModal(null)} />
       )}
 
-      {/* ------- View profile ------- */}
-      {modal?.type === 'view' && (
-        <Modal title={`${modal.data.firstName} ${modal.data.lastName}`} icon={Eye} onClose={() => setModal(null)}>
-          <div className="form-grid">
-            {[['Admission #', modal.data.admissionNo], ['Roll No', modal.data.rollNo], ['Gender', modal.data.gender],
-              ['Date of Birth', modal.data.dob], ['Class', className(classes, modal.data.classId)], ['Status', modal.data.status],
-              ['Nationality', modal.data.nationality], ['Curriculum', modal.data.curriculum], ['English Level', modal.data.englishLevel],
-              ['House', modal.data.house], ['Languages', modal.data.languages], ['Admission Date', modal.data.admissionDate],
-              ['Transport', modal.data.transportRequired ? `Yes — ${modal.data.transportRoute}` : 'No'],
-              ['Allergies', modal.data.allergies || 'None'], ['Medical Notes', modal.data.medicalNotes || '—'],
-              ['Father', modal.data.fatherName], ['Father Mobile', modal.data.fatherMobile],
-              ['Mother', modal.data.motherName], ['Mother Mobile', modal.data.motherMobile],
-              ['City', modal.data.city], ['State', modal.data.state], ['PIN Code', modal.data.pinCode],
-              ['Address', modal.data.address],
-            ].map(([k, v]) => (
-              <div key={k} className="field"><label>{k}</label><div style={{ fontWeight: 600 }}>{v || '—'}</div></div>
-            ))}
-          </div>
-        </Modal>
-      )}
+      {/* ------- Revamped 360 View Profile ------- */}
+      {modal?.type === 'view' && (() => {
+        const s = modal.data;
+        const studentPhoto = s.profilePhoto?._id ? s.profilePhoto : (s.documents?.profilePhoto?._id ? s.documents.profilePhoto : null);
+        const docsList = Object.entries(s.documents || {}).filter(([k, v]) => v?._id);
+
+        return (
+          <Modal title={`Student Profile 360 — ${s.firstName} ${s.lastName || ''}`} icon={Eye} size="lg" onClose={() => setModal(null)}>
+            <div className="student-profile-view">
+              {/* Cover Banner */}
+              <div className="spv-banner">
+                <div className="spv-hero">
+                  <div className="spv-photo-frame">
+                    {studentPhoto ? (
+                      <AttachmentImage attachment={studentPhoto} alt={`${s.firstName} ${s.lastName}`} />
+                    ) : (
+                      <div className="spv-photo-placeholder">
+                        <Camera size={26} opacity={0.7} />
+                        <span>{s.firstName?.[0] || 'S'}{(s.lastName || ' ')[0]}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="spv-info">
+                    <h3>{s.firstName} {s.lastName || ''}</h3>
+                    <div className="spv-sub">
+                      <span><b>Adm:</b> <code style={{ color: '#fff' }}>{s.admissionNo}</code></span>
+                      <span>•</span>
+                      <span><b>Roll:</b> {s.rollNo || '—'}</span>
+                      <span>•</span>
+                      <span><b>Class:</b> {displayClassName(className(classes, s.classId))}</span>
+                    </div>
+                    <div className="spv-badges">
+                      <span className="spv-badge">{s.status || 'Active'}</span>
+                      <span className="spv-badge" style={{ background: 'rgba(16,185,129,0.3)' }}>{s.curriculum || 'State Board'}</span>
+                      {s.gender && <span className="spv-badge">{s.gender}</span>}
+                      {s.house && <span className="spv-badge" style={{ background: HOUSE_HEX[s.house] || 'rgba(255,255,255,0.2)' }}>{s.house} House</span>}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Action Shortcuts inside the View Modal */}
+                <div className="spv-actions">
+                  <button type="button" className="spv-btn spv-btn-primary" title="Collect Fees" onClick={() => { setModal(null); navigate(`/fees?add=true&studentId=${s._id}`); }}>
+                    <Wallet size={14} /> Collect Fee
+                  </button>
+                  <button type="button" className="spv-btn" title="Fee History" onClick={() => openQuick('fees', s)}>
+                    <Receipt size={14} /> Fee History
+                  </button>
+                  <button type="button" className="spv-btn" title="Attendance Records" onClick={() => openQuick('attendance', s)}>
+                    <CalendarCheck size={14} /> Attendance
+                  </button>
+                  <button type="button" className="spv-btn" title="Marks & Report Card" onClick={() => openQuick('results', s)}>
+                    <Award size={14} /> Results
+                  </button>
+                  <button type="button" className="spv-btn" title="View & Print ID Card" onClick={() => setModal({ type: 'idcard', data: s })}>
+                    <CreditCard size={14} /> ID Card
+                  </button>
+                  {canWrite && (
+                    <button type="button" className="spv-btn" title="Edit Student Record" onClick={() => openEdit(s)}>
+                      <Pencil size={14} /> Edit
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Sub-Tabs */}
+              <div className="spv-tabs">
+                <button type="button" className={`spv-tab ${profileTab === 'overview' ? 'active' : ''}`} onClick={() => setProfileTab('overview')}>
+                  <User size={14} /> Academic & Personal
+                </button>
+                <button type="button" className={`spv-tab ${profileTab === 'parents' ? 'active' : ''}`} onClick={() => setProfileTab('parents')}>
+                  <UsersRound size={14} /> Family & Contacts
+                </button>
+                <button type="button" className={`spv-tab ${profileTab === 'transport' ? 'active' : ''}`} onClick={() => setProfileTab('transport')}>
+                  <HeartPulse size={14} /> Medical & Transport
+                </button>
+                <button type="button" className={`spv-tab ${profileTab === 'documents' ? 'active' : ''}`} onClick={() => setProfileTab('documents')}>
+                  <FolderLock size={14} /> Vault & Documents ({docsList.length + (studentPhoto ? 1 : 0)})
+                </button>
+              </div>
+
+              {/* Tab 1: Overview */}
+              {profileTab === 'overview' && (
+                <div className="spv-panel">
+                  <div className="spv-grid">
+                    <div className="spv-card"><span className="spv-card-label">Admission Number</span><span className="spv-card-val mono">{s.admissionNo || '—'}</span></div>
+                    <div className="spv-card"><span className="spv-card-label">Roll Number</span><span className="spv-card-val">{s.rollNo || '—'}</span></div>
+                    <div className="spv-card"><span className="spv-card-label">Class & Division</span><span className="spv-card-val">{className(classes, s.classId) || '—'}</span></div>
+                    <div className="spv-card"><span className="spv-card-label">Curriculum / Board</span><span className="spv-card-val">{s.curriculum || 'State Board'}</span></div>
+                    <div className="spv-card"><span className="spv-card-label">Date of Birth</span><span className="spv-card-val">{s.dob || '—'}</span></div>
+                    <div className="spv-card"><span className="spv-card-label">Gender</span><span className="spv-card-val">{s.gender || '—'}</span></div>
+                    <div className="spv-card"><span className="spv-card-label">Nationality</span><span className="spv-card-val">{s.nationality || 'Indian'}</span></div>
+                    <div className="spv-card"><span className="spv-card-label">English Level (EAL)</span><span className="spv-card-val">{s.englishLevel || '—'}</span></div>
+                    <div className="spv-card"><span className="spv-card-label">House</span><span className="spv-card-val">{s.house || '—'}</span></div>
+                    <div className="spv-card"><span className="spv-card-label">Languages Known</span><span className="spv-card-val">{s.languages || '—'}</span></div>
+                    <div className="spv-card"><span className="spv-card-label">Admission Date</span><span className="spv-card-val">{s.admissionDate || '—'}</span></div>
+                    <div className="spv-card"><span className="spv-card-label">Account Status</span><span className="spv-card-val" style={{ textTransform: 'capitalize' }}>{s.status || 'Active'}</span></div>
+                  </div>
+                </div>
+              )}
+
+              {/* Tab 2: Parents & Contacts */}
+              {profileTab === 'parents' && (
+                <div className="spv-panel">
+                  <div className="spv-grid">
+                    <div className="spv-card"><span className="spv-card-label">Father's Name</span><span className="spv-card-val">{s.fatherName || s.parentName || '—'}</span></div>
+                    <div className="spv-card"><span className="spv-card-label">Father's Contact</span><span className="spv-card-val">{s.fatherMobile || s.parentMobile || '—'}</span></div>
+                    <div className="spv-card"><span className="spv-card-label">Mother's Name</span><span className="spv-card-val">{s.motherName || '—'}</span></div>
+                    <div className="spv-card"><span className="spv-card-label">Mother's Contact</span><span className="spv-card-val">{s.motherMobile || '—'}</span></div>
+                    <div className="spv-card"><span className="spv-card-label">Parent / Guardian Email</span><span className="spv-card-val">{s.parentEmail || s.fatherEmail || s.motherEmail || '—'}</span></div>
+                    <div className="spv-card"><span className="spv-card-label">City</span><span className="spv-card-val">{s.city || 'Mumbai'}</span></div>
+                    <div className="spv-card"><span className="spv-card-label">State</span><span className="spv-card-val">{s.state || 'Maharashtra'}</span></div>
+                    <div className="spv-card"><span className="spv-card-label">PIN Code</span><span className="spv-card-val">{s.pinCode || '—'}</span></div>
+                    <div className="spv-card" style={{ gridColumn: '1 / -1' }}><span className="spv-card-label">Residential Address</span><span className="spv-card-val">{s.address || '—'}</span></div>
+                  </div>
+                </div>
+              )}
+
+              {/* Tab 3: Medical & Transport */}
+              {profileTab === 'transport' && (
+                <div className="spv-panel">
+                  <div className="spv-grid">
+                    <div className="spv-card">
+                      <span className="spv-card-label">Allergies / Special Conditions</span>
+                      <span className="spv-card-val" style={{ color: s.allergies ? 'var(--danger)' : 'inherit' }}>
+                        {s.allergies ? `⚠ ${s.allergies}` : 'None reported'}
+                      </span>
+                    </div>
+                    <div className="spv-card">
+                      <span className="spv-card-label">Medical Notes</span>
+                      <span className="spv-card-val">{s.medicalNotes || 'No special medical conditions recorded'}</span>
+                    </div>
+                    <div className="spv-card">
+                      <span className="spv-card-label">School Transport Service</span>
+                      <span className="spv-card-val">{s.transportRequired ? 'Opted for School Bus' : 'Self / Not Required'}</span>
+                    </div>
+                    <div className="spv-card">
+                      <span className="spv-card-label">Transport Route / Stop</span>
+                      <span className="spv-card-val">{s.transportRoute || '—'}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Tab 4: Vault & Documents */}
+              {profileTab === 'documents' && (
+                <div className="spv-panel">
+                  <div className="spv-doc-grid">
+                    {/* Profile Photo Entry */}
+                    <div className="spv-doc-item">
+                      <div>
+                        <div className="spv-doc-title">Student Photograph</div>
+                        <div className="spv-doc-status">{studentPhoto ? 'Photo Uploaded' : 'Not Uploaded'}</div>
+                      </div>
+                      {studentPhoto ? <AttachmentLink attachment={studentPhoto} /> : <span className="small muted">None</span>}
+                    </div>
+
+                    {/* Standard Student Documents */}
+                    {STUDENT_DOCUMENTS.map(([key, label]) => {
+                      const doc = s.documents?.[key];
+                      return (
+                        <div className="spv-doc-item" key={key}>
+                          <div>
+                            <div className="spv-doc-title">{label}</div>
+                            <div className="spv-doc-status">{doc?._id ? `${doc.fileType || 'File'} • ${doc.fileName || 'Attached'}` : 'Not provided'}</div>
+                          </div>
+                          {doc?._id ? <AttachmentLink attachment={doc} /> : <span className="small muted">—</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </Modal>
+        );
+      })()}
 
       {/* ------- Quick: Fees ------- */}
       {modal?.type === 'fees' && (() => {
