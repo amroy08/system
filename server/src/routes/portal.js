@@ -29,21 +29,21 @@ async function studentSnapshot(studentId) {
   const student = await col('students').findOne({ _id: studentId, status: { $ne: 'deleted' } });
   if (!student) return null;
 
-  // Fire all independent queries concurrently
+  // Fire all independent queries concurrently with sensible limits
   const [klass, allAttendance, sheets, exams, subjects, receipts, notices, meetings, activities, documents, homework, lessonPlans] =
     await Promise.all([
       col('classes').findOne({ _id: student.classId, ...ACTIVE_CLASS_QUERY }),
       col('attendance').find({ classId: student.classId }),
       col('marks').find({ classId: student.classId, status: 'published', _deleted: { $ne: true } }),
-      col('exams').find({ _deleted: { $ne: true } }),
-      col('subjects').find({ _deleted: { $ne: true } }),
+      col('exams').find({ _deleted: { $ne: true } }, { projection: { name: 1, status: 1, classIds: 1, startDate: 1, endDate: 1 } }),
+      col('subjects').find({ _deleted: { $ne: true } }, { projection: { name: 1, maxMarks: 1, code: 1 } }),
       col('feeReceipts').find({ studentId }, { sort: { date: -1 } }),
-      col('notices').find({ _deleted: { $ne: true }, status: 'published' }, { sort: { date: -1 } }),
-      col('ptm').find({ _deleted: { $ne: true } }, { sort: { date: -1 } }),
-      col('activities').find({ _deleted: { $ne: true } }, { sort: { date: -1 } }),
-      col('documents').find({ _deleted: { $ne: true } }, { sort: { date: -1 } }),
-      col('homework').find({ _deleted: { $ne: true }, status: 'active' }, { sort: { dueDate: 1 } }),
-      col('lessonPlans').find({ _deleted: { $ne: true }, shareWithFamilies: true }, { sort: { date: -1 } }),
+      col('notices').find({ _deleted: { $ne: true }, status: 'published' }, { sort: { date: -1 }, limit: 20 }),
+      col('ptm').find({ _deleted: { $ne: true } }, { sort: { date: -1 }, limit: 10 }),
+      col('activities').find({ _deleted: { $ne: true } }, { sort: { date: -1 }, limit: 15 }),
+      col('documents').find({ _deleted: { $ne: true } }, { sort: { date: -1 }, limit: 20 }),
+      col('homework').find({ _deleted: { $ne: true }, status: 'active' }, { sort: { dueDate: 1 }, limit: 25 }),
+      col('lessonPlans').find({ _deleted: { $ne: true }, shareWithFamilies: true }, { sort: { date: -1 }, limit: 15 }),
     ]);
 
   // Attendance summary

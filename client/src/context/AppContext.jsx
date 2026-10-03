@@ -45,6 +45,16 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     let active = true;
+    // Pre-fetch public settings immediately in parallel with auth/me
+    api.get('/public/settings')
+      .then(({ data }) => {
+        if (active && data) {
+          setSettings((s) => ({ ...s, ...data }));
+          applyTheme(data);
+        }
+      })
+      .catch(() => {});
+
     api.get('/auth/me')
       .then(({ data }) => { if (active) setUser(data); })
       .catch(() => {})
@@ -52,7 +62,11 @@ export function AppProvider({ children }) {
     return () => { active = false; };
   }, []);
 
-  useEffect(() => { if (authReady) loadSettings(); }, [authReady, loadSettings]);
+  useEffect(() => {
+    if (authReady && user) {
+      loadSettings();
+    }
+  }, [authReady, user, loadSettings]);
 
   const login = async (username, password) => {
     const { data } = await api.post('/auth/login', { username, password });

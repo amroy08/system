@@ -18,7 +18,20 @@
     <title>M.V High School ERP</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#0f2248,#1e3a8a);font-family:Inter,-apple-system,BlinkMacSystemFont,sans-serif;color:#fff;z-index:999999;">
+        <div style="width:72px;height:72px;background:rgba(255,255,255,0.12);border:2px solid rgba(255,255,255,0.25);border-radius:20px;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 30px rgba(0,0,0,0.3);margin-bottom:20px;">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+            <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+          </svg>
+        </div>
+        <div style="font-size:18px;font-weight:700;letter-spacing:0.5px;margin-bottom:6px;">M.V HIGH SCHOOL</div>
+        <div style="font-size:13px;color:#93c5fd;opacity:0.85;margin-bottom:28px;">Management ERP Portal</div>
+        <div style="width:36px;height:36px;border:3px solid rgba(255,255,255,0.18);border-top-color:#38bdf8;border-radius:50%;animation:mvSpin 0.8s linear infinite;"></div>
+        <style>@keyframes mvSpin{to{transform:rotate(360deg)}}</style>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

@@ -2401,5 +2401,29 @@ html.dark .skeleton {
     gap: 8px;
     box-shadow: var(--shadow-xs);
   }
+
+  /* Mobile GPU performance relief: disable costly backdrop-filter blurs on low-power mobile devices */
+  *, *::before, *::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .sidebar-shell,
+  .mobile-bottom-nav,
+  .glass-card,
+  .card,
+  .panel,
+  .login-card {
+    background-color: rgba(255, 255, 255, 0.96) !important;
+  }
+
+  html.dark .sidebar-shell,
+  html.dark .mobile-bottom-nav,
+  html.dark .glass-card,
+  html.dark .card,
+  html.dark .panel,
+  html.dark .login-card {
+    background-color: rgba(15, 23, 42, 0.96) !important;
+  }
 }
 
