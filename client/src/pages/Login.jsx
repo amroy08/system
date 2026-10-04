@@ -109,6 +109,13 @@ export default function Login() {
                 <p>Comprehensive report cards, hall tickets & grade sheets</p>
               </div>
             </div>
+            <div className="login-brand-feature">
+              <div className="login-feature-icon-box"><Users size={18} /></div>
+              <div>
+                <strong>Parent & Student Communication</strong>
+                <p>Instant SMS notices, homework notifications & progress tracking</p>
+              </div>
+            </div>
           </div>
 
           {/* Highlights / stats badge on desktop */}
@@ -126,6 +133,15 @@ export default function Login() {
             <div className="login-stat-item">
               <span className="login-stat-label">System Uptime</span>
               <span className="login-stat-val">99.9%</span>
+            </div>
+          </div>
+
+          {/* Dedicated help & assistance strip filling bottom space */}
+          <div className="login-brand-help">
+            <div className="login-help-icon"><Headphones size={16} /></div>
+            <div className="login-help-text">
+              <span>Need login help or credential recovery?</span>
+              <p>Contact Administration Office · Mon–Sat (8:00 AM – 2:00 PM)</p>
             </div>
           </div>
         </div>
