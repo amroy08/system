@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { X, FileText, Printer, FileSpreadsheet, Search, Filter as FilterIcon, XCircle, KeyRound, Copy } from 'lucide-react';
+import { X, ArrowLeft, FileText, Printer, FileSpreadsheet, Search, Filter as FilterIcon, XCircle, KeyRound, Copy } from 'lucide-react';
 
 /* ── Shimmer Skeleton Components ────────────────────────── */
 export function Skeleton({ width = '100%', height = '16px', borderRadius = '6px', style = {} }) {
@@ -103,7 +103,7 @@ export function Badge({ value, color }) {
 }
 
 /* ---------------- Modal ---------------- */
-export function Modal({ title, icon: Icon, onClose, children, footer, size }) {
+export function Modal({ title, icon: Icon, onClose, onBack, children, footer, size }) {
   const modalRef = useRef(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
@@ -131,8 +131,14 @@ export function Modal({ title, icon: Icon, onClose, children, footer, size }) {
     <div className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div ref={modalRef} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} className={`modal ${size === 'lg' ? 'modal-lg' : size === 'sm' ? 'modal-sm' : ''}`}>
         <div className="modal-head">
+          {onBack && (
+            <button type="button" className="modal-back-btn" onClick={onBack} title="Back">
+              <ArrowLeft size={16} />
+              <span>Back</span>
+            </button>
+          )}
           {Icon && <Icon size={17} />} {title}
-          <button className="x" onClick={onClose}><X size={17} /></button>
+          <button className="x" onClick={onClose} title="Close"><X size={17} /></button>
         </div>
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-foot">{footer}</div>}

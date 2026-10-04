@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   GraduationCap, Plus, Eye, Wallet, CalendarCheck, Award, UsersRound, Pencil, Trash2,
   CreditCard, Printer, FileText, Receipt, Camera, FolderLock, MapPin, Phone, ShieldCheck,
-  HeartPulse, User, BookOpen,
+  HeartPulse, User, BookOpen, Trophy, CheckCircle2, XCircle, ArrowLeft,
 } from 'lucide-react';
 import { api, errMsg } from '../api';
 import { useApp } from '../context/AppContextValue';
@@ -92,7 +92,9 @@ export default function Students() {
   const [rows, setRows] = useState([]);
   const [tab, setTab] = useState('all');
   const [filters, setFilters] = useState({ search: '', classId: '', gender: '', curriculum: '', englishLevel: '', house: '', hasAllergies: false });
-  const [modal, setModal] = useState(null); // {type: 'form'|'fees'|'attendance'|'results'|'parents'|'view', data}
+  const [modal, setModal] = useState(null); // {type: 'form'|'fees'|'attendance'|'results'|'parents'|'view'|'idcard'|'class-idcards', data, fromView}
+  const [idSide, setIdSide] = useState('both'); // 'both' | 'front' | 'back'
+  const [classCardsClassId, setClassCardsClassId] = useState('');
   const [profileTab, setProfileTab] = useState('overview');
   const [form, setForm] = useState(EMPTY);
   const [formTab, setFormTab] = useState('details');
@@ -359,10 +361,10 @@ export default function Students() {
     setTimeout(() => w.print(), 300);
   };
 
-  const openQuick = async (type, r) => {
+  const openQuick = async (type, r, fromView = false) => {
     try {
       const { data } = await api.get(`/students/${r._id}/${type}`);
-      setModal({ type, data, student: r });
+      setModal({ type, data, student: r, fromView });
     } catch (e) { notify(errMsg(e), 'error'); }
   };
 
@@ -406,6 +408,12 @@ export default function Students() {
       <div className="page-head">
         <h2><GraduationCap size={20} /> Students Management</h2>
         <div className="spacer" />
+        <button className="btn btn-navy" onClick={() => {
+          setClassCardsClassId(filters.classId || classes[0]?._id || '');
+          setModal({ type: 'class-idcards' });
+        }}>
+          <CreditCard size={15} /> Class ID Cards
+        </button>
         {canWrite && <button className="btn btn-green" onClick={openAdd}><Plus size={15} /> Add Student</button>}
       </div>
 
@@ -646,16 +654,16 @@ export default function Students() {
                   <button type="button" className="spv-btn spv-btn-primary" title="Collect Fees" onClick={() => { setModal(null); navigate(`/fees?add=true&studentId=${s._id}`); }}>
                     <Wallet size={14} /> Collect Fee
                   </button>
-                  <button type="button" className="spv-btn" title="Fee History" onClick={() => openQuick('fees', s)}>
+                  <button type="button" className="spv-btn" title="Fee History" onClick={() => openQuick('fees', s, true)}>
                     <Receipt size={14} /> Fee History
                   </button>
-                  <button type="button" className="spv-btn" title="Attendance Records" onClick={() => openQuick('attendance', s)}>
+                  <button type="button" className="spv-btn" title="Attendance Records" onClick={() => openQuick('attendance', s, true)}>
                     <CalendarCheck size={14} /> Attendance
                   </button>
-                  <button type="button" className="spv-btn" title="Marks & Report Card" onClick={() => openQuick('results', s)}>
+                  <button type="button" className="spv-btn" title="Marks & Report Card" onClick={() => openQuick('results', s, true)}>
                     <Award size={14} /> Results
                   </button>
-                  <button type="button" className="spv-btn" title="View & Print ID Card" onClick={() => setModal({ type: 'idcard', data: s })}>
+                  <button type="button" className="spv-btn" title="View & Print ID Card" onClick={() => setModal({ type: 'idcard', data: s, fromView: true })}>
                     <CreditCard size={14} /> ID Card
                   </button>
                   {canWrite && (
@@ -847,7 +855,13 @@ export default function Students() {
         }
 
         return (
-          <Modal title={`Fee Summary — ${student.firstName} ${student.lastName}`} icon={Wallet} size="lg" onClose={() => setModal(null)}>
+          <Modal
+            title={`Fee Summary — ${student.firstName} ${student.lastName}`}
+            icon={Wallet}
+            size="lg"
+            onClose={() => setModal(null)}
+            onBack={modal.fromView ? () => setModal({ type: 'view', data: modal.student || student }) : null}
+          >
             <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 16px', marginBottom: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, fontSize: 12 }}>
               <div>
                 <p style={{ margin: 0, color: 'var(--txt-muted)' }}>Current Grade Rate</p>
@@ -1000,7 +1014,13 @@ export default function Students() {
 
       {/* ------- Quick: Attendance (Full Calendar Tracker) ------- */}
       {modal?.type === 'attendance' && (
-        <Modal title={`Attendance Calendar — ${modal.student.firstName} ${modal.student.lastName || ''}`} icon={CalendarCheck} size="lg" onClose={() => setModal(null)}>
+        <Modal
+          title={`Attendance Calendar — ${modal.student.firstName} ${modal.student.lastName || ''}`}
+          icon={CalendarCheck}
+          size="lg"
+          onClose={() => setModal(null)}
+          onBack={modal.fromView ? () => setModal({ type: 'view', data: modal.student }) : null}
+        >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <span className="small muted" style={{ fontWeight: 700 }}>Summary:</span>
@@ -1017,32 +1037,104 @@ export default function Students() {
         </Modal>
       )}
 
-      {/* ------- Quick: Results ------- */}
-      {modal?.type === 'results' && (
-        <Modal title={`Results — ${modal.student.firstName} ${modal.student.lastName}`} icon={Award} size="lg" onClose={() => setModal(null)}
-          footer={modal.data.results.length > 0 && (
-            <button className="btn btn-navy" onClick={() => setModal({ ...modal, type: 'reportcard' })}>
-              <FileText size={15} /> Print Report Card
-            </button>
-          )}>
-          <div className="table-wrap">
-          <table className="data-table">
-            <thead><tr><th>Exam</th><th>Subject</th><th>Marks</th><th>Grade</th><th>Sheet Status</th></tr></thead>
-            <tbody>
-              {modal.data.results.length === 0 && <tr className="empty-row"><td colSpan={5}>No results yet</td></tr>}
-              {modal.data.results.map((r, i) => (
-                <tr key={i}>
-                  <td>{r.examName}</td><td>{r.subject}</td>
-                  <td><b>{r.marks ?? '—'}</b> / {r.maxMarks}</td>
-                  <td><Badge value={r.grade} color={r.grade === 'F' ? 'bg-red' : 'bg-green'} /></td>
-                  <td><Badge value={r.status} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
-        </Modal>
-      )}
+      {/* ------- Quick: Results (Enhanced Scorecard UI) ------- */}
+      {modal?.type === 'results' && (() => {
+        const results = modal.data.results || [];
+        const totalMarks = results.reduce((sum, r) => sum + (Number(r.marks) || 0), 0);
+        const maxMarks = results.reduce((sum, r) => sum + (Number(r.maxMarks) || 0), 0);
+        const percentage = maxMarks > 0 ? Math.round((totalMarks / maxMarks) * 1000) / 10 : 0;
+        const passedCount = results.filter(r => r.grade !== 'F' && r.status !== 'failed').length;
+
+        return (
+          <Modal
+            title={`Exam Results — ${modal.student.firstName} ${modal.student.lastName}`}
+            icon={Award}
+            size="lg"
+            onClose={() => setModal(null)}
+            onBack={modal.fromView ? () => setModal({ type: 'view', data: modal.student }) : null}
+            footer={results.length > 0 && (
+              <button className="btn btn-navy" onClick={() => setModal({ ...modal, type: 'reportcard' })}>
+                <FileText size={15} /> Print Report Card
+              </button>
+            )}
+          >
+            {results.length > 0 && (
+              <div className="results-header-summary">
+                <div className="results-kpi-item">
+                  <span className="results-kpi-label">Overall Score</span>
+                  <span className={`results-kpi-val ${percentage >= 50 ? 'good' : 'bad'}`}>
+                    <Trophy size={18} /> {percentage}%
+                  </span>
+                </div>
+                <div className="results-kpi-item">
+                  <span className="results-kpi-label">Marks Obtained</span>
+                  <span className="results-kpi-val mono">{totalMarks} / {maxMarks}</span>
+                </div>
+                <div className="results-kpi-item">
+                  <span className="results-kpi-label">Subjects Cleared</span>
+                  <span className="results-kpi-val good">
+                    <CheckCircle2 size={16} /> {passedCount} / {results.length}
+                  </span>
+                </div>
+                <div className="results-kpi-item">
+                  <span className="results-kpi-label">Academic Status</span>
+                  <span className="results-kpi-val">
+                    {percentage >= 35 ? (
+                      <span className="badge bg-solid-green" style={{ fontSize: 11, padding: '3px 8px' }}>PASSED</span>
+                    ) : (
+                      <span className="badge bg-solid-red" style={{ fontSize: 11, padding: '3px 8px' }}>NEEDS IMPROVEMENT</span>
+                    )}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className="results-table-card">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Exam</th>
+                    <th>Subject</th>
+                    <th>Marks Obtained</th>
+                    <th>Max</th>
+                    <th>Grade</th>
+                    <th>Result Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {results.length === 0 && (
+                    <tr className="empty-row"><td colSpan={6}>No examination results recorded yet for this student.</td></tr>
+                  )}
+                  {results.map((r, i) => {
+                    const isPassed = r.grade !== 'F' && r.status !== 'failed';
+                    return (
+                      <tr key={i}>
+                        <td><b>{r.examName}</b></td>
+                        <td style={{ fontWeight: 600 }}>{r.subject}</td>
+                        <td>
+                          <span className={`results-score-pill ${isPassed ? 'passed' : 'failed'}`}>
+                            {r.marks ?? '—'}
+                          </span>
+                        </td>
+                        <td className="muted">{r.maxMarks}</td>
+                        <td>
+                          <Badge value={r.grade || '—'} color={r.grade === 'F' ? 'bg-red' : 'bg-green'} />
+                        </td>
+                        <td>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: isPassed ? '#16a34a' : '#dc2626' }}>
+                            {isPassed ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
+                            {r.status || (isPassed ? 'Passed' : 'Failed')}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Modal>
+        );
+      })()}
 
       {/* ------- Printable report card ------- */}
       {modal?.type === 'reportcard' && (() => {
@@ -1104,45 +1196,322 @@ export default function Students() {
         );
       })()}
 
-      {/* ------- Student ID card ------- */}
+      {/* ------- Student Official ID Card (Front & Back) ------- */}
       {modal?.type === 'idcard' && (() => {
         const s = modal.data;
+        const clsName = className(classes, s.classId);
+        const logoSrc = settings.logoUrl || '/logo.jpeg';
+
         return (
-          <Modal title={`ID Card — ${s.firstName} ${s.lastName}`} icon={CreditCard} onClose={() => setModal(null)}
+          <Modal
+            title={`ID Card — ${s.firstName} ${s.lastName}`}
+            icon={CreditCard}
+            size="lg"
+            onClose={() => setModal(null)}
+            onBack={modal.fromView ? () => setModal({ type: 'view', data: s }) : null}
             footer={<>
               <button className="btn btn-gray" onClick={() => setModal(null)}>Close</button>
-              <button className="btn btn-navy" onClick={() => window.print()}><Printer size={15} /> Print</button>
-            </>}>
-            <div className="print-area" style={{ padding: '10px 0' }}>
-              <div className="id-card">
-                <div className="idc-head">
-                  <GraduationCap size={30} />
-                  <div>
-                    <div className="sch">{settings.schoolName}</div>
-                    <div className="tag">STUDENT IDENTITY CARD · {settings.academicYear}</div>
-                  </div>
-                </div>
-                <div className="idc-body">
-                  <div className={`idc-photo ${s.profilePhoto?._id ? 'has-photo' : ''}`} style={{ background: HOUSE_HEX[s.house] || 'var(--primary)' }}>
-                    {s.profilePhoto?._id
-                      ? <AttachmentImage attachment={s.profilePhoto} alt={`${s.firstName} ${s.lastName}`} />
-                      : <>{s.firstName[0]}{(s.lastName || ' ')[0]}</>}
-                  </div>
-                  <table>
-                    <tbody>
-                      <tr><td>Name</td><td><b>{s.firstName} {s.lastName}</b></td></tr>
-                      <tr><td>Class</td><td>{className(classes, s.classId)}</td></tr>
-                      <tr><td>Roll No</td><td>{s.rollNo || '—'}</td></tr>
-                      <tr><td>House</td><td>{s.house}</td></tr>
-                      <tr><td>DOB</td><td>{s.dob || '—'}</td></tr>
-                      <tr><td>Blood / Allergy</td><td>{s.allergies ? `⚠ ${s.allergies}` : 'None'}</td></tr>
-                    </tbody>
-                  </table>
-                </div>
-                <Barcode code={s.admissionNo} />
-                <div className="idc-no">{s.admissionNo}</div>
-                <div className="idc-strip" style={{ background: HOUSE_HEX[s.house] || 'var(--primary)' }} />
+              <button className="btn btn-navy" onClick={() => window.print()}><Printer size={15} /> Print Card</button>
+            </>}
+          >
+            <div className="id-card-view-wrapper">
+              <div className="id-card-view-tabs no-print">
+                <button
+                  type="button"
+                  className={`id-card-view-tab ${idSide === 'both' ? 'active' : ''}`}
+                  onClick={() => setIdSide('both')}
+                >
+                  Both Sides (Front & Back)
+                </button>
+                <button
+                  type="button"
+                  className={`id-card-view-tab ${idSide === 'front' ? 'active' : ''}`}
+                  onClick={() => setIdSide('front')}
+                >
+                  Front Side Only
+                </button>
+                <button
+                  type="button"
+                  className={`id-card-view-tab ${idSide === 'back' ? 'active' : ''}`}
+                  onClick={() => setIdSide('back')}
+                >
+                  Back Side Only
+                </button>
               </div>
+
+              <div className="id-card-container print-area">
+                {(idSide === 'both' || idSide === 'front') && (
+                  <div className="official-id-card id-card-front">
+                    <div className="id-arch-header">
+                      <img src={logoSrc} alt="School Crest Logo" className="id-school-logo" />
+                      <h4 className="id-school-name">{settings.schoolName || 'M.V HIGH SCHOOL MUMBAI'}</h4>
+                      <p className="id-school-sub">{settings.address || 'S.V.P ROAD, PRARTHNA SAMAJ, MUMBAI - 400004'}</p>
+                    </div>
+
+                    <div className="id-photo-row">
+                      <div className="id-year-vertical">{settings.academicYear || '2026 - 2027'}</div>
+                      <div className="id-photo-box">
+                        {s.profilePhoto?._id ? (
+                          <AttachmentImage attachment={s.profilePhoto} alt={`${s.firstName} ${s.lastName}`} />
+                        ) : s.documents?.profilePhoto?._id ? (
+                          <AttachmentImage attachment={s.documents.profilePhoto} alt={`${s.firstName} ${s.lastName}`} />
+                        ) : (
+                          <div className="id-photo-placeholder">
+                            <span>{s.firstName?.[0] || 'S'}{(s.lastName || ' ')[0]}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="id-front-info">
+                      <h3 className="id-student-name">{s.firstName} {s.lastName || ''}</h3>
+                      <div className="id-front-meta-line">
+                        <span>DIV: <b>{s.division || 'A'}</b></span>
+                        <span>STD: <b>{clsName || '8TH'}</b></span>
+                      </div>
+                      <table className="id-front-details-table">
+                        <tbody>
+                          <tr>
+                            <td className="lbl">DOB</td>
+                            <td className="colon">:</td>
+                            <td className="val">{s.dob || '—'}</td>
+                          </tr>
+                          <tr>
+                            <td className="lbl">Father Name</td>
+                            <td className="colon">:</td>
+                            <td className="val">{s.fatherName || s.parentName || '—'}</td>
+                          </tr>
+                          <tr>
+                            <td className="lbl">Mother Name</td>
+                            <td className="colon">:</td>
+                            <td className="val">{s.motherName || '—'}</td>
+                          </tr>
+                          <tr>
+                            <td className="lbl">Blood Group</td>
+                            <td className="colon">:</td>
+                            <td className="val">{s.bloodGroup || s.allergies || 'B+'}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="id-arch-footer">
+                      <span className="id-adm-tag">ADM: {s.admissionNo}</span>
+                      <div className="id-principal-sign">
+                        <span className="id-sign-script">Sarita Gomes</span>
+                        <span className="id-sign-title">Principal Sign</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {(idSide === 'both' || idSide === 'back') && (
+                  <div className="official-id-card id-card-back">
+                    <div className="id-back-arch-top" />
+                    <div className="id-back-content">
+                      <div className="id-back-field">
+                        <span className="id-back-icon phone"><Phone size={12} /></span>
+                        <span>: {s.fatherMobile || s.motherMobile || s.parentMobile || settings.phone || '9869353282'}</span>
+                      </div>
+                      <div className="id-back-field">
+                        <span className="id-back-icon blood"><HeartPulse size={12} /></span>
+                        <span>: {s.bloodGroup || 'B+'}</span>
+                      </div>
+
+                      <div className="id-back-address">
+                        <MapPin size={18} className="id-address-pin" />
+                        <div className="id-address-text">
+                          {s.address || `${s.addressLine1 || ''} ${s.addressLine2 || ''} ${s.city || 'MUMBAI'} ${s.pinCode || '400095'}`.trim() || 'MALWANI, MALAD WEST, MUMBAI - 400095'}
+                        </div>
+                      </div>
+
+                      <div className="id-instructions-block">
+                        <div className="id-instructions-title">Instructions</div>
+                        <ol className="id-instructions-list">
+                          <li>Entry of child strictly allowed on production of this card.</li>
+                          <li>Please wear this card inside the campus.</li>
+                          <li>This card will be used for library and lab access.</li>
+                          <li>Loss of this card must be immediately reported to school.</li>
+                        </ol>
+                      </div>
+                    </div>
+                    <div className="id-back-arch-bottom" />
+                  </div>
+                )}
+              </div>
+            </div>
+          </Modal>
+        );
+      })()}
+
+      {/* ------- Bulk Class ID Cards Generation Modal ------- */}
+      {modal?.type === 'class-idcards' && (() => {
+        const targetClass = classes.find(c => c._id === classCardsClassId);
+        const classStudents = rows.filter(r => !classCardsClassId || r.classId === classCardsClassId);
+        const logoSrc = settings.logoUrl || '/logo.jpeg';
+
+        return (
+          <Modal
+            title={`Bulk ID Cards Generator — ${targetClass ? formatClass(targetClass) : 'All Classes'}`}
+            icon={CreditCard}
+            size="xl"
+            onClose={() => setModal(null)}
+            footer={<>
+              <button className="btn btn-gray" onClick={() => setModal(null)}>Close</button>
+              <button className="btn btn-navy" onClick={() => window.print()} disabled={classStudents.length === 0}>
+                <Printer size={15} /> Print All ({classStudents.length}) Cards
+              </button>
+            </>}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div className="no-print" style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg-card)', padding: '12px 16px', borderRadius: 10, border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <label style={{ fontSize: 13, fontWeight: 700, margin: 0 }}>Select Class:</label>
+                  <select
+                    value={classCardsClassId}
+                    onChange={(e) => setClassCardsClassId(e.target.value)}
+                    style={{ minWidth: 200 }}
+                  >
+                    <option value="">All Classes ({rows.length} students)</option>
+                    {classes.map(c => (
+                      <option key={c._id} value={c._id}>{formatClass(c)}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="id-card-view-tabs" style={{ marginLeft: 'auto' }}>
+                  <button
+                    type="button"
+                    className={`id-card-view-tab ${idSide === 'both' ? 'active' : ''}`}
+                    onClick={() => setIdSide('both')}
+                  >
+                    Front & Back
+                  </button>
+                  <button
+                    type="button"
+                    className={`id-card-view-tab ${idSide === 'front' ? 'active' : ''}`}
+                    onClick={() => setIdSide('front')}
+                  >
+                    Front Only
+                  </button>
+                  <button
+                    type="button"
+                    className={`id-card-view-tab ${idSide === 'back' ? 'active' : ''}`}
+                    onClick={() => setIdSide('back')}
+                  >
+                    Back Only
+                  </button>
+                </div>
+              </div>
+
+              {classStudents.length === 0 ? (
+                <div style={{ padding: 40, textAlign: 'center', color: 'var(--txt-muted)' }}>
+                  No students found in selected class.
+                </div>
+              ) : (
+                <div className="bulk-id-grid print-area bulk-print-id-cards-container">
+                  {classStudents.map((s) => {
+                    const clsName = className(classes, s.classId);
+                    return (
+                      <div key={s._id} style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+                        {(idSide === 'both' || idSide === 'front') && (
+                          <div className="official-id-card id-card-front">
+                            <div className="id-arch-header">
+                              <img src={logoSrc} alt="School Logo" className="id-school-logo" />
+                              <h4 className="id-school-name">{settings.schoolName || 'M.V HIGH SCHOOL MUMBAI'}</h4>
+                              <p className="id-school-sub">{settings.address || 'S.V.P ROAD, MUMBAI - 400004'}</p>
+                            </div>
+                            <div className="id-photo-row">
+                              <div className="id-year-vertical">{settings.academicYear || '2026 - 2027'}</div>
+                              <div className="id-photo-box">
+                                {s.profilePhoto?._id ? (
+                                  <AttachmentImage attachment={s.profilePhoto} alt={`${s.firstName} ${s.lastName}`} />
+                                ) : s.documents?.profilePhoto?._id ? (
+                                  <AttachmentImage attachment={s.documents.profilePhoto} alt={`${s.firstName} ${s.lastName}`} />
+                                ) : (
+                                  <div className="id-photo-placeholder">
+                                    <span>{s.firstName?.[0] || 'S'}{(s.lastName || ' ')[0]}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="id-front-info">
+                              <h3 className="id-student-name">{s.firstName} {s.lastName || ''}</h3>
+                              <div className="id-front-meta-line">
+                                <span>DIV: <b>{s.division || 'A'}</b></span>
+                                <span>STD: <b>{clsName || '8TH'}</b></span>
+                              </div>
+                              <table className="id-front-details-table">
+                                <tbody>
+                                  <tr>
+                                    <td className="lbl">DOB</td>
+                                    <td className="colon">:</td>
+                                    <td className="val">{s.dob || '—'}</td>
+                                  </tr>
+                                  <tr>
+                                    <td className="lbl">Father Name</td>
+                                    <td className="colon">:</td>
+                                    <td className="val">{s.fatherName || s.parentName || '—'}</td>
+                                  </tr>
+                                  <tr>
+                                    <td className="lbl">Mother Name</td>
+                                    <td className="colon">:</td>
+                                    <td className="val">{s.motherName || '—'}</td>
+                                  </tr>
+                                  <tr>
+                                    <td className="lbl">Blood Group</td>
+                                    <td className="colon">:</td>
+                                    <td className="val">{s.bloodGroup || 'B+'}</td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </div>
+                            <div className="id-arch-footer">
+                              <span className="id-adm-tag">ADM: {s.admissionNo}</span>
+                              <div className="id-principal-sign">
+                                <span className="id-sign-script">Sarita Gomes</span>
+                                <span className="id-sign-title">Principal Sign</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {(idSide === 'both' || idSide === 'back') && (
+                          <div className="official-id-card id-card-back">
+                            <div className="id-back-arch-top" />
+                            <div className="id-back-content">
+                              <div className="id-back-field">
+                                <span className="id-back-icon phone"><Phone size={12} /></span>
+                                <span>: {s.fatherMobile || s.motherMobile || s.parentMobile || settings.phone || '9869353282'}</span>
+                              </div>
+                              <div className="id-back-field">
+                                <span className="id-back-icon blood"><HeartPulse size={12} /></span>
+                                <span>: {s.bloodGroup || 'B+'}</span>
+                              </div>
+                              <div className="id-back-address">
+                                <MapPin size={18} className="id-address-pin" />
+                                <div className="id-address-text">
+                                  {s.address || `${s.addressLine1 || ''} ${s.addressLine2 || ''} ${s.city || 'MUMBAI'} ${s.pinCode || '400095'}`.trim() || 'MALWANI, MALAD WEST, MUMBAI - 400095'}
+                                </div>
+                              </div>
+                              <div className="id-instructions-block">
+                                <div className="id-instructions-title">Instructions</div>
+                                <ol className="id-instructions-list">
+                                  <li>Entry of child strictly allowed on production of this card.</li>
+                                  <li>Please wear this card inside the campus.</li>
+                                  <li>This card will be used for library and lab access.</li>
+                                  <li>Loss of this card must be immediately reported to school.</li>
+                                </ol>
+                              </div>
+                            </div>
+                            <div className="id-back-arch-bottom" />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </Modal>
         );
@@ -1150,7 +1519,12 @@ export default function Students() {
 
       {/* ------- Quick: Parents ------- */}
       {modal?.type === 'parents' && (
-        <Modal title={`Linked Parents — ${modal.student.firstName} ${modal.student.lastName}`} icon={UsersRound} onClose={() => setModal(null)}>
+        <Modal
+          title={`Linked Parents — ${modal.student.firstName} ${modal.student.lastName}`}
+          icon={UsersRound}
+          onClose={() => setModal(null)}
+          onBack={modal.fromView ? () => setModal({ type: 'view', data: modal.student }) : null}
+        >
           {modal.data.length === 0 && <p className="muted">No parents linked.</p>}
           {modal.data.map((p) => (
             <div key={p._id} className="card card-pad mb" style={{ border: '1px solid var(--border)', boxShadow: 'none' }}>
