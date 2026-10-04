@@ -1196,11 +1196,13 @@ export default function Students() {
         );
       })()}
 
-      {/* ------- Student Official ID Card (Front & Back) ------- */}
+      {/* ------- Student Official ID Card (Front & Back - Professional Landscape) ------- */}
       {modal?.type === 'idcard' && (() => {
         const s = modal.data;
         const clsName = className(classes, s.classId);
         const logoSrc = settings.logoUrl || '/logo.jpeg';
+        const contactNo = s.fatherMobile || s.motherMobile || s.parentMobile || settings.phone || '9869353282';
+        const fullAddress = s.address || [s.addressLine1, s.addressLine2, s.city || 'Mumbai', s.pinCode ? `PIN: ${s.pinCode}` : ''].filter(Boolean).join(', ') || 'Mumbai, Maharashtra';
 
         return (
           <Modal
@@ -1242,61 +1244,69 @@ export default function Students() {
               <div className="id-card-container print-area">
                 {(idSide === 'both' || idSide === 'front') && (
                   <div className="official-id-card id-card-front">
-                    <div className="id-arch-header">
-                      <img src={logoSrc} alt="School Crest Logo" className="id-school-logo" />
-                      <h4 className="id-school-name">{settings.schoolName || 'M.V HIGH SCHOOL MUMBAI'}</h4>
-                      <p className="id-school-sub">{settings.address || 'S.V.P ROAD, PRARTHNA SAMAJ, MUMBAI - 400004'}</p>
+                    <div className="id-card-header">
+                      <img src={logoSrc} alt="School Logo" className="id-school-logo" />
+                      <div className="id-header-text">
+                        <h4 className="id-school-name">{settings.schoolName || 'M.V HIGH SCHOOL MUMBAI'}</h4>
+                        <p className="id-school-sub">{settings.address || 'Prarthna Samaj, Opera House, Mumbai - 400004'}</p>
+                      </div>
+                      <span className="id-ay-tag">{settings.academicYear || '2026-27'}</span>
                     </div>
 
-                    <div className="id-photo-row">
-                      <div className="id-year-vertical">{settings.academicYear || '2026 - 2027'}</div>
-                      <div className="id-photo-box">
-                        {s.profilePhoto?._id ? (
-                          <AttachmentImage attachment={s.profilePhoto} alt={`${s.firstName} ${s.lastName}`} />
-                        ) : s.documents?.profilePhoto?._id ? (
-                          <AttachmentImage attachment={s.documents.profilePhoto} alt={`${s.firstName} ${s.lastName}`} />
-                        ) : (
-                          <div className="id-photo-placeholder">
-                            <span>{s.firstName?.[0] || 'S'}{(s.lastName || ' ')[0]}</span>
-                          </div>
-                        )}
+                    <div className="id-card-body">
+                      <div className="id-photo-col">
+                        <div className="id-photo-box">
+                          {s.profilePhoto?._id ? (
+                            <AttachmentImage attachment={s.profilePhoto} alt={`${s.firstName} ${s.lastName}`} />
+                          ) : s.documents?.profilePhoto?._id ? (
+                            <AttachmentImage attachment={s.documents.profilePhoto} alt={`${s.firstName} ${s.lastName}`} />
+                          ) : (
+                            <div className="id-photo-placeholder">
+                              <span>{s.firstName?.[0] || 'S'}{(s.lastName || ' ')[0]}</span>
+                            </div>
+                          )}
+                        </div>
+                        <span className="id-adm-badge">ADM #{s.admissionNo}</span>
+                      </div>
+
+                      <div className="id-details-col">
+                        <h3 className="id-student-name">{s.firstName} {s.lastName || ''}</h3>
+                        <table className="id-details-table">
+                          <tbody>
+                            <tr>
+                              <td className="lbl">Class & Div</td>
+                              <td className="colon">:</td>
+                              <td className="val"><b>{clsName || '8th'}</b> {s.division ? `(Div ${s.division})` : ''}</td>
+                            </tr>
+                            <tr>
+                              <td className="lbl">Roll No</td>
+                              <td className="colon">:</td>
+                              <td className="val">{s.rollNo || '—'}</td>
+                            </tr>
+                            <tr>
+                              <td className="lbl">Date of Birth</td>
+                              <td className="colon">:</td>
+                              <td className="val">{s.dob || '—'}</td>
+                            </tr>
+                            <tr>
+                              <td className="lbl">Parent Name</td>
+                              <td className="colon">:</td>
+                              <td className="val">{s.fatherName || s.motherName || s.parentName || '—'}</td>
+                            </tr>
+                            <tr>
+                              <td className="lbl">Blood Group</td>
+                              <td className="colon">:</td>
+                              <td className="val">{s.bloodGroup || (s.allergies ? `⚠ ${s.allergies}` : '—')}</td>
+                            </tr>
+                          </tbody>
+                        </table>
                       </div>
                     </div>
 
-                    <div className="id-front-info">
-                      <h3 className="id-student-name">{s.firstName} {s.lastName || ''}</h3>
-                      <div className="id-front-meta-line">
-                        <span>DIV: <b>{s.division || 'A'}</b></span>
-                        <span>STD: <b>{clsName || '8TH'}</b></span>
+                    <div className="id-card-footer">
+                      <div className="id-footer-meta">
+                        <span>STUDENT ID CARD</span>
                       </div>
-                      <table className="id-front-details-table">
-                        <tbody>
-                          <tr>
-                            <td className="lbl">DOB</td>
-                            <td className="colon">:</td>
-                            <td className="val">{s.dob || '—'}</td>
-                          </tr>
-                          <tr>
-                            <td className="lbl">Father Name</td>
-                            <td className="colon">:</td>
-                            <td className="val">{s.fatherName || s.parentName || '—'}</td>
-                          </tr>
-                          <tr>
-                            <td className="lbl">Mother Name</td>
-                            <td className="colon">:</td>
-                            <td className="val">{s.motherName || '—'}</td>
-                          </tr>
-                          <tr>
-                            <td className="lbl">Blood Group</td>
-                            <td className="colon">:</td>
-                            <td className="val">{s.bloodGroup || s.allergies || 'B+'}</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-
-                    <div className="id-arch-footer">
-                      <span className="id-adm-tag">ADM: {s.admissionNo}</span>
                       <div className="id-principal-sign">
                         <span className="id-sign-script">Sarita Gomes</span>
                         <span className="id-sign-title">Principal Sign</span>
@@ -1307,35 +1317,41 @@ export default function Students() {
 
                 {(idSide === 'both' || idSide === 'back') && (
                   <div className="official-id-card id-card-back">
-                    <div className="id-back-arch-top" />
-                    <div className="id-back-content">
-                      <div className="id-back-field">
-                        <span className="id-back-icon phone"><Phone size={12} /></span>
-                        <span>: {s.fatherMobile || s.motherMobile || s.parentMobile || settings.phone || '9869353282'}</span>
-                      </div>
-                      <div className="id-back-field">
-                        <span className="id-back-icon blood"><HeartPulse size={12} /></span>
-                        <span>: {s.bloodGroup || 'B+'}</span>
-                      </div>
+                    <div className="id-card-header">
+                      <h4 className="id-back-title">Emergency Information & Guidelines</h4>
+                      <span className="id-ay-tag">Cardholder</span>
+                    </div>
 
-                      <div className="id-back-address">
-                        <MapPin size={18} className="id-address-pin" />
-                        <div className="id-address-text">
-                          {s.address || `${s.addressLine1 || ''} ${s.addressLine2 || ''} ${s.city || 'MUMBAI'} ${s.pinCode || '400095'}`.trim() || 'MALWANI, MALAD WEST, MUMBAI - 400095'}
+                    <div className="id-back-body">
+                      <div className="id-back-contact-box">
+                        <div className="id-back-row">
+                          <span className="id-back-icon-pill phone"><Phone size={11} /></span>
+                          <span><b>Emergency:</b> {contactNo}</span>
+                        </div>
+                        <div className="id-back-row">
+                          <span className="id-back-icon-pill blood"><HeartPulse size={11} /></span>
+                          <span><b>Blood Group:</b> {s.bloodGroup || '—'}</span>
+                        </div>
+                        <div className="id-back-address-card">
+                          <b>Residential Address:</b>
+                          <div>{fullAddress}</div>
                         </div>
                       </div>
 
-                      <div className="id-instructions-block">
-                        <div className="id-instructions-title">Instructions</div>
-                        <ol className="id-instructions-list">
-                          <li>Entry of child strictly allowed on production of this card.</li>
-                          <li>Please wear this card inside the campus.</li>
-                          <li>This card will be used for library and lab access.</li>
-                          <li>Loss of this card must be immediately reported to school.</li>
+                      <div className="id-back-rules-col">
+                        <div className="id-rules-title">Campus Regulations</div>
+                        <ol className="id-rules-list">
+                          <li>Card must be worn in campus at all times.</li>
+                          <li>Mandatory for exams, lab & library access.</li>
+                          <li>Report loss of card immediately to administration.</li>
+                          <li>Non-transferable identity credential.</li>
                         </ol>
                       </div>
                     </div>
-                    <div className="id-back-arch-bottom" />
+
+                    <div className="id-card-footer">
+                      If found, please return to school office • Tel: {settings.phone || '022 2386 5845'}
+                    </div>
                   </div>
                 )}
               </div>
@@ -1412,62 +1428,76 @@ export default function Students() {
                 <div className="bulk-id-grid print-area bulk-print-id-cards-container">
                   {classStudents.map((s) => {
                     const clsName = className(classes, s.classId);
+                    const contactNo = s.fatherMobile || s.motherMobile || s.parentMobile || settings.phone || '9869353282';
+                    const fullAddress = s.address || [s.addressLine1, s.addressLine2, s.city || 'Mumbai', s.pinCode ? `PIN: ${s.pinCode}` : ''].filter(Boolean).join(', ') || 'Mumbai, Maharashtra';
+
                     return (
                       <div key={s._id} style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
                         {(idSide === 'both' || idSide === 'front') && (
                           <div className="official-id-card id-card-front">
-                            <div className="id-arch-header">
+                            <div className="id-card-header">
                               <img src={logoSrc} alt="School Logo" className="id-school-logo" />
-                              <h4 className="id-school-name">{settings.schoolName || 'M.V HIGH SCHOOL MUMBAI'}</h4>
-                              <p className="id-school-sub">{settings.address || 'S.V.P ROAD, MUMBAI - 400004'}</p>
+                              <div className="id-header-text">
+                                <h4 className="id-school-name">{settings.schoolName || 'M.V HIGH SCHOOL MUMBAI'}</h4>
+                                <p className="id-school-sub">{settings.address || 'Prarthna Samaj, Opera House, Mumbai - 400004'}</p>
+                              </div>
+                              <span className="id-ay-tag">{settings.academicYear || '2026-27'}</span>
                             </div>
-                            <div className="id-photo-row">
-                              <div className="id-year-vertical">{settings.academicYear || '2026 - 2027'}</div>
-                              <div className="id-photo-box">
-                                {s.profilePhoto?._id ? (
-                                  <AttachmentImage attachment={s.profilePhoto} alt={`${s.firstName} ${s.lastName}`} />
-                                ) : s.documents?.profilePhoto?._id ? (
-                                  <AttachmentImage attachment={s.documents.profilePhoto} alt={`${s.firstName} ${s.lastName}`} />
-                                ) : (
-                                  <div className="id-photo-placeholder">
-                                    <span>{s.firstName?.[0] || 'S'}{(s.lastName || ' ')[0]}</span>
-                                  </div>
-                                )}
+
+                            <div className="id-card-body">
+                              <div className="id-photo-col">
+                                <div className="id-photo-box">
+                                  {s.profilePhoto?._id ? (
+                                    <AttachmentImage attachment={s.profilePhoto} alt={`${s.firstName} ${s.lastName}`} />
+                                  ) : s.documents?.profilePhoto?._id ? (
+                                    <AttachmentImage attachment={s.documents.profilePhoto} alt={`${s.firstName} ${s.lastName}`} />
+                                  ) : (
+                                    <div className="id-photo-placeholder">
+                                      <span>{s.firstName?.[0] || 'S'}{(s.lastName || ' ')[0]}</span>
+                                    </div>
+                                  )}
+                                </div>
+                                <span className="id-adm-badge">ADM #{s.admissionNo}</span>
+                              </div>
+
+                              <div className="id-details-col">
+                                <h3 className="id-student-name">{s.firstName} {s.lastName || ''}</h3>
+                                <table className="id-details-table">
+                                  <tbody>
+                                    <tr>
+                                      <td className="lbl">Class & Div</td>
+                                      <td className="colon">:</td>
+                                      <td className="val"><b>{clsName || '8th'}</b> {s.division ? `(Div ${s.division})` : ''}</td>
+                                    </tr>
+                                    <tr>
+                                      <td className="lbl">Roll No</td>
+                                      <td className="colon">:</td>
+                                      <td className="val">{s.rollNo || '—'}</td>
+                                    </tr>
+                                    <tr>
+                                      <td className="lbl">Date of Birth</td>
+                                      <td className="colon">:</td>
+                                      <td className="val">{s.dob || '—'}</td>
+                                    </tr>
+                                    <tr>
+                                      <td className="lbl">Parent Name</td>
+                                      <td className="colon">:</td>
+                                      <td className="val">{s.fatherName || s.motherName || s.parentName || '—'}</td>
+                                    </tr>
+                                    <tr>
+                                      <td className="lbl">Blood Group</td>
+                                      <td className="colon">:</td>
+                                      <td className="val">{s.bloodGroup || (s.allergies ? `⚠ ${s.allergies}` : '—')}</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
-                            <div className="id-front-info">
-                              <h3 className="id-student-name">{s.firstName} {s.lastName || ''}</h3>
-                              <div className="id-front-meta-line">
-                                <span>DIV: <b>{s.division || 'A'}</b></span>
-                                <span>STD: <b>{clsName || '8TH'}</b></span>
+
+                            <div className="id-card-footer">
+                              <div className="id-footer-meta">
+                                <span>STUDENT ID CARD</span>
                               </div>
-                              <table className="id-front-details-table">
-                                <tbody>
-                                  <tr>
-                                    <td className="lbl">DOB</td>
-                                    <td className="colon">:</td>
-                                    <td className="val">{s.dob || '—'}</td>
-                                  </tr>
-                                  <tr>
-                                    <td className="lbl">Father Name</td>
-                                    <td className="colon">:</td>
-                                    <td className="val">{s.fatherName || s.parentName || '—'}</td>
-                                  </tr>
-                                  <tr>
-                                    <td className="lbl">Mother Name</td>
-                                    <td className="colon">:</td>
-                                    <td className="val">{s.motherName || '—'}</td>
-                                  </tr>
-                                  <tr>
-                                    <td className="lbl">Blood Group</td>
-                                    <td className="colon">:</td>
-                                    <td className="val">{s.bloodGroup || 'B+'}</td>
-                                  </tr>
-                                </tbody>
-                              </table>
-                            </div>
-                            <div className="id-arch-footer">
-                              <span className="id-adm-tag">ADM: {s.admissionNo}</span>
                               <div className="id-principal-sign">
                                 <span className="id-sign-script">Sarita Gomes</span>
                                 <span className="id-sign-title">Principal Sign</span>
@@ -1478,33 +1508,41 @@ export default function Students() {
 
                         {(idSide === 'both' || idSide === 'back') && (
                           <div className="official-id-card id-card-back">
-                            <div className="id-back-arch-top" />
-                            <div className="id-back-content">
-                              <div className="id-back-field">
-                                <span className="id-back-icon phone"><Phone size={12} /></span>
-                                <span>: {s.fatherMobile || s.motherMobile || s.parentMobile || settings.phone || '9869353282'}</span>
-                              </div>
-                              <div className="id-back-field">
-                                <span className="id-back-icon blood"><HeartPulse size={12} /></span>
-                                <span>: {s.bloodGroup || 'B+'}</span>
-                              </div>
-                              <div className="id-back-address">
-                                <MapPin size={18} className="id-address-pin" />
-                                <div className="id-address-text">
-                                  {s.address || `${s.addressLine1 || ''} ${s.addressLine2 || ''} ${s.city || 'MUMBAI'} ${s.pinCode || '400095'}`.trim() || 'MALWANI, MALAD WEST, MUMBAI - 400095'}
+                            <div className="id-card-header">
+                              <h4 className="id-back-title">Emergency Info & Guidelines</h4>
+                              <span className="id-ay-tag">Cardholder</span>
+                            </div>
+
+                            <div className="id-back-body">
+                              <div className="id-back-contact-box">
+                                <div className="id-back-row">
+                                  <span className="id-back-icon-pill phone"><Phone size={11} /></span>
+                                  <span><b>Emergency:</b> {contactNo}</span>
+                                </div>
+                                <div className="id-back-row">
+                                  <span className="id-back-icon-pill blood"><HeartPulse size={11} /></span>
+                                  <span><b>Blood Group:</b> {s.bloodGroup || '—'}</span>
+                                </div>
+                                <div className="id-back-address-card">
+                                  <b>Residential Address:</b>
+                                  <div>{fullAddress}</div>
                                 </div>
                               </div>
-                              <div className="id-instructions-block">
-                                <div className="id-instructions-title">Instructions</div>
-                                <ol className="id-instructions-list">
-                                  <li>Entry of child strictly allowed on production of this card.</li>
-                                  <li>Please wear this card inside the campus.</li>
-                                  <li>This card will be used for library and lab access.</li>
-                                  <li>Loss of this card must be immediately reported to school.</li>
+
+                              <div className="id-back-rules-col">
+                                <div className="id-rules-title">Campus Regulations</div>
+                                <ol className="id-rules-list">
+                                  <li>Card must be worn in campus at all times.</li>
+                                  <li>Mandatory for exams, lab & library access.</li>
+                                  <li>Report loss of card immediately to administration.</li>
+                                  <li>Non-transferable identity credential.</li>
                                 </ol>
                               </div>
                             </div>
-                            <div className="id-back-arch-bottom" />
+
+                            <div className="id-card-footer">
+                              If found, please return to school office • Tel: {settings.phone || '022 2386 5845'}
+                            </div>
                           </div>
                         )}
                       </div>
