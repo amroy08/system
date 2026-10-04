@@ -361,6 +361,427 @@ export default function Students() {
     setTimeout(() => w.print(), 300);
   };
 
+  const printStudentIdCards = (studentsList, side = 'both') => {
+    if (!studentsList || studentsList.length === 0) return;
+    const logoSrc = settings.logoUrl || '/logo.jpeg';
+    const schoolName = settings.schoolName || 'M.V HIGH SCHOOL';
+    const schoolAddress = settings.address || 'Prarthna Samaj, Opera House, Mumbai - 400004';
+    const ay = settings.academicYear || '2026-27';
+    const phone = settings.phone || '022 2386 5845';
+
+    const w = window.open('', '_blank');
+    if (!w) {
+      notify('Pop-up blocked! Please allow pop-ups to print ID cards.', 'error');
+      return;
+    }
+
+    const cardsHtml = studentsList.map((s) => {
+      const clsName = className(classes, s.classId);
+      const contactNo = s.fatherMobile || s.motherMobile || s.parentMobile || phone;
+      const fullAddress = s.address || [s.addressLine1, s.addressLine2, s.city || 'Mumbai', s.pinCode ? `PIN: ${s.pinCode}` : ''].filter(Boolean).join(', ') || 'Mumbai, Maharashtra';
+      const studentPhotoUrl = s.profilePhoto?._id
+        ? `/api/attachments/${s.profilePhoto._id}`
+        : s.documents?.profilePhoto?._id
+        ? `/api/attachments/${s.documents.profilePhoto._id}`
+        : '';
+      const initials = `${s.firstName?.[0] || 'S'}${(s.lastName || ' ')[0]}`;
+
+      const frontHtml = `
+        <div class="official-id-card id-card-front">
+          <div class="id-card-header">
+            <img src="${logoSrc}" alt="Logo" class="id-school-logo" />
+            <div class="id-header-text">
+              <h4 class="id-school-name">${escapeReceiptText(schoolName)}</h4>
+              <p class="id-school-sub">${escapeReceiptText(schoolAddress)}</p>
+            </div>
+            <span class="id-ay-tag">${escapeReceiptText(ay)}</span>
+          </div>
+
+          <div class="id-card-body">
+            <div class="id-photo-col">
+              <div class="id-photo-box">
+                ${studentPhotoUrl 
+                  ? `<img src="${studentPhotoUrl}" alt="Photo" />` 
+                  : `<div class="id-photo-placeholder">${initials}</div>`}
+              </div>
+              <span class="id-adm-badge">ADM #${s.admissionNo}</span>
+            </div>
+
+            <div class="id-details-col">
+              <h3 class="id-student-name">${escapeReceiptText(s.firstName)} ${escapeReceiptText(s.lastName || '')}</h3>
+              <table class="id-details-table">
+                <tbody>
+                  <tr>
+                    <td class="lbl">Class & Div</td>
+                    <td class="colon">:</td>
+                    <td class="val"><b>${escapeReceiptText(clsName || '8th')}</b> ${s.division ? `(Div ${s.division})` : ''}</td>
+                  </tr>
+                  <tr>
+                    <td class="lbl">Roll No</td>
+                    <td class="colon">:</td>
+                    <td class="val">${s.rollNo || '—'}</td>
+                  </tr>
+                  <tr>
+                    <td class="lbl">Date of Birth</td>
+                    <td class="colon">:</td>
+                    <td class="val">${s.dob || '—'}</td>
+                  </tr>
+                  <tr>
+                    <td class="lbl">Parent Name</td>
+                    <td class="colon">:</td>
+                    <td class="val">${escapeReceiptText(s.fatherName || s.motherName || s.parentName || '—')}</td>
+                  </tr>
+                  <tr>
+                    <td class="lbl">Blood Group</td>
+                    <td class="colon">:</td>
+                    <td class="val">${s.bloodGroup || (s.allergies ? `⚠ ${s.allergies}` : '—')}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="id-card-footer">
+            <div class="id-footer-meta">
+              <span>STUDENT IDENTITY CARD</span>
+            </div>
+            <div class="id-principal-sign">
+              <span class="id-sign-script">Sarita Gomes</span>
+              <span class="id-sign-title">Principal Sign</span>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const backHtml = `
+        <div class="official-id-card id-card-back">
+          <div class="id-card-header">
+            <h4 class="id-back-title">Emergency Info & Guidelines</h4>
+            <span class="id-ay-tag">Cardholder</span>
+          </div>
+
+          <div class="id-back-body">
+            <div class="id-back-contact-box">
+              <div class="id-back-row">
+                <span class="id-back-icon-pill phone">📞</span>
+                <span><b>Emergency:</b> ${escapeReceiptText(contactNo)}</span>
+              </div>
+              <div class="id-back-row">
+                <span class="id-back-icon-pill blood">🩸</span>
+                <span><b>Blood Group:</b> ${escapeReceiptText(s.bloodGroup || '—')}</span>
+              </div>
+              <div class="id-back-address-card">
+                <b>Residential Address:</b>
+                <div>${escapeReceiptText(fullAddress)}</div>
+              </div>
+            </div>
+
+            <div class="id-back-rules-col">
+              <div class="id-rules-title">Campus Regulations</div>
+              <ol class="id-rules-list">
+                <li>Card must be worn in campus at all times.</li>
+                <li>Mandatory for exams, lab & library access.</li>
+                <li>Report loss of card immediately to administration.</li>
+                <li>Non-transferable identity credential.</li>
+              </ol>
+            </div>
+          </div>
+
+          <div class="id-card-footer">
+            If found, please return to school office • Tel: ${escapeReceiptText(phone)}
+          </div>
+        </div>
+      `;
+
+      return `
+        <div class="card-pair-wrapper">
+          ${(side === 'both' || side === 'front') ? frontHtml : ''}
+          ${(side === 'both' || side === 'back') ? backHtml : ''}
+        </div>
+      `;
+    }).join('');
+
+    w.document.write(`<!DOCTYPE html><html><head><title>ID Cards Print - ${studentsList.length} Students</title>
+      <meta charset="utf-8" />
+      <style>
+        @page {
+          size: A4 portrait;
+          margin: 10mm 8mm;
+        }
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          margin: 0; padding: 10px; background: #fff; color: #0f172a;
+        }
+        .print-cards-grid {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 12px;
+          justify-content: flex-start;
+          align-content: flex-start;
+        }
+        .card-pair-wrapper {
+          display: flex;
+          gap: 8px;
+          page-break-inside: avoid;
+          break-inside: avoid;
+          margin-bottom: 8px;
+        }
+        .official-id-card {
+          width: 330px;
+          height: 205px;
+          background: #ffffff;
+          border: 1px solid #94a3b8;
+          border-radius: 8px;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          position: relative;
+          page-break-inside: avoid;
+          break-inside: avoid;
+        }
+        .id-card-front {
+          border-top: 3.5px solid #0f2248;
+        }
+        .id-card-header {
+          background: #0f2248 !important;
+          color: #ffffff !important;
+          padding: 6px 10px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .id-school-logo {
+          width: 28px;
+          height: 28px;
+          border-radius: 4px;
+          object-fit: contain;
+          background: #ffffff;
+          padding: 1px;
+        }
+        .id-header-text {
+          flex: 1;
+          min-width: 0;
+        }
+        .id-school-name {
+          font-size: 11px;
+          font-weight: 800;
+          color: #ffffff !important;
+          margin: 0;
+          line-height: 1.15;
+          text-transform: uppercase;
+        }
+        .id-school-sub {
+          font-size: 7px;
+          color: #93c5fd !important;
+          margin: 1px 0 0;
+        }
+        .id-ay-tag {
+          background: rgba(255,255,255,0.2) !important;
+          border: 1px solid rgba(255,255,255,0.4);
+          color: #ffffff !important;
+          font-size: 8px;
+          font-weight: 800;
+          padding: 1px 5px;
+          border-radius: 3px;
+        }
+        .id-card-body {
+          display: flex;
+          gap: 10px;
+          padding: 8px 10px 4px;
+          flex: 1;
+          align-items: center;
+        }
+        .id-photo-col {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 3px;
+          flex-shrink: 0;
+        }
+        .id-photo-box {
+          width: 66px;
+          height: 78px;
+          border: 1.5px solid #0f2248;
+          border-radius: 5px;
+          overflow: hidden;
+          background: #f1f5f9;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .id-photo-box img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        .id-photo-placeholder {
+          font-size: 20px;
+          font-weight: 800;
+          color: #0f2248;
+        }
+        .id-adm-badge {
+          font-size: 7.5px;
+          font-family: monospace;
+          font-weight: 800;
+          color: #0f2248;
+          background: #e2e8f0;
+          padding: 1px 4px;
+          border-radius: 2px;
+        }
+        .id-details-col {
+          flex: 1;
+          min-width: 0;
+        }
+        .id-student-name {
+          font-size: 12px;
+          font-weight: 900;
+          color: #0f2248;
+          text-transform: uppercase;
+          margin: 0 0 3px;
+          line-height: 1.15;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .id-details-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 8.5px;
+          line-height: 1.3;
+        }
+        .id-details-table td {
+          padding: 0.5px 0;
+        }
+        .id-details-table td.lbl {
+          color: #475569;
+          font-weight: 700;
+          width: 32%;
+        }
+        .id-details-table td.colon {
+          width: 6px;
+          font-weight: 700;
+          color: #475569;
+        }
+        .id-details-table td.val {
+          color: #0f172a;
+          font-weight: 800;
+          text-transform: uppercase;
+        }
+        .id-card-footer {
+          margin-top: auto;
+          background: #f8fafc;
+          border-top: 1px solid #e2e8f0;
+          padding: 3px 10px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        .id-footer-meta {
+          font-size: 7px;
+          font-weight: 800;
+          color: #475569;
+        }
+        .id-principal-sign {
+          text-align: right;
+        }
+        .id-sign-script {
+          font-family: 'Brush Script MT', 'Dancing Script', cursive;
+          font-size: 12px;
+          color: #0f2248;
+          display: block;
+        }
+        .id-sign-title {
+          font-size: 6px;
+          font-weight: 800;
+          color: #64748b;
+          text-transform: uppercase;
+          display: block;
+        }
+        .id-card-back {
+          border-top: 3.5px solid #0f2248;
+        }
+        .id-back-title {
+          font-size: 8.5px;
+          font-weight: 800;
+          color: #ffffff !important;
+          margin: 0;
+        }
+        .id-back-body {
+          padding: 6px 10px;
+          flex: 1;
+          display: grid;
+          grid-template-columns: 1fr 1.1fr;
+          gap: 8px;
+        }
+        .id-back-contact-box {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          justify-content: center;
+        }
+        .id-back-row {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 8px;
+          color: #0f172a;
+        }
+        .id-back-icon-pill {
+          font-size: 9px;
+        }
+        .id-back-address-card {
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 4px;
+          padding: 4px 6px;
+          font-size: 7.5px;
+          line-height: 1.25;
+          color: #334155;
+        }
+        .id-back-address-card b {
+          display: block;
+          color: #0f2248;
+          margin-bottom: 1px;
+        }
+        .id-back-rules-col {
+          border-left: 1px solid #e2e8f0;
+          padding-left: 8px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+        }
+        .id-rules-title {
+          font-size: 8px;
+          font-weight: 800;
+          color: #0f2248;
+          margin-bottom: 2px;
+          text-transform: uppercase;
+        }
+        .id-rules-list {
+          margin: 0;
+          padding-left: 10px;
+          font-size: 7px;
+          line-height: 1.3;
+          color: #475569;
+        }
+        .id-card-back .id-card-footer {
+          background: #0f2248 !important;
+          color: #93c5fd !important;
+          font-size: 6.5px;
+          justify-content: center;
+        }
+      </style>
+    </head><body>
+      <div class="print-cards-grid">
+        ${cardsHtml}
+      </div>
+    </body></html>`);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 350);
+  };
+
   const openQuick = async (type, r, fromView = false) => {
     try {
       const { data } = await api.get(`/students/${r._id}/${type}`);
@@ -1213,7 +1634,7 @@ export default function Students() {
             onBack={modal.fromView ? () => setModal({ type: 'view', data: s }) : null}
             footer={<>
               <button className="btn btn-gray" onClick={() => setModal(null)}>Close</button>
-              <button className="btn btn-navy" onClick={() => window.print()}><Printer size={15} /> Print Card</button>
+              <button className="btn btn-navy" onClick={() => printStudentIdCards([s], idSide)}><Printer size={15} /> Print Card</button>
             </>}
           >
             <div className="id-card-view-wrapper">
@@ -1374,7 +1795,7 @@ export default function Students() {
             onClose={() => setModal(null)}
             footer={<>
               <button className="btn btn-gray" onClick={() => setModal(null)}>Close</button>
-              <button className="btn btn-navy" onClick={() => window.print()} disabled={classStudents.length === 0}>
+              <button className="btn btn-navy" onClick={() => printStudentIdCards(classStudents, idSide)} disabled={classStudents.length === 0}>
                 <Printer size={15} /> Print All ({classStudents.length}) Cards
               </button>
             </>}
