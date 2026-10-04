@@ -51,10 +51,12 @@ const PTM = lazySimplePage('PTM');
 const FeeStructure = lazySimplePage('FeeStructure');
 const DailyAccounts = lazySimplePage('DailyAccounts');
 
+import AppLoadingScreen from './components/AppLoadingScreen';
+
 function Protected({ children }) {
   const { user, authReady } = useApp();
   const location = useLocation();
-  if (!authReady) return null;
+  if (!authReady) return <AppLoadingScreen message="Verifying session..." />;
   if (!user) return <Navigate to="/login" replace />;
   if (user.passwordChangeRequired && location.pathname !== '/account') return <Navigate to="/account" replace />;
   return children;
@@ -76,7 +78,7 @@ export default function App() {
     <AppProvider>
       <BrowserRouter>
         <PwaInstallPrompt />
-        <Suspense fallback={<div role="status" aria-live="polite" style={{ padding: '2rem' }}>Loading…</div>}>
+        <Suspense fallback={<AppLoadingScreen message="Loading portal..." />}>
           <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/home" element={<Navigate to="/login" replace />} />
