@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, User, Eye, EyeOff, ArrowRight, ShieldCheck, BookOpen, CalendarCheck, GraduationCap, Smartphone } from 'lucide-react';
+import { Lock, User, Eye, EyeOff, ArrowRight, ShieldCheck, BookOpen, CalendarCheck, GraduationCap, Smartphone, Users, Award, Headphones } from 'lucide-react';
 import { useApp } from '../context/AppContextValue';
 import { errMsg } from '../api';
 import { usePwa } from '../components/PwaInstallPrompt';
@@ -64,25 +64,72 @@ export default function Login() {
       {/* Left branding panel */}
       <div className="login-brand-panel">
         <div className="login-brand-content">
-          <div className="login-brand-monogram">MV</div>
+          <div className="login-brand-header-row">
+            <div className="login-brand-logo-wrap">
+              <img src="/logo.jpeg" alt={schoolName} className="login-brand-logo-img" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+              <div className="login-brand-monogram">MV</div>
+            </div>
+            <div className="login-brand-badge-pill">
+              <Award size={13} />
+              <span>Official ERP Portal</span>
+            </div>
+          </div>
+
           <h1 className="login-brand-name">{schoolName}</h1>
-          <p className="login-brand-tagline">Enterprise Management Portal</p>
+          <p className="login-brand-tagline">Integrated Enterprise Management & Academic System</p>
+          
+          <div className="login-brand-roles">
+            <span className="login-role-tag">Students</span>
+            <span className="login-role-tag">Parents</span>
+            <span className="login-role-tag">Teachers</span>
+            <span className="login-role-tag">Administration</span>
+          </div>
+
           <div className="login-brand-divider" />
+
           <div className="login-brand-features">
             <div className="login-brand-feature">
-              <CalendarCheck size={18} />
-              <span>Attendance & Timetable Management</span>
+              <div className="login-feature-icon-box"><CalendarCheck size={18} /></div>
+              <div>
+                <strong>Smart Attendance & Timetable</strong>
+                <p>Live period tracking, daily roll calls & biometric sync</p>
+              </div>
             </div>
             <div className="login-brand-feature">
-              <BookOpen size={18} />
-              <span>Fees, Homework & Library Tracking</span>
+              <div className="login-feature-icon-box"><BookOpen size={18} /></div>
+              <div>
+                <strong>Fees, Homework & Library</strong>
+                <p>Digital receipts, homework feeds and book circulation</p>
+              </div>
             </div>
             <div className="login-brand-feature">
-              <GraduationCap size={18} />
-              <span>Exams, Results & Student Portal</span>
+              <div className="login-feature-icon-box"><GraduationCap size={18} /></div>
+              <div>
+                <strong>Exams, Marks & Progress Cards</strong>
+                <p>Comprehensive report cards, hall tickets & grade sheets</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Highlights / stats badge on desktop */}
+          <div className="login-brand-stats">
+            <div className="login-stat-item">
+              <span className="login-stat-label">Academic Year</span>
+              <span className="login-stat-val">AY {acadYear}</span>
+            </div>
+            <div className="login-stat-divider" />
+            <div className="login-stat-item">
+              <span className="login-stat-label">Security</span>
+              <span className="login-stat-val">256-Bit SSL</span>
+            </div>
+            <div className="login-stat-divider" />
+            <div className="login-stat-item">
+              <span className="login-stat-label">System Uptime</span>
+              <span className="login-stat-val">99.9%</span>
             </div>
           </div>
         </div>
+
         <p className="login-brand-copyright">© {year} {schoolName}. All rights reserved.</p>
       </div>
 
