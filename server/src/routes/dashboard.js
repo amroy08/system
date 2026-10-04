@@ -30,9 +30,9 @@ async function buildStats() {
       col('exams').find({ _deleted: { $ne: true }, status: { $in: ['scheduled', 'ongoing'] } }),
       col('exams').find({ _deleted: { $ne: true } }, { projection: { _id: 1 } }),
       col('discipline').find({ _deleted: { $ne: true } }),
-      col('helpdesk').count({ status: 'open' }),
-      col('complaints').count({ status: 'open' }),
-      col('admissions').count({ status: 'registered' }),
+      col('helpdesk').count({ status: 'open', _deleted: { $ne: true } }),
+      col('complaints').count({ status: 'open', _deleted: { $ne: true } }),
+      col('admissions').count({ status: 'registered', _deleted: { $ne: true } }),
       col('marks').find({ status: 'submitted', _deleted: { $ne: true } }),
     ]);
 

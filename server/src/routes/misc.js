@@ -6,6 +6,7 @@ import { resolveEmailRecipients } from '../utils/emailRecipients.js';
 import { enqueueEmailEvent } from '../utils/emailOutbox.js';
 import { FEE_APPLIES_TO, FEE_FREQUENCY_MULTIPLIER } from '../utils/feeStructure.js';
 import { canAccessClass, teacherClassIds } from '../utils/accessScope.js';
+import { invalidateStatsCache } from './dashboard.js';
 
 const router = Router();
 
@@ -401,6 +402,9 @@ router.use('/discipline', crudRouter('discipline', {
   authorizeUpdate: mayManageStudentRecord, authorizeDelete: mayManageStudentRecord,
   beforeCreate: (body, req) => stampStudentRecord(body, req, 'reportedBy'),
   beforeUpdate: (body, req, existing) => stampStudentRecord({ ...body, studentId: body.studentId || existing.studentId }, req, 'reportedBy', false),
+  afterCreate: async () => invalidateStatsCache(),
+  afterUpdate: async () => invalidateStatsCache(),
+  afterDelete: async () => invalidateStatsCache(),
 }));
 router.use('/conduct', crudRouter('conduct', {
   readRoles: STAFF_TEACHER, writeRoles: STAFF_TEACHER, defaultSort: { date: -1 },
@@ -493,6 +497,9 @@ router.use('/helpdesk', crudRouter('helpdesk', {
   beforeCreate: stampSubmissionOwner,
   filterRead: filterOwnSubmissions,
   defaultSort: { createdAt: -1 },
+  afterCreate: async () => invalidateStatsCache(),
+  afterUpdate: async () => invalidateStatsCache(),
+  afterDelete: async () => invalidateStatsCache(),
 }));
 router.use('/complaints', crudRouter('complaints', {
   createRoles: ALL_ROLES,
@@ -501,6 +508,9 @@ router.use('/complaints', crudRouter('complaints', {
   beforeCreate: stampSubmissionOwner,
   filterRead: filterOwnSubmissions,
   defaultSort: { createdAt: -1 },
+  afterCreate: async () => invalidateStatsCache(),
+  afterUpdate: async () => invalidateStatsCache(),
+  afterDelete: async () => invalidateStatsCache(),
 }));
 async function notifyDocumentAudience(doc) {
   try {

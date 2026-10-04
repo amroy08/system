@@ -124,16 +124,26 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// Public branding for the login screen (no auth)
+// Public branding for the login screen (no auth) - cached in memory to protect DB during high concurrency
+let publicSettingsCache = null;
+let publicSettingsCacheTime = 0;
+const PUBLIC_SETTINGS_CACHE_TTL = 60_000;
+
 app.get('/api/public/settings', async (req, res) => {
+  const now = Date.now();
+  if (publicSettingsCache && now - publicSettingsCacheTime < PUBLIC_SETTINGS_CACHE_TTL) {
+    return res.json(publicSettingsCache);
+  }
   const doc = await col('settings').findOne({ key: 'school' });
   const v = doc?.value || {};
-  res.json({
+  publicSettingsCache = {
     schoolName: v.schoolName || 'M.V HIGH SCHOOL',
     logoUrl: v.logoUrl || '',
     primaryColor: v.primaryColor || '#0f2248',
     accentColor: v.accentColor || '#16a34a',
-  });
+  };
+  publicSettingsCacheTime = now;
+  res.json(publicSettingsCache);
 });
 
 app.use('/api/auth', authRoutes);
