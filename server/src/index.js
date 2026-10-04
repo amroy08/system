@@ -81,6 +81,22 @@ app.use(apiCacheHeaders);
 app.use(csrfProtect);
 app.use(mutationAudit);
 
+// ─── DoS & Abuse Protection: Global API Rate Limiter ───────────────────────
+// Limits every IP to max 120 API requests per minute.
+// Normal human users generate 5-15 requests/min. Automated DoS scripts will be instantly stopped.
+const globalApiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 120,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  skip(req) {
+    // Health checks and public static settings don't exhaust DB resources
+    return req.path === '/health' || req.path === '/public/settings';
+  },
+  message: { error: 'Too many requests. Please slow down and try again shortly.' },
+});
+app.use('/api', globalApiLimiter);
+
 // Sustained rate limit: 10 login attempts per 15 minutes per IP
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
