@@ -531,17 +531,56 @@ router.put('/student/:id/adjust-structure', allowRoles(...STAFF), async (req, re
       cleanComponents = regular;
     }
 
+    let targetRemaining = null;
+    if (req.body.remainingBalance !== undefined && req.body.remainingBalance !== null && req.body.remainingBalance !== '') {
+      targetRemaining = Math.max(0, Number(req.body.remainingBalance) || 0);
+    }
+
     let arrears = 0;
     if (previousYearArrears !== undefined && previousYearArrears !== null && previousYearArrears !== '') {
       arrears = Math.max(0, Number(previousYearArrears) || 0);
-    } else if (req.body.remainingBalance !== undefined && req.body.remainingBalance !== null && req.body.remainingBalance !== '') {
-      const targetRemaining = Math.max(0, Number(req.body.remainingBalance) || 0);
-      const targetTotal = targetRemaining + totalPaid;
-      arrears = Math.max(0, targetTotal - currentGradeDemand);
-    } else if (req.body.totalDemand !== undefined && req.body.totalDemand !== null && req.body.totalDemand !== '') {
-      arrears = Math.max(0, (Number(req.body.totalDemand) || 0) - currentGradeDemand);
     } else {
       arrears = Math.max(0, Number(student.importedWorkbook?.oldBalance) || 0);
+    }
+
+    // If remainingBalance was explicitly given, enforce it so outstanding balance matches exactly
+    if (targetRemaining !== null) {
+      const targetDemand = targetRemaining + totalPaid;
+      if (targetDemand >= currentGradeDemand) {
+        arrears = targetDemand - currentGradeDemand;
+      } else {
+        arrears = 0;
+        let diff = currentGradeDemand - targetDemand;
+        // Deduct diff from components starting from the largest component
+        const sortedIndices = cleanComponents
+          .map((c, i) => ({ amount: c.amount, index: i }))
+          .sort((a, b) => b.amount - a.amount);
+        for (const item of sortedIndices) {
+          if (diff <= 0) break;
+          const deduct = Math.min(cleanComponents[item.index].amount, diff);
+          cleanComponents[item.index].amount = Math.max(0, Math.round(cleanComponents[item.index].amount - deduct));
+          diff -= deduct;
+        }
+        currentGradeDemand = cleanComponents.reduce((sum, c) => sum + c.amount, 0);
+      }
+    } else if (req.body.totalDemand !== undefined && req.body.totalDemand !== null && req.body.totalDemand !== '') {
+      const targetDemand = Math.max(0, Number(req.body.totalDemand) || 0);
+      if (targetDemand >= currentGradeDemand) {
+        arrears = targetDemand - currentGradeDemand;
+      } else {
+        arrears = 0;
+        let diff = currentGradeDemand - targetDemand;
+        const sortedIndices = cleanComponents
+          .map((c, i) => ({ amount: c.amount, index: i }))
+          .sort((a, b) => b.amount - a.amount);
+        for (const item of sortedIndices) {
+          if (diff <= 0) break;
+          const deduct = Math.min(cleanComponents[item.index].amount, diff);
+          cleanComponents[item.index].amount = Math.max(0, Math.round(cleanComponents[item.index].amount - deduct));
+          diff -= deduct;
+        }
+        currentGradeDemand = cleanComponents.reduce((sum, c) => sum + c.amount, 0);
+      }
     }
 
     const newTotalDemand = currentGradeDemand + arrears;

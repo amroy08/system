@@ -422,11 +422,30 @@ export default function Fees() {
   const handleRemainingBalanceChange = (newBalVal) => {
     const balVal = Math.max(0, Number(newBalVal) || 0);
     setEditableRemainingBalance(balVal);
-    const standardSum = editableComponents.reduce((s, c) => s + (Number(c.amount) || 0), 0);
     const totalPaid = Number(computed?.totalPaid || 0);
-    // Sync arrears so standardSum + arrears - totalPaid = balVal
-    const neededArrears = Math.max(0, balVal + totalPaid - standardSum);
-    setEditableArrears(neededArrears);
+    const targetDemand = balVal + totalPaid;
+    const currentComponentsSum = editableComponents.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+
+    if (targetDemand >= currentComponentsSum) {
+      const neededArrears = targetDemand - currentComponentsSum;
+      setEditableArrears(neededArrears);
+    } else {
+      setEditableArrears(0);
+      let diff = currentComponentsSum - targetDemand;
+      const sorted = editableComponents
+        .map((c, i) => ({ amount: Number(c.amount) || 0, index: i }))
+        .sort((a, b) => b.amount - a.amount);
+      
+      const newComps = [...editableComponents];
+      for (const item of sorted) {
+        if (diff <= 0) break;
+        const curAmt = Number(newComps[item.index].amount) || 0;
+        const deduct = Math.min(curAmt, diff);
+        newComps[item.index] = { ...newComps[item.index], amount: Math.max(0, Math.round(curAmt - deduct)) };
+        diff -= deduct;
+      }
+      setEditableComponents(newComps);
+    }
   };
 
   const saveFeeAdjustment = async (targetStudentId = studentId) => {
@@ -1221,7 +1240,9 @@ export default function Fees() {
                 <div className="full fee-summary-grid" style={{ display: 'grid', gap: 12, marginBottom: 12 }}>
                   <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '12px 14px', textAlign: 'center', border: '1px solid var(--border)' }}>
                     <div className="small text-muted" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Total Annual Fee</div>
-                    <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4 }}>{cur}{computed.totalDemand.toLocaleString()}</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4 }}>
+                      {cur}{(isEditingFeeStructure ? (editableComponents.reduce((s, c) => s + (Number(c.amount) || 0), 0) + Number(editableArrears || 0)) : computed.totalDemand).toLocaleString()}
+                    </div>
                   </div>
                   <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '12px 14px', textAlign: 'center', border: '1px solid var(--border)' }}>
                     <div className="small text-muted" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Paid to Date</div>
@@ -1229,7 +1250,9 @@ export default function Fees() {
                   </div>
                   <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '12px 14px', textAlign: 'center', border: '1px solid var(--border)' }}>
                     <div className="small text-muted" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Outstanding Balance</div>
-                    <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4, color: '#dc2626' }}>{cur}{computed.balance.toLocaleString()}</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4, color: '#dc2626' }}>
+                      {cur}{(isEditingFeeStructure ? Number(editableRemainingBalance || 0) : computed.balance).toLocaleString()}
+                    </div>
                   </div>
                 </div>
 

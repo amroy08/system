@@ -175,9 +175,29 @@ export default function Students() {
   const handleStudentRemainingBalanceChange = (newBalVal, totalPaid) => {
     const balVal = Math.max(0, Number(newBalVal) || 0);
     setEditableStudentRemainingBalance(balVal);
-    const standardSum = editableStudentComponents.reduce((s, c) => s + (Number(c.amount) || 0), 0);
-    const neededArrears = Math.max(0, balVal + Number(totalPaid || 0) - standardSum);
-    setEditableStudentArrears(neededArrears);
+    const targetDemand = balVal + Number(totalPaid || 0);
+    const currentComponentsSum = editableStudentComponents.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+
+    if (targetDemand >= currentComponentsSum) {
+      const neededArrears = targetDemand - currentComponentsSum;
+      setEditableStudentArrears(neededArrears);
+    } else {
+      setEditableStudentArrears(0);
+      let diff = currentComponentsSum - targetDemand;
+      const sorted = editableStudentComponents
+        .map((c, i) => ({ amount: Number(c.amount) || 0, index: i }))
+        .sort((a, b) => b.amount - a.amount);
+      
+      const newComps = [...editableStudentComponents];
+      for (const item of sorted) {
+        if (diff <= 0) break;
+        const curAmt = Number(newComps[item.index].amount) || 0;
+        const deduct = Math.min(curAmt, diff);
+        newComps[item.index] = { ...newComps[item.index], amount: Math.max(0, Math.round(curAmt - deduct)) };
+        diff -= deduct;
+      }
+      setEditableStudentComponents(newComps);
+    }
   };
 
   const saveStudentFeeAdjustment = async (studentId) => {
