@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   GraduationCap, Plus, Eye, Wallet, CalendarCheck, Award, UsersRound, Pencil, Trash2,
   CreditCard, Printer, FileText, Receipt, Camera, FolderLock, MapPin, Phone, ShieldCheck,
-  HeartPulse, User, BookOpen, Trophy, CheckCircle2, XCircle, ArrowLeft,
+  HeartPulse, User, BookOpen, Trophy, CheckCircle2, XCircle, ArrowLeft, Edit3, Check, X,
 } from 'lucide-react';
 import { api, errMsg } from '../api';
 import { useApp } from '../context/AppContextValue';
@@ -102,6 +102,113 @@ export default function Students() {
   const [confirmDel, setConfirmDel] = useState(null);
   const [params] = useSearchParams();
   const canWrite = ['admin', 'clerk', 'supervisor'].includes(user?.role);
+
+  const [isEditingStudentFees, setIsEditingStudentFees] = useState(false);
+  const [editableStudentComponents, setEditableStudentComponents] = useState([]);
+  const [editableStudentArrears, setEditableStudentArrears] = useState(0);
+  const [editableStudentRemainingBalance, setEditableStudentRemainingBalance] = useState(0);
+  const [editableStudentRemarks, setEditableStudentRemarks] = useState('');
+  const [savingStudentFeeAdjustment, setSavingStudentFeeAdjustment] = useState(false);
+
+  const startEditingStudentFeeStructure = (breakdownItems, totalDemand, standardDemand, previousYearArrears, totalPaid) => {
+    const regular = [];
+    for (const item of breakdownItems) {
+      if (!item.name.toLowerCase().includes('arrear') && !item.name.toLowerCase().includes('previous') && !item.name.toLowerCase().includes('old balance')) {
+        regular.push({
+          name: item.name,
+          frequency: item.frequency || 'annual',
+          amount: Number(item.amount || 0),
+        });
+      }
+    }
+    const arrearsVal = Number(previousYearArrears || 0);
+    const balVal = Math.max(0, Number(totalDemand || 0) - Number(totalPaid || 0));
+
+    setEditableStudentComponents(regular);
+    setEditableStudentArrears(arrearsVal);
+    setEditableStudentRemainingBalance(balVal);
+    setEditableStudentRemarks('');
+    setIsEditingStudentFees(true);
+  };
+
+  const cancelEditingStudentFeeStructure = () => {
+    setIsEditingStudentFees(false);
+  };
+
+  const handleStudentComponentAmountChange = (idx, newAmount, totalPaid) => {
+    const amountVal = Math.max(0, Number(newAmount) || 0);
+    const updated = editableStudentComponents.map((c, i) => (i === idx ? { ...c, amount: amountVal } : c));
+    setEditableStudentComponents(updated);
+    const standardSum = updated.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+    const newBal = Math.max(0, standardSum + Number(editableStudentArrears || 0) - Number(totalPaid || 0));
+    setEditableStudentRemainingBalance(newBal);
+  };
+
+  const handleStudentComponentNameChange = (idx, newName) => {
+    setEditableStudentComponents((prev) => prev.map((c, i) => (i === idx ? { ...c, name: newName } : c)));
+  };
+
+  const handleStudentComponentFrequencyChange = (idx, newFreq) => {
+    setEditableStudentComponents((prev) => prev.map((c, i) => (i === idx ? { ...c, frequency: newFreq } : c)));
+  };
+
+  const handleAddStudentComponent = () => {
+    setEditableStudentComponents((prev) => [...prev, { name: 'Other Fee', frequency: 'annual', amount: 0 }]);
+  };
+
+  const handleRemoveStudentComponent = (idx, totalPaid) => {
+    const updated = editableStudentComponents.filter((_, i) => i !== idx);
+    setEditableStudentComponents(updated);
+    const standardSum = updated.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+    const newBal = Math.max(0, standardSum + Number(editableStudentArrears || 0) - Number(totalPaid || 0));
+    setEditableStudentRemainingBalance(newBal);
+  };
+
+  const handleStudentArrearsChange = (newArrearsVal, totalPaid) => {
+    const arrVal = Math.max(0, Number(newArrearsVal) || 0);
+    setEditableStudentArrears(arrVal);
+    const standardSum = editableStudentComponents.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+    const newBal = Math.max(0, standardSum + arrVal - Number(totalPaid || 0));
+    setEditableStudentRemainingBalance(newBal);
+  };
+
+  const handleStudentRemainingBalanceChange = (newBalVal, totalPaid) => {
+    const balVal = Math.max(0, Number(newBalVal) || 0);
+    setEditableStudentRemainingBalance(balVal);
+    const standardSum = editableStudentComponents.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+    const neededArrears = Math.max(0, balVal + Number(totalPaid || 0) - standardSum);
+    setEditableStudentArrears(neededArrears);
+  };
+
+  const saveStudentFeeAdjustment = async (studentId) => {
+    if (!studentId) return;
+    setSavingStudentFeeAdjustment(true);
+    try {
+      const payload = {
+        components: editableStudentComponents,
+        previousYearArrears: Number(editableStudentArrears) || 0,
+        remainingBalance: Number(editableStudentRemainingBalance) || 0,
+        remarks: editableStudentRemarks.trim() || 'Fee structure & balances manually adjusted in Students module',
+      };
+      const { data } = await api.put(`/fees/student/${studentId}/adjust-structure`, payload);
+      notify('Student fee structure and remaining balance updated successfully');
+      setIsEditingStudentFees(false);
+      if (modal?.data) {
+        setModal((prev) => ({
+          ...prev,
+          data: {
+            ...prev.data,
+            student: data.student || { ...prev.data.student, totalDemand: data.totalDemand, outstanding: data.outstanding },
+          },
+        }));
+      }
+      load();
+    } catch (e) {
+      notify(errMsg(e), 'error');
+    } finally {
+      setSavingStudentFeeAdjustment(false);
+    }
+  };
 
   const load = () => api.get('/students').then(({ data }) => setRows(data));
   useEffect(() => { load(); }, []);
@@ -1283,6 +1390,195 @@ export default function Students() {
             onClose={() => setModal(null)}
             onBack={modal.fromView ? () => setModal({ type: 'view', data: modal.student || student }) : null}
           >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--txt-muted)' }}>Financial Summary & Dues</div>
+              {!isEditingStudentFees && canWrite && (
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: 12,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    background: 'rgba(37,99,235,0.08)',
+                    color: 'var(--primary)',
+                    border: '1px solid rgba(37,99,235,0.25)',
+                    borderRadius: 6,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => startEditingStudentFeeStructure(breakdownItems, totalDemand, standardDemand, previousYearArrears, totalPaid)}
+                >
+                  <Edit3 size={13} /> Edit Fees & Remaining Balance
+                </button>
+              )}
+            </div>
+
+            {isEditingStudentFees && (
+              <div className="full" style={{ background: 'var(--bg-card)', border: '1.5px dashed var(--primary)', borderRadius: 10, padding: 16, marginBottom: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Edit3 size={15} /> Edit Student Fees, Old Balance & Remaining Balance
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-xs"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(37,99,235,0.1)', color: 'var(--primary)', border: '1px solid rgba(37,99,235,0.25)', borderRadius: 6, fontWeight: 600, padding: '3px 8px', fontSize: 11, cursor: 'pointer' }}
+                    onClick={handleAddStudentComponent}
+                  >
+                    <Plus size={12} /> Add Fee Head
+                  </button>
+                </div>
+
+                <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse', marginBottom: 12 }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--border)', fontWeight: 700, color: 'var(--txt-muted)' }}>
+                      <th style={{ textAlign: 'left', paddingBottom: 6 }}>Fee Component</th>
+                      <th style={{ textAlign: 'center', paddingBottom: 6, width: 120 }}>Frequency</th>
+                      <th style={{ textAlign: 'right', paddingBottom: 6, width: 130 }}>Amount (₹)</th>
+                      <th style={{ textAlign: 'center', paddingBottom: 6, width: 40 }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {editableStudentComponents.map((comp, idx) => (
+                      <tr key={idx} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                        <td style={{ padding: '6px 4px' }}>
+                          <input
+                            type="text"
+                            value={comp.name}
+                            onChange={(e) => handleStudentComponentNameChange(idx, e.target.value)}
+                            style={{ width: '100%', fontSize: 12, fontWeight: 600, padding: '4px 6px', borderRadius: 4, border: '1px solid var(--border)' }}
+                          />
+                        </td>
+                        <td style={{ padding: '6px 4px', textAlign: 'center' }}>
+                          <select
+                            value={comp.frequency}
+                            onChange={(e) => handleStudentComponentFrequencyChange(idx, e.target.value)}
+                            style={{ fontSize: 11, fontWeight: 600, padding: '4px 6px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg)', textTransform: 'uppercase' }}
+                          >
+                            <option value="monthly">Monthly</option>
+                            <option value="bi-annual">Bi-Annual</option>
+                            <option value="annual">Annual</option>
+                            <option value="one-time">One-Time</option>
+                          </select>
+                        </td>
+                        <td style={{ padding: '6px 4px', textAlign: 'right' }}>
+                          <input
+                            type="number"
+                            min="0"
+                            value={comp.amount}
+                            onChange={(e) => handleStudentComponentAmountChange(idx, e.target.value, totalPaid)}
+                            style={{ width: 120, textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--border)' }}
+                          />
+                        </td>
+                        <td style={{ padding: '6px 4px', textAlign: 'center' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveStudentComponent(idx, totalPaid)}
+                            title="Remove fee head"
+                            style={{ background: 'transparent', border: 'none', color: 'var(--txt-muted)', cursor: 'pointer', padding: 2 }}
+                            onMouseEnter={(e) => e.currentTarget.style.color = '#dc2626'}
+                            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--txt-muted)'}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+
+                    {/* Arrears row */}
+                    <tr style={{ borderTop: '2px solid var(--border)', background: 'rgba(245, 158, 11, 0.08)' }}>
+                      <td style={{ padding: '8px 6px', fontWeight: 700, color: '#b45309' }}>
+                        Previous Year Arrears (Old Balance)
+                      </td>
+                      <td style={{ padding: '8px 4px', textAlign: 'center' }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, background: 'rgba(245, 158, 11, 0.2)', color: '#b45309', padding: '2px 6px', borderRadius: 4 }}>
+                          ONE-TIME
+                        </span>
+                      </td>
+                      <td style={{ padding: '8px 4px', textAlign: 'right' }}>
+                        <input
+                          type="number"
+                          min="0"
+                          value={editableStudentArrears}
+                          onChange={(e) => handleStudentArrearsChange(e.target.value, totalPaid)}
+                          style={{ width: 120, textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, padding: '5px 6px', borderRadius: 6, border: '1.5px solid #f59e0b', color: '#b45309', background: '#fff' }}
+                        />
+                      </td>
+                      <td></td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                {/* Synchronized Real-time Balance Box */}
+                <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginBottom: 10, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, fontSize: 11 }}>
+                  <div>
+                    <div className="text-muted">Current Year Fees</div>
+                    <b style={{ fontSize: 13, fontFamily: 'monospace' }}>{cur}{editableStudentComponents.reduce((s, c) => s + (Number(c.amount) || 0), 0).toLocaleString()}</b>
+                  </div>
+                  <div>
+                    <div className="text-muted">Old Balance / Arrears</div>
+                    <b style={{ fontSize: 13, fontFamily: 'monospace', color: '#b45309' }}>{cur}{Number(editableStudentArrears || 0).toLocaleString()}</b>
+                  </div>
+                  <div>
+                    <div className="text-muted">Total Life Demand</div>
+                    <b style={{ fontSize: 13, fontFamily: 'monospace', color: 'var(--primary)' }}>
+                      {cur}{(editableStudentComponents.reduce((s, c) => s + (Number(c.amount) || 0), 0) + Number(editableStudentArrears || 0)).toLocaleString()}
+                    </b>
+                  </div>
+                  <div>
+                    <div className="text-muted">Paid to Date (Lifetime)</div>
+                    <b style={{ fontSize: 13, fontFamily: 'monospace', color: '#16a34a' }}>{cur}{totalPaid.toLocaleString()}</b>
+                  </div>
+                  <div style={{ background: 'rgba(220, 38, 38, 0.06)', border: '1.5px solid rgba(220, 38, 38, 0.3)', borderRadius: 6, padding: '4px 8px' }}>
+                    <div style={{ color: '#dc2626', fontWeight: 700 }}>Remaining Balance (Editable)</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                      <span style={{ fontWeight: 800, color: '#dc2626' }}>{cur}</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={editableStudentRemainingBalance}
+                        onChange={(e) => handleStudentRemainingBalanceChange(e.target.value, totalPaid)}
+                        title="Editing remaining balance automatically recalculates previous year arrears"
+                        style={{ width: '100%', textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, fontSize: 13, padding: '2px 4px', borderRadius: 4, border: '1px solid #dc2626', color: '#dc2626', background: '#fff' }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
+                  <input
+                    type="text"
+                    placeholder="Reason / Note for adjustment (e.g. Previous balance corrected from manual register)"
+                    value={editableStudentRemarks}
+                    onChange={(e) => setEditableStudentRemarks(e.target.value)}
+                    style={{ flex: 1, fontSize: 12, padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-gray"
+                    onClick={cancelEditingStudentFeeStructure}
+                    style={{ padding: '6px 12px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                  >
+                    <X size={14} /> Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-green"
+                    disabled={savingStudentFeeAdjustment}
+                    onClick={() => saveStudentFeeAdjustment(student._id)}
+                    style={{ padding: '6px 14px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 700 }}
+                  >
+                    <Check size={14} /> {savingStudentFeeAdjustment ? 'Saving Changes...' : 'Save Changes to Database'}
+                  </button>
+                </div>
+              </div>
+            )}
             <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 16px', marginBottom: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, fontSize: 12 }}>
               <div>
                 <p style={{ margin: 0, color: 'var(--txt-muted)' }}>Current Grade Rate</p>

@@ -498,6 +498,116 @@ router.post('/', allowRoles(...STAFF), async (req, res) => {
   }
 });
 
+router.put('/student/:id/adjust-structure', allowRoles(...STAFF), async (req, res) => {
+  const { id } = req.params;
+  const { components, previousYearArrears, remarks } = req.body;
+
+  const student = await col('students').findOne({ _id: id, status: { $ne: 'deleted' } });
+  if (!student) return res.status(404).json({ error: 'Student not found' });
+
+  const release = await acquireKeyedLock(`fee:${student._id}`);
+  try {
+    const receipts = await col('feeReceipts').find({ studentId: student._id, status: { $ne: 'refunded' } });
+    const totalPaid = receipts.reduce((sum, r) => sum + (Number(r.amountPaid) || 0), 0);
+
+    let cleanComponents = [];
+    let currentGradeDemand = 0;
+
+    if (Array.isArray(components) && components.length > 0) {
+      cleanComponents = components
+        .map((c) => ({
+          name: String(c.name || '').trim(),
+          frequency: c.frequency || 'annual',
+          amount: Math.max(0, Number(c.amount) || 0),
+        }))
+        .filter((c) => c.name && c.amount >= 0 && !c.name.toLowerCase().includes('arrear'));
+      currentGradeDemand = cleanComponents.reduce((sum, c) => sum + c.amount, 0);
+    } else {
+      // Keep existing standard demand
+      const klass = await col('classes').findOne({ _id: student.classId });
+      const standardItems = await calculateFeeStructureItems(student, klass);
+      const regular = standardItems.filter((i) => !i.name.toLowerCase().includes('arrear'));
+      currentGradeDemand = regular.reduce((sum, c) => sum + c.amount, 0);
+      cleanComponents = regular;
+    }
+
+    let arrears = 0;
+    if (previousYearArrears !== undefined && previousYearArrears !== null && previousYearArrears !== '') {
+      arrears = Math.max(0, Number(previousYearArrears) || 0);
+    } else if (req.body.remainingBalance !== undefined && req.body.remainingBalance !== null && req.body.remainingBalance !== '') {
+      const targetRemaining = Math.max(0, Number(req.body.remainingBalance) || 0);
+      const targetTotal = targetRemaining + totalPaid;
+      arrears = Math.max(0, targetTotal - currentGradeDemand);
+    } else if (req.body.totalDemand !== undefined && req.body.totalDemand !== null && req.body.totalDemand !== '') {
+      arrears = Math.max(0, (Number(req.body.totalDemand) || 0) - currentGradeDemand);
+    } else {
+      arrears = Math.max(0, Number(student.importedWorkbook?.oldBalance) || 0);
+    }
+
+    const newTotalDemand = currentGradeDemand + arrears;
+    const newOutstanding = Math.max(0, newTotalDemand - totalPaid);
+
+    // Prepare new fee assignment snapshot
+    const assignmentSnapshot = {
+      annualFee: currentGradeDemand,
+      components: cleanComponents,
+      academicYear: student.academicYear || '2026-2027',
+      classId: student.classId,
+      source: 'manual-adjustment',
+      assignedAt: new Date().toISOString(),
+      assignedBy: req.user.name || req.user.username,
+      remarks: remarks || 'Fee structure adjusted via Record Fees',
+    };
+
+    const updatedWorkbook = {
+      ...(student.importedWorkbook || {}),
+      oldBalance: arrears,
+      total: newTotalDemand,
+      fees: currentGradeDemand,
+      outstanding: newOutstanding,
+      received: totalPaid,
+    };
+
+    const updateFields = {
+      totalDemand: newTotalDemand,
+      outstanding: newOutstanding,
+      feeAssignments: [...(student.feeAssignments || []), assignmentSnapshot],
+      importedWorkbook: updatedWorkbook,
+      feeAdjustmentNotes: remarks || undefined,
+      feeAdjustedAt: new Date().toISOString(),
+      feeAdjustedBy: req.user.name || req.user.username,
+    };
+
+    await col('students').updateOne({ _id: student._id }, updateFields);
+
+    req.auditDetails = {
+      action: 'FEE_STRUCTURE_ADJUST',
+      studentName: `${student.firstName} ${student.lastName || ''}`.trim(),
+      admissionNo: student.admissionNo,
+      previousDemand: student.totalDemand,
+      newTotalDemand,
+      previousArrears: student.importedWorkbook?.oldBalance || 0,
+      newArrears: arrears,
+      newOutstanding,
+    };
+
+    invalidateOutstandingCache();
+    invalidateReceiptsCache();
+
+    const updated = await col('students').findOne({ _id: student._id });
+    res.json({
+      message: 'Student fee structure and balances updated successfully',
+      student: updated,
+      totalDemand: newTotalDemand,
+      outstanding: newOutstanding,
+      previousYearArrears: arrears,
+      currentGradeFeeRate: currentGradeDemand,
+    });
+  } finally {
+    release();
+  }
+});
+
 router.put('/:id', allowRoles(...STAFF), async (req, res) => {
   res.status(409).json({ error: 'Financial receipts are immutable. Use a refund and issue a corrected receipt.' });
 });

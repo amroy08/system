@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Wallet, Plus, Eye, Printer, Undo2, Mail, ChevronDown, ChevronUp } from 'lucide-react';
+import { Wallet, Plus, Eye, Printer, Undo2, Mail, ChevronDown, ChevronUp, Edit3, Check, X, RefreshCw, Trash2 } from 'lucide-react';
 import { api, errMsg } from '../api';
 import { useApp } from '../context/AppContextValue';
 import { useLookups } from '../hooks/useLookups';
@@ -342,6 +342,124 @@ export default function Fees() {
   const [pay, setPay] = useState(createPaymentForm);
   const [splitEdited, setSplitEdited] = useState(false);
   const [recordingPayment, setRecordingPayment] = useState(false);
+  const [isEditingFeeStructure, setIsEditingFeeStructure] = useState(false);
+  const [editableComponents, setEditableComponents] = useState([]);
+  const [editableArrears, setEditableArrears] = useState(0);
+  const [editableRemainingBalance, setEditableRemainingBalance] = useState(0);
+  const [editableRemarks, setEditableRemarks] = useState('');
+  const [savingFeeAdjustment, setSavingFeeAdjustment] = useState(false);
+
+  const startEditingStructure = () => {
+    if (!computed?.items) return;
+    const regular = [];
+    let arrearsVal = 0;
+    for (const it of computed.items) {
+      if (it.name.toLowerCase().includes('arrear') || it.name.toLowerCase().includes('previous') || it.name.toLowerCase().includes('old balance')) {
+        arrearsVal = Number(it.amount || 0);
+      } else {
+        regular.push({
+          name: it.name,
+          frequency: it.frequency || 'annual',
+          amount: Number(it.amount || 0),
+        });
+      }
+    }
+    const totalPaid = Number(computed.totalPaid || 0);
+    const standardSum = regular.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+    const initialBal = Math.max(0, standardSum + arrearsVal - totalPaid);
+
+    setEditableComponents(regular);
+    setEditableArrears(arrearsVal);
+    setEditableRemainingBalance(initialBal);
+    setEditableRemarks('');
+    setIsEditingFeeStructure(true);
+  };
+
+  const cancelEditingStructure = () => {
+    setIsEditingFeeStructure(false);
+  };
+
+  const handleComponentAmountChange = (idx, newAmount) => {
+    const amountVal = Math.max(0, Number(newAmount) || 0);
+    const updated = editableComponents.map((c, i) => (i === idx ? { ...c, amount: amountVal } : c));
+    setEditableComponents(updated);
+    const standardSum = updated.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+    const totalPaid = Number(computed?.totalPaid || 0);
+    const newBal = Math.max(0, standardSum + Number(editableArrears || 0) - totalPaid);
+    setEditableRemainingBalance(newBal);
+  };
+
+  const handleComponentNameChange = (idx, newName) => {
+    setEditableComponents((prev) => prev.map((c, i) => (i === idx ? { ...c, name: newName } : c)));
+  };
+
+  const handleComponentFrequencyChange = (idx, newFreq) => {
+    setEditableComponents((prev) => prev.map((c, i) => (i === idx ? { ...c, frequency: newFreq } : c)));
+  };
+
+  const handleAddComponent = () => {
+    setEditableComponents((prev) => [...prev, { name: 'Other Fee', frequency: 'annual', amount: 0 }]);
+  };
+
+  const handleRemoveComponent = (idx) => {
+    const updated = editableComponents.filter((_, i) => i !== idx);
+    setEditableComponents(updated);
+    const standardSum = updated.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+    const totalPaid = Number(computed?.totalPaid || 0);
+    const newBal = Math.max(0, standardSum + Number(editableArrears || 0) - totalPaid);
+    setEditableRemainingBalance(newBal);
+  };
+
+  const handleArrearsChange = (newArrearsVal) => {
+    const arrVal = Math.max(0, Number(newArrearsVal) || 0);
+    setEditableArrears(arrVal);
+    const standardSum = editableComponents.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+    const totalPaid = Number(computed?.totalPaid || 0);
+    const newBal = Math.max(0, standardSum + arrVal - totalPaid);
+    setEditableRemainingBalance(newBal);
+  };
+
+  const handleRemainingBalanceChange = (newBalVal) => {
+    const balVal = Math.max(0, Number(newBalVal) || 0);
+    setEditableRemainingBalance(balVal);
+    const standardSum = editableComponents.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+    const totalPaid = Number(computed?.totalPaid || 0);
+    // Sync arrears so standardSum + arrears - totalPaid = balVal
+    const neededArrears = Math.max(0, balVal + totalPaid - standardSum);
+    setEditableArrears(neededArrears);
+  };
+
+  const saveFeeAdjustment = async (targetStudentId = studentId) => {
+    if (!targetStudentId) return;
+    setSavingFeeAdjustment(true);
+    try {
+      const payload = {
+        components: editableComponents,
+        previousYearArrears: Number(editableArrears) || 0,
+        remainingBalance: Number(editableRemainingBalance) || 0,
+        remarks: editableRemarks.trim() || 'Fee structure & balance manually adjusted in ERP',
+      };
+      await api.put(`/fees/student/${targetStudentId}/adjust-structure`, payload);
+      notify('Student fee structure and remaining balance updated successfully');
+      setIsEditingFeeStructure(false);
+      // Re-fetch computed fees
+      if (studentId === targetStudentId) {
+        const { data } = await api.get(`/fees/compute/${targetStudentId}`);
+        setComputed(data);
+        setSplitEdited(false);
+      }
+      if (studentFeeDetailModal?._id === targetStudentId) {
+        const { data } = await api.get(`/students/${targetStudentId}/fees`);
+        setFeeDetailData(data);
+        if (data.student) setStudentFeeDetailModal(data.student);
+      }
+      load();
+    } catch (e) {
+      notify(errMsg(e), 'error');
+    } finally {
+      setSavingFeeAdjustment(false);
+    }
+  };
 
   const filteredStudents = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -1115,35 +1233,244 @@ export default function Fees() {
                   </div>
                 </div>
 
-                <div className="form-section">Fee Breakdown</div>
-                <div className="full" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginBottom: 12 }}>
-                  <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '1px solid var(--border)', fontWeight: '700', color: 'var(--txt-muted)' }}>
-                        <th style={{ textAlign: 'left', paddingBottom: 6 }}>Fee Component</th>
-                        <th style={{ textAlign: 'center', paddingBottom: 6 }}>Frequency</th>
-                        <th style={{ textAlign: 'right', paddingBottom: 6 }}>Total Due</th>
-                        <th style={{ textAlign: 'right', paddingBottom: 6 }}>Paid</th>
-                        <th style={{ textAlign: 'right', paddingBottom: 6 }}>Balance</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(computed.items || []).map((item, idx) => (
-                        <tr key={idx} style={{ borderBottom: idx === computed.items.length - 1 ? 'none' : '1px solid var(--border-light)' }}>
-                          <td style={{ padding: '6px 0', fontWeight: '600' }}>{item.name}</td>
-                          <td style={{ padding: '6px 0', textAlign: 'center' }}>
-                            <span style={{ fontSize: 10, fontWeight: '700', background: 'var(--border)', padding: '2px 6px', borderRadius: 4, textTransform: 'uppercase' }}>
-                              {item.frequency}
+                <div className="form-section" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                  <span>Fee Breakdown & Balances</span>
+                  {!isEditingFeeStructure ? (
+                    <button
+                      type="button"
+                      className="btn btn-sm"
+                      style={{
+                        padding: '4px 10px',
+                        fontSize: 12,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        background: 'rgba(37,99,235,0.08)',
+                        color: 'var(--primary)',
+                        border: '1px solid rgba(37,99,235,0.25)',
+                        borderRadius: 6,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                      onClick={startEditingStructure}
+                    >
+                      <Edit3 size={13} /> Edit Fees / Old Balance
+                    </button>
+                  ) : (
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-green"
+                        style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                        disabled={savingFeeAdjustment}
+                        onClick={saveFeeAdjustment}
+                      >
+                        <Check size={13} /> {savingFeeAdjustment ? 'Saving...' : 'Save Changes'}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-gray"
+                        style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                        onClick={cancelEditingStructure}
+                      >
+                        <X size={13} /> Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {isEditingFeeStructure ? (
+                  <div className="full" style={{ background: 'var(--bg-card)', border: '1.5px dashed var(--primary)', borderRadius: 10, padding: 16, marginBottom: 14, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Edit3 size={15} /> Edit Current Fees, Old Balance & Remaining Balance
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-xs"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(37,99,235,0.1)', color: 'var(--primary)', border: '1px solid rgba(37,99,235,0.25)', borderRadius: 6, fontWeight: 600, padding: '3px 8px', fontSize: 11, cursor: 'pointer' }}
+                        onClick={handleAddComponent}
+                      >
+                        <Plus size={12} /> Add Fee Head
+                      </button>
+                    </div>
+
+                    <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse', marginBottom: 12 }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid var(--border)', fontWeight: 700, color: 'var(--txt-muted)' }}>
+                          <th style={{ textAlign: 'left', paddingBottom: 6 }}>Fee Component</th>
+                          <th style={{ textAlign: 'center', paddingBottom: 6, width: 120 }}>Frequency</th>
+                          <th style={{ textAlign: 'right', paddingBottom: 6, width: 130 }}>Amount (₹)</th>
+                          <th style={{ textAlign: 'center', paddingBottom: 6, width: 40 }}></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {editableComponents.map((comp, idx) => (
+                          <tr key={idx} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                            <td style={{ padding: '6px 4px' }}>
+                              <input
+                                type="text"
+                                value={comp.name}
+                                onChange={(e) => handleComponentNameChange(idx, e.target.value)}
+                                style={{ width: '100%', fontSize: 12, fontWeight: 600, padding: '4px 6px', borderRadius: 4, border: '1px solid var(--border)' }}
+                              />
+                            </td>
+                            <td style={{ padding: '6px 4px', textAlign: 'center' }}>
+                              <select
+                                value={comp.frequency}
+                                onChange={(e) => handleComponentFrequencyChange(idx, e.target.value)}
+                                style={{ fontSize: 11, fontWeight: 600, padding: '4px 6px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg)', textTransform: 'uppercase' }}
+                              >
+                                <option value="monthly">Monthly</option>
+                                <option value="bi-annual">Bi-Annual</option>
+                                <option value="annual">Annual</option>
+                                <option value="one-time">One-Time</option>
+                              </select>
+                            </td>
+                            <td style={{ padding: '6px 4px', textAlign: 'right' }}>
+                              <input
+                                type="number"
+                                min="0"
+                                value={comp.amount}
+                                onChange={(e) => handleComponentAmountChange(idx, e.target.value)}
+                                style={{ width: 120, textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--border)' }}
+                              />
+                            </td>
+                            <td style={{ padding: '6px 4px', textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveComponent(idx)}
+                                title="Remove fee head"
+                                style={{ background: 'transparent', border: 'none', color: 'var(--txt-muted)', cursor: 'pointer', padding: 2 }}
+                                onMouseEnter={(e) => e.currentTarget.style.color = '#dc2626'}
+                                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--txt-muted)'}
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+
+                        {/* Arrears / Old Balance row */}
+                        <tr style={{ borderTop: '2px solid var(--border)', background: 'rgba(245, 158, 11, 0.08)' }}>
+                          <td style={{ padding: '8px 6px', fontWeight: 700, color: '#b45309' }}>
+                            Previous Year Arrears (Old Balance)
+                          </td>
+                          <td style={{ padding: '8px 4px', textAlign: 'center' }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, background: 'rgba(245, 158, 11, 0.2)', color: '#b45309', padding: '2px 6px', borderRadius: 4 }}>
+                              ONE-TIME
                             </span>
                           </td>
-                          <td style={{ padding: '6px 0', textAlign: 'right', fontFamily: 'monospace', fontWeight: '700' }}>{cur}{Number(item.amount || 0).toLocaleString()}</td>
-                          <td style={{ padding: '6px 0', textAlign: 'right', fontFamily: 'monospace', color: '#16a34a' }}>{cur}{Number(item.paidAmount || 0).toLocaleString()}</td>
-                          <td style={{ padding: '6px 0', textAlign: 'right', fontFamily: 'monospace', color: Number(item.outstandingAmount || 0) > 0 ? '#dc2626' : '#16a34a' }}>{cur}{Number(item.outstandingAmount || 0).toLocaleString()}</td>
+                          <td style={{ padding: '8px 4px', textAlign: 'right' }}>
+                            <input
+                              type="number"
+                              min="0"
+                              value={editableArrears}
+                              onChange={(e) => handleArrearsChange(e.target.value)}
+                              style={{ width: 120, textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, padding: '5px 6px', borderRadius: 6, border: '1.5px solid #f59e0b', color: '#b45309', background: '#fff' }}
+                            />
+                          </td>
+                          <td></td>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </tbody>
+                    </table>
+
+                    {/* Synchronized Real-time Balance Box */}
+                    <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginBottom: 10, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, fontSize: 11 }}>
+                      <div>
+                        <div className="text-muted">Current Year Fees</div>
+                        <b style={{ fontSize: 13, fontFamily: 'monospace' }}>{cur}{editableComponents.reduce((s, c) => s + (Number(c.amount) || 0), 0).toLocaleString()}</b>
+                      </div>
+                      <div>
+                        <div className="text-muted">Old Balance / Arrears</div>
+                        <b style={{ fontSize: 13, fontFamily: 'monospace', color: '#b45309' }}>{cur}{Number(editableArrears || 0).toLocaleString()}</b>
+                      </div>
+                      <div>
+                        <div className="text-muted">Total Life Demand</div>
+                        <b style={{ fontSize: 13, fontFamily: 'monospace', color: 'var(--primary)' }}>
+                          {cur}{(editableComponents.reduce((s, c) => s + (Number(c.amount) || 0), 0) + Number(editableArrears || 0)).toLocaleString()}
+                        </b>
+                      </div>
+                      <div>
+                        <div className="text-muted">Paid to Date (Lifetime)</div>
+                        <b style={{ fontSize: 13, fontFamily: 'monospace', color: '#16a34a' }}>{cur}{Number(computed.totalPaid || 0).toLocaleString()}</b>
+                      </div>
+                      <div style={{ background: 'rgba(220, 38, 38, 0.06)', border: '1.5px solid rgba(220, 38, 38, 0.3)', borderRadius: 6, padding: '4px 8px' }}>
+                        <div style={{ color: '#dc2626', fontWeight: 700 }}>Remaining Balance (Editable)</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                          <span style={{ fontWeight: 800, color: '#dc2626' }}>{cur}</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={editableRemainingBalance}
+                            onChange={(e) => handleRemainingBalanceChange(e.target.value)}
+                            title="Editing remaining balance automatically recalculates previous year arrears"
+                            style={{ width: '100%', textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, fontSize: 13, padding: '2px 4px', borderRadius: 4, border: '1px solid #dc2626', color: '#dc2626', background: '#fff' }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
+                      <input
+                        type="text"
+                        placeholder="Reason / Note for adjustment (e.g. Previous balance corrected from manual register)"
+                        value={editableRemarks}
+                        onChange={(e) => setEditableRemarks(e.target.value)}
+                        style={{ flex: 1, fontSize: 12, padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)' }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-gray"
+                        onClick={cancelEditingStructure}
+                        style={{ padding: '6px 12px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                      >
+                        <X size={14} /> Cancel
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-green"
+                        disabled={savingFeeAdjustment}
+                        onClick={() => saveFeeAdjustment(studentId)}
+                        style={{ padding: '6px 14px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 700 }}
+                      >
+                        <Check size={14} /> {savingFeeAdjustment ? 'Saving Changes...' : 'Save Changes to Database'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="full" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginBottom: 12 }}>
+                    <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid var(--border)', fontWeight: '700', color: 'var(--txt-muted)' }}>
+                          <th style={{ textAlign: 'left', paddingBottom: 6 }}>Fee Component</th>
+                          <th style={{ textAlign: 'center', paddingBottom: 6 }}>Frequency</th>
+                          <th style={{ textAlign: 'right', paddingBottom: 6 }}>Total Due</th>
+                          <th style={{ textAlign: 'right', paddingBottom: 6 }}>Paid</th>
+                          <th style={{ textAlign: 'right', paddingBottom: 6 }}>Balance</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(computed.items || []).map((item, idx) => (
+                          <tr key={idx} style={{ borderBottom: idx === computed.items.length - 1 ? 'none' : '1px solid var(--border-light)' }}>
+                            <td style={{ padding: '6px 0', fontWeight: '600' }}>{item.name}</td>
+                            <td style={{ padding: '6px 0', textAlign: 'center' }}>
+                              <span style={{ fontSize: 10, fontWeight: '700', background: 'var(--border)', padding: '2px 6px', borderRadius: 4, textTransform: 'uppercase' }}>
+                                {item.frequency}
+                              </span>
+                            </td>
+                            <td style={{ padding: '6px 0', textAlign: 'right', fontFamily: 'monospace', fontWeight: '700' }}>{cur}{Number(item.amount || 0).toLocaleString()}</td>
+                            <td style={{ padding: '6px 0', textAlign: 'right', fontFamily: 'monospace', color: '#16a34a' }}>{cur}{Number(item.paidAmount || 0).toLocaleString()}</td>
+                            <td style={{ padding: '6px 0', textAlign: 'right', fontFamily: 'monospace', color: Number(item.outstandingAmount || 0) > 0 ? '#dc2626' : '#16a34a' }}>{cur}{Number(item.outstandingAmount || 0).toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
 
                 <Field label="Amount Paid" required><input type="number" value={pay.amountPaid} onChange={(e) => setPay({ ...pay, amountPaid: e.target.value })} /></Field>
                 <Field label="Late Fee"><input type="number" value={pay.lateFee} onChange={(e) => setPay({ ...pay, lateFee: e.target.value })} /></Field>
@@ -1382,6 +1709,225 @@ export default function Fees() {
             const outstanding = Math.max(0, totalDemand - totalPaid);
             return (
               <>
+                {/* Header Actions & Edit Trigger */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--txt-muted)' }}>Overview & Financial Status</div>
+                  {!isEditingFeeStructure ? (
+                    <button
+                      type="button"
+                      className="btn btn-sm"
+                      style={{
+                        padding: '4px 10px',
+                        fontSize: 12,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        background: 'rgba(37,99,235,0.08)',
+                        color: 'var(--primary)',
+                        border: '1px solid rgba(37,99,235,0.25)',
+                        borderRadius: 6,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                      onClick={async () => {
+                        try {
+                          const { data } = await api.get(`/fees/compute/${studentFeeDetailModal._id}`);
+                          setComputed(data);
+                          const regular = [];
+                          let arrearsVal = 0;
+                          for (const it of (data.items || [])) {
+                            if (it.name.toLowerCase().includes('arrear') || it.name.toLowerCase().includes('previous') || it.name.toLowerCase().includes('old balance')) {
+                              arrearsVal = Number(it.amount || 0);
+                            } else {
+                              regular.push({
+                                name: it.name,
+                                frequency: it.frequency || 'annual',
+                                amount: Number(it.amount || 0),
+                              });
+                            }
+                          }
+                          const tPaid = Number(data.totalPaid || 0);
+                          const stdSum = regular.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+                          const bal = Math.max(0, stdSum + arrearsVal - tPaid);
+                          setEditableComponents(regular);
+                          setEditableArrears(arrearsVal);
+                          setEditableRemainingBalance(bal);
+                          setEditableRemarks('');
+                          setIsEditingFeeStructure(true);
+                        } catch (e) {
+                          notify(errMsg(e), 'error');
+                        }
+                      }}
+                    >
+                      <Edit3 size={13} /> Edit Fees & Remaining Balance
+                    </button>
+                  ) : null}
+                </div>
+
+                {isEditingFeeStructure && (
+                  <div className="full" style={{ background: 'var(--bg-card)', border: '1.5px dashed var(--primary)', borderRadius: 10, padding: 16, marginBottom: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Edit3 size={15} /> Edit Student Fees, Old Balance & Remaining Balance
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-xs"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(37,99,235,0.1)', color: 'var(--primary)', border: '1px solid rgba(37,99,235,0.25)', borderRadius: 6, fontWeight: 600, padding: '3px 8px', fontSize: 11, cursor: 'pointer' }}
+                        onClick={handleAddComponent}
+                      >
+                        <Plus size={12} /> Add Fee Head
+                      </button>
+                    </div>
+
+                    <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse', marginBottom: 12 }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid var(--border)', fontWeight: 700, color: 'var(--txt-muted)' }}>
+                          <th style={{ textAlign: 'left', paddingBottom: 6 }}>Fee Component</th>
+                          <th style={{ textAlign: 'center', paddingBottom: 6, width: 120 }}>Frequency</th>
+                          <th style={{ textAlign: 'right', paddingBottom: 6, width: 130 }}>Amount (₹)</th>
+                          <th style={{ textAlign: 'center', paddingBottom: 6, width: 40 }}></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {editableComponents.map((comp, idx) => (
+                          <tr key={idx} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                            <td style={{ padding: '6px 4px' }}>
+                              <input
+                                type="text"
+                                value={comp.name}
+                                onChange={(e) => handleComponentNameChange(idx, e.target.value)}
+                                style={{ width: '100%', fontSize: 12, fontWeight: 600, padding: '4px 6px', borderRadius: 4, border: '1px solid var(--border)' }}
+                              />
+                            </td>
+                            <td style={{ padding: '6px 4px', textAlign: 'center' }}>
+                              <select
+                                value={comp.frequency}
+                                onChange={(e) => handleComponentFrequencyChange(idx, e.target.value)}
+                                style={{ fontSize: 11, fontWeight: 600, padding: '4px 6px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg)', textTransform: 'uppercase' }}
+                              >
+                                <option value="monthly">Monthly</option>
+                                <option value="bi-annual">Bi-Annual</option>
+                                <option value="annual">Annual</option>
+                                <option value="one-time">One-Time</option>
+                              </select>
+                            </td>
+                            <td style={{ padding: '6px 4px', textAlign: 'right' }}>
+                              <input
+                                type="number"
+                                min="0"
+                                value={comp.amount}
+                                onChange={(e) => handleComponentAmountChange(idx, e.target.value)}
+                                style={{ width: 120, textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--border)' }}
+                              />
+                            </td>
+                            <td style={{ padding: '6px 4px', textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveComponent(idx)}
+                                title="Remove fee head"
+                                style={{ background: 'transparent', border: 'none', color: 'var(--txt-muted)', cursor: 'pointer', padding: 2 }}
+                                onMouseEnter={(e) => e.currentTarget.style.color = '#dc2626'}
+                                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--txt-muted)'}
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+
+                        {/* Arrears row */}
+                        <tr style={{ borderTop: '2px solid var(--border)', background: 'rgba(245, 158, 11, 0.08)' }}>
+                          <td style={{ padding: '8px 6px', fontWeight: 700, color: '#b45309' }}>
+                            Previous Year Arrears (Old Balance)
+                          </td>
+                          <td style={{ padding: '8px 4px', textAlign: 'center' }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, background: 'rgba(245, 158, 11, 0.2)', color: '#b45309', padding: '2px 6px', borderRadius: 4 }}>
+                              ONE-TIME
+                            </span>
+                          </td>
+                          <td style={{ padding: '8px 4px', textAlign: 'right' }}>
+                            <input
+                              type="number"
+                              min="0"
+                              value={editableArrears}
+                              onChange={(e) => handleArrearsChange(e.target.value)}
+                              style={{ width: 120, textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, padding: '5px 6px', borderRadius: 6, border: '1.5px solid #f59e0b', color: '#b45309', background: '#fff' }}
+                            />
+                          </td>
+                          <td></td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                    {/* Synchronized Real-time Balance Box */}
+                    <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginBottom: 10, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, fontSize: 11 }}>
+                      <div>
+                        <div className="text-muted">Current Year Fees</div>
+                        <b style={{ fontSize: 13, fontFamily: 'monospace' }}>{cur}{editableComponents.reduce((s, c) => s + (Number(c.amount) || 0), 0).toLocaleString()}</b>
+                      </div>
+                      <div>
+                        <div className="text-muted">Old Balance / Arrears</div>
+                        <b style={{ fontSize: 13, fontFamily: 'monospace', color: '#b45309' }}>{cur}{Number(editableArrears || 0).toLocaleString()}</b>
+                      </div>
+                      <div>
+                        <div className="text-muted">Total Life Demand</div>
+                        <b style={{ fontSize: 13, fontFamily: 'monospace', color: 'var(--primary)' }}>
+                          {cur}{(editableComponents.reduce((s, c) => s + (Number(c.amount) || 0), 0) + Number(editableArrears || 0)).toLocaleString()}
+                        </b>
+                      </div>
+                      <div>
+                        <div className="text-muted">Paid to Date (Lifetime)</div>
+                        <b style={{ fontSize: 13, fontFamily: 'monospace', color: '#16a34a' }}>{cur}{totalPaid.toLocaleString()}</b>
+                      </div>
+                      <div style={{ background: 'rgba(220, 38, 38, 0.06)', border: '1.5px solid rgba(220, 38, 38, 0.3)', borderRadius: 6, padding: '4px 8px' }}>
+                        <div style={{ color: '#dc2626', fontWeight: 700 }}>Remaining Balance (Editable)</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                          <span style={{ fontWeight: 800, color: '#dc2626' }}>{cur}</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={editableRemainingBalance}
+                            onChange={(e) => handleRemainingBalanceChange(e.target.value)}
+                            title="Editing remaining balance automatically recalculates previous year arrears"
+                            style={{ width: '100%', textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, fontSize: 13, padding: '2px 4px', borderRadius: 4, border: '1px solid #dc2626', color: '#dc2626', background: '#fff' }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
+                      <input
+                        type="text"
+                        placeholder="Reason / Note for adjustment (e.g. Balance revised as per school records)"
+                        value={editableRemarks}
+                        onChange={(e) => setEditableRemarks(e.target.value)}
+                        style={{ flex: 1, fontSize: 12, padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)' }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-gray"
+                        onClick={cancelEditingStructure}
+                        style={{ padding: '6px 12px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                      >
+                        <X size={14} /> Cancel
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-green"
+                        disabled={savingFeeAdjustment}
+                        onClick={() => saveFeeAdjustment(studentFeeDetailModal._id)}
+                        style={{ padding: '6px 14px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 700 }}
+                      >
+                        <Check size={14} /> {savingFeeAdjustment ? 'Saving Changes...' : 'Save Changes to Database'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* KPI Cards */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, marginBottom: 16, fontSize: 12 }}>
                   {[['Total Annual Demand', `${cur}${totalDemand.toLocaleString()}`, ''], ['Total Paid (Lifetime)', `${cur}${totalPaid.toLocaleString()}`, 'var(--txt-green)'], ['Outstanding Balance', `${cur}${outstanding.toLocaleString()}`, outstanding > 0 ? 'var(--txt-red)' : 'var(--txt-green)']].map(([label, val, color]) => (
