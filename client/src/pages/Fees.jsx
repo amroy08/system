@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Wallet, Plus, Eye, Printer, Undo2, Mail, ChevronDown, ChevronUp, Edit3, Check, X, RefreshCw, Trash2, SlidersHorizontal } from 'lucide-react';
+import { Wallet, Plus, Eye, Printer, Undo2, Mail, ChevronDown, ChevronUp } from 'lucide-react';
 import { api, errMsg } from '../api';
 import { useApp } from '../context/AppContextValue';
 import { useLookups } from '../hooks/useLookups';
@@ -342,77 +342,6 @@ export default function Fees() {
   const [pay, setPay] = useState(createPaymentForm);
   const [splitEdited, setSplitEdited] = useState(false);
   const [recordingPayment, setRecordingPayment] = useState(false);
-  const [adjustModal, setAdjustModal] = useState(null);
-  const [savingAdjustment, setSavingAdjustment] = useState(false);
-
-  const openAdjustFeeModal = async (studentData, computedData) => {
-    const sId = studentData?._id || studentId;
-    const sName = studentData?.name || `${studentData?.firstName || ''} ${studentData?.lastName || ''}`.trim() || computed?.student?.name || '';
-    
-    let comp = (computedData && computedData.items) ? computedData : (computed && computed.studentId === sId ? computed : null);
-    if (!comp || !comp.items) {
-      try {
-        const { data } = await api.get(`/fees/compute/${sId}`);
-        comp = data;
-      } catch (err) {
-        console.error('Failed to compute fee for adjust modal', err);
-      }
-    }
-
-    let standardFee = 0;
-    let arrearsVal = 0;
-    const items = comp?.items || [];
-    for (const it of items) {
-      if (it.name.toLowerCase().includes('arrear') || it.name.toLowerCase().includes('previous') || it.name.toLowerCase().includes('old balance')) {
-        arrearsVal = Number(it.amount || 0);
-      } else {
-        standardFee += Number(it.amount || 0);
-      }
-    }
-    const tPaid = Number(comp?.totalPaid ?? (studentData?.totalPaid || 0));
-
-    setAdjustModal({
-      studentId: sId,
-      studentName: sName,
-      currentYearFee: standardFee,
-      oldBalance: arrearsVal,
-      totalPaid: tPaid,
-      remarks: '',
-    });
-  };
-
-  const saveAdjustFeeModal = async () => {
-    if (!adjustModal?.studentId) return;
-    setSavingAdjustment(true);
-    try {
-      const payload = {
-        currentYearFee: Number(adjustModal.currentYearFee) || 0,
-        previousYearArrears: Number(adjustModal.oldBalance) || 0,
-        remarks: adjustModal.remarks.trim() || 'Fee adjusted via 2-box adjustment modal',
-      };
-      await api.put(`/fees/student/${adjustModal.studentId}/adjust-structure`, payload);
-      notify('Student fee and old balance updated successfully');
-      
-      const sId = adjustModal.studentId;
-      setAdjustModal(null);
-
-      if (studentId === sId) {
-        const { data } = await api.get(`/fees/compute/${sId}`);
-        setComputed(data);
-        setSplitEdited(false);
-      }
-      if (studentFeeDetailModal?._id === sId) {
-        const { data } = await api.get(`/students/${sId}/fees`);
-        setFeeDetailData(data);
-        if (data.student) setStudentFeeDetailModal(data.student);
-      }
-      load();
-    } catch (e) {
-      notify(errMsg(e), 'error');
-    } finally {
-      setSavingAdjustment(false);
-    }
-  };
 
   const filteredStudents = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -1174,9 +1103,7 @@ export default function Fees() {
                 <div className="full fee-summary-grid" style={{ display: 'grid', gap: 12, marginBottom: 12 }}>
                   <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '12px 14px', textAlign: 'center', border: '1px solid var(--border)' }}>
                     <div className="small text-muted" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Total Annual Fee</div>
-                    <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4 }}>
-                      {cur}{computed.totalDemand.toLocaleString()}
-                    </div>
+                    <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4 }}>{cur}{computed.totalDemand.toLocaleString()}</div>
                   </div>
                   <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '12px 14px', textAlign: 'center', border: '1px solid var(--border)' }}>
                     <div className="small text-muted" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Paid to Date</div>
@@ -1184,36 +1111,11 @@ export default function Fees() {
                   </div>
                   <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '12px 14px', textAlign: 'center', border: '1px solid var(--border)' }}>
                     <div className="small text-muted" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Outstanding Balance</div>
-                    <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4, color: '#dc2626' }}>
-                      {cur}{computed.balance.toLocaleString()}
-                    </div>
+                    <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4, color: '#dc2626' }}>{cur}{computed.balance.toLocaleString()}</div>
                   </div>
                 </div>
 
-                <div className="form-section" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                  <span>Fee Breakdown & Balances</span>
-                  <button
-                    type="button"
-                    className="btn btn-sm"
-                    style={{
-                      padding: '5px 12px',
-                      fontSize: 12,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      background: 'rgba(37,99,235,0.08)',
-                      color: 'var(--primary)',
-                      border: '1px solid rgba(37,99,235,0.25)',
-                      borderRadius: 6,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                    }}
-                    onClick={() => openAdjustFeeModal(students.find((s) => s._id === studentId), computed)}
-                  >
-                    <SlidersHorizontal size={13} /> Adjust Fees / Old Balance
-                  </button>
-                </div>
-
+                <div className="form-section">Fee Breakdown</div>
                 <div className="full" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginBottom: 12 }}>
                   <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
                     <thead>
@@ -1480,31 +1382,6 @@ export default function Fees() {
             const outstanding = Math.max(0, totalDemand - totalPaid);
             return (
               <>
-                {/* Header Actions & Edit Trigger */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--txt-muted)' }}>Overview & Financial Status</div>
-                  <button
-                    type="button"
-                    className="btn btn-sm"
-                    style={{
-                      padding: '5px 12px',
-                      fontSize: 12,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      background: 'rgba(37,99,235,0.08)',
-                      color: 'var(--primary)',
-                      border: '1px solid rgba(37,99,235,0.25)',
-                      borderRadius: 6,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                    }}
-                    onClick={() => openAdjustFeeModal(studentFeeDetailModal, feeDetailData)}
-                  >
-                    <SlidersHorizontal size={13} /> Adjust Fees / Old Balance
-                  </button>
-                </div>
-
                 {/* KPI Cards */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, marginBottom: 16, fontSize: 12 }}>
                   {[['Total Annual Demand', `${cur}${totalDemand.toLocaleString()}`, ''], ['Total Paid (Lifetime)', `${cur}${totalPaid.toLocaleString()}`, 'var(--txt-green)'], ['Outstanding Balance', `${cur}${outstanding.toLocaleString()}`, outstanding > 0 ? 'var(--txt-red)' : 'var(--txt-green)']].map(([label, val, color]) => (
@@ -1664,137 +1541,6 @@ export default function Fees() {
               {modal.data.remarks && <p style={{ marginTop: 10 }}><b>Remarks:</b> {modal.data.remarks}</p>}
               <div className="sig-row"><span>Cashier</span><span>Accountant</span><span>Principal</span></div>
               <p className="small muted" style={{ textAlign: 'center', marginTop: 18 }}>This is a system-generated receipt — Generated on {new Date().toLocaleDateString()}</p>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {adjustModal && (
-        <Modal
-          title={`Adjust Student Fees & Old Balance — ${adjustModal.studentName}`}
-          icon={SlidersHorizontal}
-          size="md"
-          onClose={() => setAdjustModal(null)}
-        >
-          <div style={{ padding: '4px 0 12px' }}>
-            <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--txt-muted)' }}>
-              Easily update the student's <b>Current Year Fee</b> or <b>Old Balance (Arrears)</b>. All totals and remaining balances update automatically.
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: 14 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
-                  1. Current Year Annual Fee ({cur})
-                </label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--txt-muted)' }}>{cur}</span>
-                  <input
-                    type="number"
-                    min="0"
-                    value={adjustModal.currentYearFee}
-                    onChange={(e) => {
-                      const val = Math.max(0, Number(e.target.value) || 0);
-                      setAdjustModal(prev => ({ ...prev, currentYearFee: val }));
-                    }}
-                    style={{ flex: 1, fontSize: 15, fontFamily: 'monospace', fontWeight: 700, padding: '8px 12px', borderRadius: 8, border: '1.5px solid var(--border)' }}
-                  />
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--txt-muted)', marginTop: 4 }}>
-                  Standard fee for the current academic year (Tuition, Term, MS, Admission, etc.)
-                </div>
-              </div>
-
-              <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1.5px solid rgba(245, 158, 11, 0.35)', borderRadius: 10, padding: 14 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#b45309', marginBottom: 6 }}>
-                  2. Old Balance / Previous Year Arrears ({cur})
-                </label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 16, fontWeight: 700, color: '#b45309' }}>{cur}</span>
-                  <input
-                    type="number"
-                    min="0"
-                    value={adjustModal.oldBalance}
-                    onChange={(e) => {
-                      const val = Math.max(0, Number(e.target.value) || 0);
-                      setAdjustModal(prev => ({ ...prev, oldBalance: val }));
-                    }}
-                    style={{ flex: 1, fontSize: 15, fontFamily: 'monospace', fontWeight: 700, padding: '8px 12px', borderRadius: 8, border: '1.5px solid #f59e0b', color: '#b45309', background: '#fff' }}
-                  />
-                </div>
-                <div style={{ fontSize: 11, color: '#b45309', marginTop: 4 }}>
-                  Carried-forward pending dues from previous sessions (2025-26 and older). Set to 0 if cleared.
-                </div>
-              </div>
-
-              {/* Live Calculation Summary */}
-              {(() => {
-                const curFee = Number(adjustModal.currentYearFee) || 0;
-                const oldBal = Number(adjustModal.oldBalance) || 0;
-                const totalDemand = curFee + oldBal;
-                const paid = Number(adjustModal.totalPaid) || 0;
-                const balance = Math.max(0, totalDemand - paid);
-
-                return (
-                  <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: 14 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--txt-muted)', marginBottom: 8 }}>
-                      Live Balance Breakdown
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, textAlign: 'center' }}>
-                      <div style={{ background: 'var(--bg-card)', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)' }}>
-                        <div style={{ fontSize: 11, color: 'var(--txt-muted)' }}>Total Demand</div>
-                        <b style={{ fontSize: 14, fontFamily: 'monospace', color: 'var(--primary)' }}>
-                          {cur}{totalDemand.toLocaleString()}
-                        </b>
-                      </div>
-                      <div style={{ background: 'var(--bg-card)', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)' }}>
-                        <div style={{ fontSize: 11, color: 'var(--txt-muted)' }}>Paid to Date</div>
-                        <b style={{ fontSize: 14, fontFamily: 'monospace', color: '#16a34a' }}>
-                          {cur}{paid.toLocaleString()}
-                        </b>
-                      </div>
-                      <div style={{ background: 'var(--bg-card)', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)' }}>
-                        <div style={{ fontSize: 11, color: 'var(--txt-muted)' }}>Remaining Balance</div>
-                        <b style={{ fontSize: 14, fontFamily: 'monospace', color: balance > 0 ? '#dc2626' : '#16a34a' }}>
-                          {cur}{balance.toLocaleString()}
-                        </b>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--txt-muted)', marginBottom: 4 }}>
-                  Adjustment Reason / Note (Optional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Cleared old balance / revised per records"
-                  value={adjustModal.remarks}
-                  onChange={(e) => setAdjustModal(prev => ({ ...prev, remarks: e.target.value }))}
-                  style={{ width: '100%', fontSize: 12, padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)' }}
-                />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
-              <button
-                type="button"
-                className="btn btn-gray"
-                onClick={() => setAdjustModal(null)}
-                disabled={savingAdjustment}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn btn-green"
-                onClick={saveAdjustFeeModal}
-                disabled={savingAdjustment}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
-              >
-                <Check size={14} /> {savingAdjustment ? 'Updating...' : 'Save & Update Balance'}
-              </button>
             </div>
           </div>
         </Modal>
