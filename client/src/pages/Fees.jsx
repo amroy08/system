@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Wallet, Plus, Eye, Printer, Undo2, Mail, ChevronDown, ChevronUp, Edit3, Check, X, RefreshCw, Trash2 } from 'lucide-react';
+import { Wallet, Plus, Eye, Printer, Undo2, Mail, ChevronDown, ChevronUp, Edit3, Check, X, RefreshCw, Trash2, SlidersHorizontal } from 'lucide-react';
 import { api, errMsg } from '../api';
 import { useApp } from '../context/AppContextValue';
 import { useLookups } from '../hooks/useLookups';
@@ -342,133 +342,67 @@ export default function Fees() {
   const [pay, setPay] = useState(createPaymentForm);
   const [splitEdited, setSplitEdited] = useState(false);
   const [recordingPayment, setRecordingPayment] = useState(false);
-  const [isEditingFeeStructure, setIsEditingFeeStructure] = useState(false);
-  const [editableComponents, setEditableComponents] = useState([]);
-  const [editableArrears, setEditableArrears] = useState(0);
-  const [editableRemainingBalance, setEditableRemainingBalance] = useState(0);
-  const [editableRemarks, setEditableRemarks] = useState('');
-  const [savingFeeAdjustment, setSavingFeeAdjustment] = useState(false);
+  const [adjustModal, setAdjustModal] = useState(null);
+  const [savingAdjustment, setSavingAdjustment] = useState(false);
 
-  const startEditingStructure = () => {
-    if (!computed?.items) return;
-    const regular = [];
+  const openAdjustFeeModal = async (studentData, computedData) => {
+    const sId = studentData?._id || studentId;
+    const sName = studentData?.name || `${studentData?.firstName || ''} ${studentData?.lastName || ''}`.trim() || computed?.student?.name || '';
+    
+    let comp = (computedData && computedData.items) ? computedData : (computed && computed.studentId === sId ? computed : null);
+    if (!comp || !comp.items) {
+      try {
+        const { data } = await api.get(`/fees/compute/${sId}`);
+        comp = data;
+      } catch (err) {
+        console.error('Failed to compute fee for adjust modal', err);
+      }
+    }
+
+    let standardFee = 0;
     let arrearsVal = 0;
-    for (const it of computed.items) {
+    const items = comp?.items || [];
+    for (const it of items) {
       if (it.name.toLowerCase().includes('arrear') || it.name.toLowerCase().includes('previous') || it.name.toLowerCase().includes('old balance')) {
         arrearsVal = Number(it.amount || 0);
       } else {
-        regular.push({
-          name: it.name,
-          frequency: it.frequency || 'annual',
-          amount: Number(it.amount || 0),
-        });
+        standardFee += Number(it.amount || 0);
       }
     }
-    const totalPaid = Number(computed.totalPaid || 0);
-    const standardSum = regular.reduce((s, c) => s + (Number(c.amount) || 0), 0);
-    const initialBal = Math.max(0, standardSum + arrearsVal - totalPaid);
+    const tPaid = Number(comp?.totalPaid ?? (studentData?.totalPaid || 0));
 
-    setEditableComponents(regular);
-    setEditableArrears(arrearsVal);
-    setEditableRemainingBalance(initialBal);
-    setEditableRemarks('');
-    setIsEditingFeeStructure(true);
+    setAdjustModal({
+      studentId: sId,
+      studentName: sName,
+      currentYearFee: standardFee,
+      oldBalance: arrearsVal,
+      totalPaid: tPaid,
+      remarks: '',
+    });
   };
 
-  const cancelEditingStructure = () => {
-    setIsEditingFeeStructure(false);
-  };
-
-  const handleComponentAmountChange = (idx, newAmount) => {
-    const amountVal = Math.max(0, Number(newAmount) || 0);
-    const updated = editableComponents.map((c, i) => (i === idx ? { ...c, amount: amountVal } : c));
-    setEditableComponents(updated);
-    const standardSum = updated.reduce((s, c) => s + (Number(c.amount) || 0), 0);
-    const totalPaid = Number(computed?.totalPaid || 0);
-    const newBal = Math.max(0, standardSum + Number(editableArrears || 0) - totalPaid);
-    setEditableRemainingBalance(newBal);
-  };
-
-  const handleComponentNameChange = (idx, newName) => {
-    setEditableComponents((prev) => prev.map((c, i) => (i === idx ? { ...c, name: newName } : c)));
-  };
-
-  const handleComponentFrequencyChange = (idx, newFreq) => {
-    setEditableComponents((prev) => prev.map((c, i) => (i === idx ? { ...c, frequency: newFreq } : c)));
-  };
-
-  const handleAddComponent = () => {
-    setEditableComponents((prev) => [...prev, { name: 'Other Fee', frequency: 'annual', amount: 0 }]);
-  };
-
-  const handleRemoveComponent = (idx) => {
-    const updated = editableComponents.filter((_, i) => i !== idx);
-    setEditableComponents(updated);
-    const standardSum = updated.reduce((s, c) => s + (Number(c.amount) || 0), 0);
-    const totalPaid = Number(computed?.totalPaid || 0);
-    const newBal = Math.max(0, standardSum + Number(editableArrears || 0) - totalPaid);
-    setEditableRemainingBalance(newBal);
-  };
-
-  const handleArrearsChange = (newArrearsVal) => {
-    const arrVal = Math.max(0, Number(newArrearsVal) || 0);
-    setEditableArrears(arrVal);
-    const standardSum = editableComponents.reduce((s, c) => s + (Number(c.amount) || 0), 0);
-    const totalPaid = Number(computed?.totalPaid || 0);
-    const newBal = Math.max(0, standardSum + arrVal - totalPaid);
-    setEditableRemainingBalance(newBal);
-  };
-
-  const handleRemainingBalanceChange = (newBalVal) => {
-    const balVal = Math.max(0, Number(newBalVal) || 0);
-    setEditableRemainingBalance(balVal);
-    const totalPaid = Number(computed?.totalPaid || 0);
-    const targetDemand = balVal + totalPaid;
-    const currentComponentsSum = editableComponents.reduce((s, c) => s + (Number(c.amount) || 0), 0);
-
-    if (targetDemand >= currentComponentsSum) {
-      const neededArrears = targetDemand - currentComponentsSum;
-      setEditableArrears(neededArrears);
-    } else {
-      setEditableArrears(0);
-      let diff = currentComponentsSum - targetDemand;
-      const sorted = editableComponents
-        .map((c, i) => ({ amount: Number(c.amount) || 0, index: i }))
-        .sort((a, b) => b.amount - a.amount);
-      
-      const newComps = [...editableComponents];
-      for (const item of sorted) {
-        if (diff <= 0) break;
-        const curAmt = Number(newComps[item.index].amount) || 0;
-        const deduct = Math.min(curAmt, diff);
-        newComps[item.index] = { ...newComps[item.index], amount: Math.max(0, Math.round(curAmt - deduct)) };
-        diff -= deduct;
-      }
-      setEditableComponents(newComps);
-    }
-  };
-
-  const saveFeeAdjustment = async (targetStudentId = studentId) => {
-    if (!targetStudentId) return;
-    setSavingFeeAdjustment(true);
+  const saveAdjustFeeModal = async () => {
+    if (!adjustModal?.studentId) return;
+    setSavingAdjustment(true);
     try {
       const payload = {
-        components: editableComponents,
-        previousYearArrears: Number(editableArrears) || 0,
-        remainingBalance: Number(editableRemainingBalance) || 0,
-        remarks: editableRemarks.trim() || 'Fee structure & balance manually adjusted in ERP',
+        currentYearFee: Number(adjustModal.currentYearFee) || 0,
+        previousYearArrears: Number(adjustModal.oldBalance) || 0,
+        remarks: adjustModal.remarks.trim() || 'Fee adjusted via 2-box adjustment modal',
       };
-      await api.put(`/fees/student/${targetStudentId}/adjust-structure`, payload);
-      notify('Student fee structure and remaining balance updated successfully');
-      setIsEditingFeeStructure(false);
-      // Re-fetch computed fees
-      if (studentId === targetStudentId) {
-        const { data } = await api.get(`/fees/compute/${targetStudentId}`);
+      await api.put(`/fees/student/${adjustModal.studentId}/adjust-structure`, payload);
+      notify('Student fee and old balance updated successfully');
+      
+      const sId = adjustModal.studentId;
+      setAdjustModal(null);
+
+      if (studentId === sId) {
+        const { data } = await api.get(`/fees/compute/${sId}`);
         setComputed(data);
         setSplitEdited(false);
       }
-      if (studentFeeDetailModal?._id === targetStudentId) {
-        const { data } = await api.get(`/students/${targetStudentId}/fees`);
+      if (studentFeeDetailModal?._id === sId) {
+        const { data } = await api.get(`/students/${sId}/fees`);
         setFeeDetailData(data);
         if (data.student) setStudentFeeDetailModal(data.student);
       }
@@ -476,7 +410,7 @@ export default function Fees() {
     } catch (e) {
       notify(errMsg(e), 'error');
     } finally {
-      setSavingFeeAdjustment(false);
+      setSavingAdjustment(false);
     }
   };
 
@@ -1241,7 +1175,7 @@ export default function Fees() {
                   <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '12px 14px', textAlign: 'center', border: '1px solid var(--border)' }}>
                     <div className="small text-muted" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Total Annual Fee</div>
                     <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4 }}>
-                      {cur}{(isEditingFeeStructure ? (editableComponents.reduce((s, c) => s + (Number(c.amount) || 0), 0) + Number(editableArrears || 0)) : computed.totalDemand).toLocaleString()}
+                      {cur}{computed.totalDemand.toLocaleString()}
                     </div>
                   </div>
                   <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '12px 14px', textAlign: 'center', border: '1px solid var(--border)' }}>
@@ -1251,249 +1185,63 @@ export default function Fees() {
                   <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '12px 14px', textAlign: 'center', border: '1px solid var(--border)' }}>
                     <div className="small text-muted" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Outstanding Balance</div>
                     <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4, color: '#dc2626' }}>
-                      {cur}{(isEditingFeeStructure ? Number(editableRemainingBalance || 0) : computed.balance).toLocaleString()}
+                      {cur}{computed.balance.toLocaleString()}
                     </div>
                   </div>
                 </div>
 
                 <div className="form-section" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                   <span>Fee Breakdown & Balances</span>
-                  {!isEditingFeeStructure ? (
-                    <button
-                      type="button"
-                      className="btn btn-sm"
-                      style={{
-                        padding: '4px 10px',
-                        fontSize: 12,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 5,
-                        background: 'rgba(37,99,235,0.08)',
-                        color: 'var(--primary)',
-                        border: '1px solid rgba(37,99,235,0.25)',
-                        borderRadius: 6,
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                      }}
-                      onClick={startEditingStructure}
-                    >
-                      <Edit3 size={13} /> Edit Fees / Old Balance
-                    </button>
-                  ) : (
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-green"
-                        style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                        disabled={savingFeeAdjustment}
-                        onClick={saveFeeAdjustment}
-                      >
-                        <Check size={13} /> {savingFeeAdjustment ? 'Saving...' : 'Save Changes'}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-gray"
-                        style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                        onClick={cancelEditingStructure}
-                      >
-                        <X size={13} /> Cancel
-                      </button>
-                    </div>
-                  )}
+                  <button
+                    type="button"
+                    className="btn btn-sm"
+                    style={{
+                      padding: '5px 12px',
+                      fontSize: 12,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      background: 'rgba(37,99,235,0.08)',
+                      color: 'var(--primary)',
+                      border: '1px solid rgba(37,99,235,0.25)',
+                      borderRadius: 6,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => openAdjustFeeModal(students.find((s) => s._id === studentId), computed)}
+                  >
+                    <SlidersHorizontal size={13} /> Adjust Fees / Old Balance
+                  </button>
                 </div>
 
-                {isEditingFeeStructure ? (
-                  <div className="full" style={{ background: 'var(--bg-card)', border: '1.5px dashed var(--primary)', borderRadius: 10, padding: 16, marginBottom: 14, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Edit3 size={15} /> Edit Current Fees, Old Balance & Remaining Balance
-                      </div>
-                      <button
-                        type="button"
-                        className="btn btn-xs"
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(37,99,235,0.1)', color: 'var(--primary)', border: '1px solid rgba(37,99,235,0.25)', borderRadius: 6, fontWeight: 600, padding: '3px 8px', fontSize: 11, cursor: 'pointer' }}
-                        onClick={handleAddComponent}
-                      >
-                        <Plus size={12} /> Add Fee Head
-                      </button>
-                    </div>
-
-                    <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse', marginBottom: 12 }}>
-                      <thead>
-                        <tr style={{ borderBottom: '1px solid var(--border)', fontWeight: 700, color: 'var(--txt-muted)' }}>
-                          <th style={{ textAlign: 'left', paddingBottom: 6 }}>Fee Component</th>
-                          <th style={{ textAlign: 'center', paddingBottom: 6, width: 120 }}>Frequency</th>
-                          <th style={{ textAlign: 'right', paddingBottom: 6, width: 130 }}>Amount (₹)</th>
-                          <th style={{ textAlign: 'center', paddingBottom: 6, width: 40 }}></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {editableComponents.map((comp, idx) => (
-                          <tr key={idx} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                            <td style={{ padding: '6px 4px' }}>
-                              <input
-                                type="text"
-                                value={comp.name}
-                                onChange={(e) => handleComponentNameChange(idx, e.target.value)}
-                                style={{ width: '100%', fontSize: 12, fontWeight: 600, padding: '4px 6px', borderRadius: 4, border: '1px solid var(--border)' }}
-                              />
-                            </td>
-                            <td style={{ padding: '6px 4px', textAlign: 'center' }}>
-                              <select
-                                value={comp.frequency}
-                                onChange={(e) => handleComponentFrequencyChange(idx, e.target.value)}
-                                style={{ fontSize: 11, fontWeight: 600, padding: '4px 6px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg)', textTransform: 'uppercase' }}
-                              >
-                                <option value="monthly">Monthly</option>
-                                <option value="bi-annual">Bi-Annual</option>
-                                <option value="annual">Annual</option>
-                                <option value="one-time">One-Time</option>
-                              </select>
-                            </td>
-                            <td style={{ padding: '6px 4px', textAlign: 'right' }}>
-                              <input
-                                type="number"
-                                min="0"
-                                value={comp.amount}
-                                onChange={(e) => handleComponentAmountChange(idx, e.target.value)}
-                                style={{ width: 120, textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--border)' }}
-                              />
-                            </td>
-                            <td style={{ padding: '6px 4px', textAlign: 'center' }}>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveComponent(idx)}
-                                title="Remove fee head"
-                                style={{ background: 'transparent', border: 'none', color: 'var(--txt-muted)', cursor: 'pointer', padding: 2 }}
-                                onMouseEnter={(e) => e.currentTarget.style.color = '#dc2626'}
-                                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--txt-muted)'}
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-
-                        {/* Arrears / Old Balance row */}
-                        <tr style={{ borderTop: '2px solid var(--border)', background: 'rgba(245, 158, 11, 0.08)' }}>
-                          <td style={{ padding: '8px 6px', fontWeight: 700, color: '#b45309' }}>
-                            Previous Year Arrears (Old Balance)
-                          </td>
-                          <td style={{ padding: '8px 4px', textAlign: 'center' }}>
-                            <span style={{ fontSize: 10, fontWeight: 700, background: 'rgba(245, 158, 11, 0.2)', color: '#b45309', padding: '2px 6px', borderRadius: 4 }}>
-                              ONE-TIME
+                <div className="full" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginBottom: 12 }}>
+                  <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--border)', fontWeight: '700', color: 'var(--txt-muted)' }}>
+                        <th style={{ textAlign: 'left', paddingBottom: 6 }}>Fee Component</th>
+                        <th style={{ textAlign: 'center', paddingBottom: 6 }}>Frequency</th>
+                        <th style={{ textAlign: 'right', paddingBottom: 6 }}>Total Due</th>
+                        <th style={{ textAlign: 'right', paddingBottom: 6 }}>Paid</th>
+                        <th style={{ textAlign: 'right', paddingBottom: 6 }}>Balance</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(computed.items || []).map((item, idx) => (
+                        <tr key={idx} style={{ borderBottom: idx === computed.items.length - 1 ? 'none' : '1px solid var(--border-light)' }}>
+                          <td style={{ padding: '6px 0', fontWeight: '600' }}>{item.name}</td>
+                          <td style={{ padding: '6px 0', textAlign: 'center' }}>
+                            <span style={{ fontSize: 10, fontWeight: '700', background: 'var(--border)', padding: '2px 6px', borderRadius: 4, textTransform: 'uppercase' }}>
+                              {item.frequency}
                             </span>
                           </td>
-                          <td style={{ padding: '8px 4px', textAlign: 'right' }}>
-                            <input
-                              type="number"
-                              min="0"
-                              value={editableArrears}
-                              onChange={(e) => handleArrearsChange(e.target.value)}
-                              style={{ width: 120, textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, padding: '5px 6px', borderRadius: 6, border: '1.5px solid #f59e0b', color: '#b45309', background: '#fff' }}
-                            />
-                          </td>
-                          <td></td>
+                          <td style={{ padding: '6px 0', textAlign: 'right', fontFamily: 'monospace', fontWeight: '700' }}>{cur}{Number(item.amount || 0).toLocaleString()}</td>
+                          <td style={{ padding: '6px 0', textAlign: 'right', fontFamily: 'monospace', color: '#16a34a' }}>{cur}{Number(item.paidAmount || 0).toLocaleString()}</td>
+                          <td style={{ padding: '6px 0', textAlign: 'right', fontFamily: 'monospace', color: Number(item.outstandingAmount || 0) > 0 ? '#dc2626' : '#16a34a' }}>{cur}{Number(item.outstandingAmount || 0).toLocaleString()}</td>
                         </tr>
-                      </tbody>
-                    </table>
-
-                    {/* Synchronized Real-time Balance Box */}
-                    <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginBottom: 10, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, fontSize: 11 }}>
-                      <div>
-                        <div className="text-muted">Current Year Fees</div>
-                        <b style={{ fontSize: 13, fontFamily: 'monospace' }}>{cur}{editableComponents.reduce((s, c) => s + (Number(c.amount) || 0), 0).toLocaleString()}</b>
-                      </div>
-                      <div>
-                        <div className="text-muted">Old Balance / Arrears</div>
-                        <b style={{ fontSize: 13, fontFamily: 'monospace', color: '#b45309' }}>{cur}{Number(editableArrears || 0).toLocaleString()}</b>
-                      </div>
-                      <div>
-                        <div className="text-muted">Total Life Demand</div>
-                        <b style={{ fontSize: 13, fontFamily: 'monospace', color: 'var(--primary)' }}>
-                          {cur}{(editableComponents.reduce((s, c) => s + (Number(c.amount) || 0), 0) + Number(editableArrears || 0)).toLocaleString()}
-                        </b>
-                      </div>
-                      <div>
-                        <div className="text-muted">Paid to Date (Lifetime)</div>
-                        <b style={{ fontSize: 13, fontFamily: 'monospace', color: '#16a34a' }}>{cur}{Number(computed.totalPaid || 0).toLocaleString()}</b>
-                      </div>
-                      <div style={{ background: 'rgba(220, 38, 38, 0.06)', border: '1.5px solid rgba(220, 38, 38, 0.3)', borderRadius: 6, padding: '4px 8px' }}>
-                        <div style={{ color: '#dc2626', fontWeight: 700 }}>Remaining Balance (Editable)</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                          <span style={{ fontWeight: 800, color: '#dc2626' }}>{cur}</span>
-                          <input
-                            type="number"
-                            min="0"
-                            value={editableRemainingBalance}
-                            onChange={(e) => handleRemainingBalanceChange(e.target.value)}
-                            title="Editing remaining balance automatically recalculates previous year arrears"
-                            style={{ width: '100%', textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, fontSize: 13, padding: '2px 4px', borderRadius: 4, border: '1px solid #dc2626', color: '#dc2626', background: '#fff' }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
-                      <input
-                        type="text"
-                        placeholder="Reason / Note for adjustment (e.g. Previous balance corrected from manual register)"
-                        value={editableRemarks}
-                        onChange={(e) => setEditableRemarks(e.target.value)}
-                        style={{ flex: 1, fontSize: 12, padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)' }}
-                      />
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-gray"
-                        onClick={cancelEditingStructure}
-                        style={{ padding: '6px 12px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5 }}
-                      >
-                        <X size={14} /> Cancel
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-green"
-                        disabled={savingFeeAdjustment}
-                        onClick={() => saveFeeAdjustment(studentId)}
-                        style={{ padding: '6px 14px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 700 }}
-                      >
-                        <Check size={14} /> {savingFeeAdjustment ? 'Saving Changes...' : 'Save Changes to Database'}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="full" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginBottom: 12 }}>
-                    <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
-                      <thead>
-                        <tr style={{ borderBottom: '1px solid var(--border)', fontWeight: '700', color: 'var(--txt-muted)' }}>
-                          <th style={{ textAlign: 'left', paddingBottom: 6 }}>Fee Component</th>
-                          <th style={{ textAlign: 'center', paddingBottom: 6 }}>Frequency</th>
-                          <th style={{ textAlign: 'right', paddingBottom: 6 }}>Total Due</th>
-                          <th style={{ textAlign: 'right', paddingBottom: 6 }}>Paid</th>
-                          <th style={{ textAlign: 'right', paddingBottom: 6 }}>Balance</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(computed.items || []).map((item, idx) => (
-                          <tr key={idx} style={{ borderBottom: idx === computed.items.length - 1 ? 'none' : '1px solid var(--border-light)' }}>
-                            <td style={{ padding: '6px 0', fontWeight: '600' }}>{item.name}</td>
-                            <td style={{ padding: '6px 0', textAlign: 'center' }}>
-                              <span style={{ fontSize: 10, fontWeight: '700', background: 'var(--border)', padding: '2px 6px', borderRadius: 4, textTransform: 'uppercase' }}>
-                                {item.frequency}
-                              </span>
-                            </td>
-                            <td style={{ padding: '6px 0', textAlign: 'right', fontFamily: 'monospace', fontWeight: '700' }}>{cur}{Number(item.amount || 0).toLocaleString()}</td>
-                            <td style={{ padding: '6px 0', textAlign: 'right', fontFamily: 'monospace', color: '#16a34a' }}>{cur}{Number(item.paidAmount || 0).toLocaleString()}</td>
-                            <td style={{ padding: '6px 0', textAlign: 'right', fontFamily: 'monospace', color: Number(item.outstandingAmount || 0) > 0 ? '#dc2626' : '#16a34a' }}>{cur}{Number(item.outstandingAmount || 0).toLocaleString()}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
 
                 <Field label="Amount Paid" required><input type="number" value={pay.amountPaid} onChange={(e) => setPay({ ...pay, amountPaid: e.target.value })} /></Field>
                 <Field label="Late Fee"><input type="number" value={pay.lateFee} onChange={(e) => setPay({ ...pay, lateFee: e.target.value })} /></Field>
@@ -1735,221 +1483,27 @@ export default function Fees() {
                 {/* Header Actions & Edit Trigger */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--txt-muted)' }}>Overview & Financial Status</div>
-                  {!isEditingFeeStructure ? (
-                    <button
-                      type="button"
-                      className="btn btn-sm"
-                      style={{
-                        padding: '4px 10px',
-                        fontSize: 12,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 5,
-                        background: 'rgba(37,99,235,0.08)',
-                        color: 'var(--primary)',
-                        border: '1px solid rgba(37,99,235,0.25)',
-                        borderRadius: 6,
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                      }}
-                      onClick={async () => {
-                        try {
-                          const { data } = await api.get(`/fees/compute/${studentFeeDetailModal._id}`);
-                          setComputed(data);
-                          const regular = [];
-                          let arrearsVal = 0;
-                          for (const it of (data.items || [])) {
-                            if (it.name.toLowerCase().includes('arrear') || it.name.toLowerCase().includes('previous') || it.name.toLowerCase().includes('old balance')) {
-                              arrearsVal = Number(it.amount || 0);
-                            } else {
-                              regular.push({
-                                name: it.name,
-                                frequency: it.frequency || 'annual',
-                                amount: Number(it.amount || 0),
-                              });
-                            }
-                          }
-                          const tPaid = Number(data.totalPaid || 0);
-                          const stdSum = regular.reduce((s, c) => s + (Number(c.amount) || 0), 0);
-                          const bal = Math.max(0, stdSum + arrearsVal - tPaid);
-                          setEditableComponents(regular);
-                          setEditableArrears(arrearsVal);
-                          setEditableRemainingBalance(bal);
-                          setEditableRemarks('');
-                          setIsEditingFeeStructure(true);
-                        } catch (e) {
-                          notify(errMsg(e), 'error');
-                        }
-                      }}
-                    >
-                      <Edit3 size={13} /> Edit Fees & Remaining Balance
-                    </button>
-                  ) : null}
+                  <button
+                    type="button"
+                    className="btn btn-sm"
+                    style={{
+                      padding: '5px 12px',
+                      fontSize: 12,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      background: 'rgba(37,99,235,0.08)',
+                      color: 'var(--primary)',
+                      border: '1px solid rgba(37,99,235,0.25)',
+                      borderRadius: 6,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => openAdjustFeeModal(studentFeeDetailModal, feeDetailData)}
+                  >
+                    <SlidersHorizontal size={13} /> Adjust Fees / Old Balance
+                  </button>
                 </div>
-
-                {isEditingFeeStructure && (
-                  <div className="full" style={{ background: 'var(--bg-card)', border: '1.5px dashed var(--primary)', borderRadius: 10, padding: 16, marginBottom: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Edit3 size={15} /> Edit Student Fees, Old Balance & Remaining Balance
-                      </div>
-                      <button
-                        type="button"
-                        className="btn btn-xs"
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(37,99,235,0.1)', color: 'var(--primary)', border: '1px solid rgba(37,99,235,0.25)', borderRadius: 6, fontWeight: 600, padding: '3px 8px', fontSize: 11, cursor: 'pointer' }}
-                        onClick={handleAddComponent}
-                      >
-                        <Plus size={12} /> Add Fee Head
-                      </button>
-                    </div>
-
-                    <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse', marginBottom: 12 }}>
-                      <thead>
-                        <tr style={{ borderBottom: '1px solid var(--border)', fontWeight: 700, color: 'var(--txt-muted)' }}>
-                          <th style={{ textAlign: 'left', paddingBottom: 6 }}>Fee Component</th>
-                          <th style={{ textAlign: 'center', paddingBottom: 6, width: 120 }}>Frequency</th>
-                          <th style={{ textAlign: 'right', paddingBottom: 6, width: 130 }}>Amount (₹)</th>
-                          <th style={{ textAlign: 'center', paddingBottom: 6, width: 40 }}></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {editableComponents.map((comp, idx) => (
-                          <tr key={idx} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                            <td style={{ padding: '6px 4px' }}>
-                              <input
-                                type="text"
-                                value={comp.name}
-                                onChange={(e) => handleComponentNameChange(idx, e.target.value)}
-                                style={{ width: '100%', fontSize: 12, fontWeight: 600, padding: '4px 6px', borderRadius: 4, border: '1px solid var(--border)' }}
-                              />
-                            </td>
-                            <td style={{ padding: '6px 4px', textAlign: 'center' }}>
-                              <select
-                                value={comp.frequency}
-                                onChange={(e) => handleComponentFrequencyChange(idx, e.target.value)}
-                                style={{ fontSize: 11, fontWeight: 600, padding: '4px 6px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg)', textTransform: 'uppercase' }}
-                              >
-                                <option value="monthly">Monthly</option>
-                                <option value="bi-annual">Bi-Annual</option>
-                                <option value="annual">Annual</option>
-                                <option value="one-time">One-Time</option>
-                              </select>
-                            </td>
-                            <td style={{ padding: '6px 4px', textAlign: 'right' }}>
-                              <input
-                                type="number"
-                                min="0"
-                                value={comp.amount}
-                                onChange={(e) => handleComponentAmountChange(idx, e.target.value)}
-                                style={{ width: 120, textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--border)' }}
-                              />
-                            </td>
-                            <td style={{ padding: '6px 4px', textAlign: 'center' }}>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveComponent(idx)}
-                                title="Remove fee head"
-                                style={{ background: 'transparent', border: 'none', color: 'var(--txt-muted)', cursor: 'pointer', padding: 2 }}
-                                onMouseEnter={(e) => e.currentTarget.style.color = '#dc2626'}
-                                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--txt-muted)'}
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-
-                        {/* Arrears row */}
-                        <tr style={{ borderTop: '2px solid var(--border)', background: 'rgba(245, 158, 11, 0.08)' }}>
-                          <td style={{ padding: '8px 6px', fontWeight: 700, color: '#b45309' }}>
-                            Previous Year Arrears (Old Balance)
-                          </td>
-                          <td style={{ padding: '8px 4px', textAlign: 'center' }}>
-                            <span style={{ fontSize: 10, fontWeight: 700, background: 'rgba(245, 158, 11, 0.2)', color: '#b45309', padding: '2px 6px', borderRadius: 4 }}>
-                              ONE-TIME
-                            </span>
-                          </td>
-                          <td style={{ padding: '8px 4px', textAlign: 'right' }}>
-                            <input
-                              type="number"
-                              min="0"
-                              value={editableArrears}
-                              onChange={(e) => handleArrearsChange(e.target.value)}
-                              style={{ width: 120, textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, padding: '5px 6px', borderRadius: 6, border: '1.5px solid #f59e0b', color: '#b45309', background: '#fff' }}
-                            />
-                          </td>
-                          <td></td>
-                        </tr>
-                      </tbody>
-                    </table>
-
-                    {/* Synchronized Real-time Balance Box */}
-                    <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginBottom: 10, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, fontSize: 11 }}>
-                      <div>
-                        <div className="text-muted">Current Year Fees</div>
-                        <b style={{ fontSize: 13, fontFamily: 'monospace' }}>{cur}{editableComponents.reduce((s, c) => s + (Number(c.amount) || 0), 0).toLocaleString()}</b>
-                      </div>
-                      <div>
-                        <div className="text-muted">Old Balance / Arrears</div>
-                        <b style={{ fontSize: 13, fontFamily: 'monospace', color: '#b45309' }}>{cur}{Number(editableArrears || 0).toLocaleString()}</b>
-                      </div>
-                      <div>
-                        <div className="text-muted">Total Life Demand</div>
-                        <b style={{ fontSize: 13, fontFamily: 'monospace', color: 'var(--primary)' }}>
-                          {cur}{(editableComponents.reduce((s, c) => s + (Number(c.amount) || 0), 0) + Number(editableArrears || 0)).toLocaleString()}
-                        </b>
-                      </div>
-                      <div>
-                        <div className="text-muted">Paid to Date (Lifetime)</div>
-                        <b style={{ fontSize: 13, fontFamily: 'monospace', color: '#16a34a' }}>{cur}{totalPaid.toLocaleString()}</b>
-                      </div>
-                      <div style={{ background: 'rgba(220, 38, 38, 0.06)', border: '1.5px solid rgba(220, 38, 38, 0.3)', borderRadius: 6, padding: '4px 8px' }}>
-                        <div style={{ color: '#dc2626', fontWeight: 700 }}>Remaining Balance (Editable)</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                          <span style={{ fontWeight: 800, color: '#dc2626' }}>{cur}</span>
-                          <input
-                            type="number"
-                            min="0"
-                            value={editableRemainingBalance}
-                            onChange={(e) => handleRemainingBalanceChange(e.target.value)}
-                            title="Editing remaining balance automatically recalculates previous year arrears"
-                            style={{ width: '100%', textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, fontSize: 13, padding: '2px 4px', borderRadius: 4, border: '1px solid #dc2626', color: '#dc2626', background: '#fff' }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
-                      <input
-                        type="text"
-                        placeholder="Reason / Note for adjustment (e.g. Balance revised as per school records)"
-                        value={editableRemarks}
-                        onChange={(e) => setEditableRemarks(e.target.value)}
-                        style={{ flex: 1, fontSize: 12, padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)' }}
-                      />
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-gray"
-                        onClick={cancelEditingStructure}
-                        style={{ padding: '6px 12px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5 }}
-                      >
-                        <X size={14} /> Cancel
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-green"
-                        disabled={savingFeeAdjustment}
-                        onClick={() => saveFeeAdjustment(studentFeeDetailModal._id)}
-                        style={{ padding: '6px 14px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 700 }}
-                      >
-                        <Check size={14} /> {savingFeeAdjustment ? 'Saving Changes...' : 'Save Changes to Database'}
-                      </button>
-                    </div>
-                  </div>
-                )}
 
                 {/* KPI Cards */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, marginBottom: 16, fontSize: 12 }}>
@@ -2110,6 +1664,137 @@ export default function Fees() {
               {modal.data.remarks && <p style={{ marginTop: 10 }}><b>Remarks:</b> {modal.data.remarks}</p>}
               <div className="sig-row"><span>Cashier</span><span>Accountant</span><span>Principal</span></div>
               <p className="small muted" style={{ textAlign: 'center', marginTop: 18 }}>This is a system-generated receipt — Generated on {new Date().toLocaleDateString()}</p>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {adjustModal && (
+        <Modal
+          title={`Adjust Student Fees & Old Balance — ${adjustModal.studentName}`}
+          icon={SlidersHorizontal}
+          size="md"
+          onClose={() => setAdjustModal(null)}
+        >
+          <div style={{ padding: '4px 0 12px' }}>
+            <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--txt-muted)' }}>
+              Easily update the student's <b>Current Year Fee</b> or <b>Old Balance (Arrears)</b>. All totals and remaining balances update automatically.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: 14 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
+                  1. Current Year Annual Fee ({cur})
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--txt-muted)' }}>{cur}</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={adjustModal.currentYearFee}
+                    onChange={(e) => {
+                      const val = Math.max(0, Number(e.target.value) || 0);
+                      setAdjustModal(prev => ({ ...prev, currentYearFee: val }));
+                    }}
+                    style={{ flex: 1, fontSize: 15, fontFamily: 'monospace', fontWeight: 700, padding: '8px 12px', borderRadius: 8, border: '1.5px solid var(--border)' }}
+                  />
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--txt-muted)', marginTop: 4 }}>
+                  Standard fee for the current academic year (Tuition, Term, MS, Admission, etc.)
+                </div>
+              </div>
+
+              <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1.5px solid rgba(245, 158, 11, 0.35)', borderRadius: 10, padding: 14 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#b45309', marginBottom: 6 }}>
+                  2. Old Balance / Previous Year Arrears ({cur})
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: '#b45309' }}>{cur}</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={adjustModal.oldBalance}
+                    onChange={(e) => {
+                      const val = Math.max(0, Number(e.target.value) || 0);
+                      setAdjustModal(prev => ({ ...prev, oldBalance: val }));
+                    }}
+                    style={{ flex: 1, fontSize: 15, fontFamily: 'monospace', fontWeight: 700, padding: '8px 12px', borderRadius: 8, border: '1.5px solid #f59e0b', color: '#b45309', background: '#fff' }}
+                  />
+                </div>
+                <div style={{ fontSize: 11, color: '#b45309', marginTop: 4 }}>
+                  Carried-forward pending dues from previous sessions (2025-26 and older). Set to 0 if cleared.
+                </div>
+              </div>
+
+              {/* Live Calculation Summary */}
+              {(() => {
+                const curFee = Number(adjustModal.currentYearFee) || 0;
+                const oldBal = Number(adjustModal.oldBalance) || 0;
+                const totalDemand = curFee + oldBal;
+                const paid = Number(adjustModal.totalPaid) || 0;
+                const balance = Math.max(0, totalDemand - paid);
+
+                return (
+                  <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: 14 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--txt-muted)', marginBottom: 8 }}>
+                      Live Balance Breakdown
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, textAlign: 'center' }}>
+                      <div style={{ background: 'var(--bg-card)', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)' }}>
+                        <div style={{ fontSize: 11, color: 'var(--txt-muted)' }}>Total Demand</div>
+                        <b style={{ fontSize: 14, fontFamily: 'monospace', color: 'var(--primary)' }}>
+                          {cur}{totalDemand.toLocaleString()}
+                        </b>
+                      </div>
+                      <div style={{ background: 'var(--bg-card)', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)' }}>
+                        <div style={{ fontSize: 11, color: 'var(--txt-muted)' }}>Paid to Date</div>
+                        <b style={{ fontSize: 14, fontFamily: 'monospace', color: '#16a34a' }}>
+                          {cur}{paid.toLocaleString()}
+                        </b>
+                      </div>
+                      <div style={{ background: 'var(--bg-card)', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)' }}>
+                        <div style={{ fontSize: 11, color: 'var(--txt-muted)' }}>Remaining Balance</div>
+                        <b style={{ fontSize: 14, fontFamily: 'monospace', color: balance > 0 ? '#dc2626' : '#16a34a' }}>
+                          {cur}{balance.toLocaleString()}
+                        </b>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--txt-muted)', marginBottom: 4 }}>
+                  Adjustment Reason / Note (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Cleared old balance / revised per records"
+                  value={adjustModal.remarks}
+                  onChange={(e) => setAdjustModal(prev => ({ ...prev, remarks: e.target.value }))}
+                  style={{ width: '100%', fontSize: 12, padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
+              <button
+                type="button"
+                className="btn btn-gray"
+                onClick={() => setAdjustModal(null)}
+                disabled={savingAdjustment}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-green"
+                onClick={saveAdjustFeeModal}
+                disabled={savingAdjustment}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
+              >
+                <Check size={14} /> {savingAdjustment ? 'Updating...' : 'Save & Update Balance'}
+              </button>
             </div>
           </div>
         </Modal>

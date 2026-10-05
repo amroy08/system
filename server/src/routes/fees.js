@@ -531,9 +531,25 @@ router.put('/student/:id/adjust-structure', allowRoles(...STAFF), async (req, re
       cleanComponents = regular;
     }
 
-    let targetRemaining = null;
-    if (req.body.remainingBalance !== undefined && req.body.remainingBalance !== null && req.body.remainingBalance !== '') {
-      targetRemaining = Math.max(0, Number(req.body.remainingBalance) || 0);
+    // Direct 2-box adjustment: Current Year Fee & Previous Year Arrears
+    if (req.body.currentYearFee !== undefined && req.body.currentYearFee !== null && req.body.currentYearFee !== '') {
+      currentGradeDemand = Math.max(0, Number(req.body.currentYearFee) || 0);
+      const oldSum = cleanComponents.reduce((s, c) => s + c.amount, 0);
+      if (oldSum > 0 && currentGradeDemand > 0) {
+        const ratio = currentGradeDemand / oldSum;
+        let running = 0;
+        cleanComponents = cleanComponents.map((c, idx) => {
+          if (idx === cleanComponents.length - 1) {
+            return { ...c, amount: Math.max(0, currentGradeDemand - running) };
+          }
+          const amt = Math.round(c.amount * ratio);
+          running += amt;
+          return { ...c, amount: amt };
+        });
+      } else if (cleanComponents.length > 0) {
+        cleanComponents[0].amount = currentGradeDemand;
+        for (let i = 1; i < cleanComponents.length; i++) cleanComponents[i].amount = 0;
+      }
     }
 
     let arrears = 0;
@@ -543,28 +559,10 @@ router.put('/student/:id/adjust-structure', allowRoles(...STAFF), async (req, re
       arrears = Math.max(0, Number(student.importedWorkbook?.oldBalance) || 0);
     }
 
-    // If remainingBalance was explicitly given, enforce it so outstanding balance matches exactly
-    if (targetRemaining !== null) {
+    // Direct override for targetRemaining if passed
+    if (req.body.remainingBalance !== undefined && req.body.remainingBalance !== null && req.body.remainingBalance !== '' && req.body.currentYearFee === undefined) {
+      const targetRemaining = Math.max(0, Number(req.body.remainingBalance) || 0);
       const targetDemand = targetRemaining + totalPaid;
-      if (targetDemand >= currentGradeDemand) {
-        arrears = targetDemand - currentGradeDemand;
-      } else {
-        arrears = 0;
-        let diff = currentGradeDemand - targetDemand;
-        // Deduct diff from components starting from the largest component
-        const sortedIndices = cleanComponents
-          .map((c, i) => ({ amount: c.amount, index: i }))
-          .sort((a, b) => b.amount - a.amount);
-        for (const item of sortedIndices) {
-          if (diff <= 0) break;
-          const deduct = Math.min(cleanComponents[item.index].amount, diff);
-          cleanComponents[item.index].amount = Math.max(0, Math.round(cleanComponents[item.index].amount - deduct));
-          diff -= deduct;
-        }
-        currentGradeDemand = cleanComponents.reduce((sum, c) => sum + c.amount, 0);
-      }
-    } else if (req.body.totalDemand !== undefined && req.body.totalDemand !== null && req.body.totalDemand !== '') {
-      const targetDemand = Math.max(0, Number(req.body.totalDemand) || 0);
       if (targetDemand >= currentGradeDemand) {
         arrears = targetDemand - currentGradeDemand;
       } else {
