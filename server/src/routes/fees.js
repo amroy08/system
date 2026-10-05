@@ -506,7 +506,6 @@ router.put('/student/:id/adjust-arrears', allowRoles(...STAFF), async (req, res)
   const release = await acquireKeyedLock(`fee:${student._id}`);
   try {
     const klass = await col('classes').findOne({ _id: student.classId });
-    const structures = await col('feeStructures').find({ status: 'active' });
 
     // Resolve standard grade components without arrears
     const allComponents = await calculateFeeStructureItems(student, klass);
@@ -524,20 +523,25 @@ router.put('/student/:id/adjust-arrears', allowRoles(...STAFF), async (req, res)
 
     const remarks = String(req.body.remarks || '').trim();
 
+    const updatedWorkbook = {
+      ...(student.importedWorkbook || {}),
+      oldBalance: newArrears,
+      total: newTotalDemand,
+      fees: standardGradeDemand,
+      outstanding: newOutstanding,
+      received: totalPaid,
+    };
+
     const updateFields = {
       totalDemand: newTotalDemand,
       outstanding: newOutstanding,
-      'importedWorkbook.oldBalance': newArrears,
-      'importedWorkbook.total': newTotalDemand,
-      'importedWorkbook.fees': standardGradeDemand,
-      'importedWorkbook.outstanding': newOutstanding,
-      'importedWorkbook.received': totalPaid,
+      importedWorkbook: updatedWorkbook,
       arrearsAdjustedAt: new Date().toISOString(),
       arrearsAdjustedBy: req.user.name || req.user.username,
       arrearsAdjustmentNotes: remarks || undefined,
     };
 
-    await col('students').updateOne({ _id: student._id }, { $set: updateFields });
+    await col('students').updateOne({ _id: student._id }, updateFields);
 
     req.auditDetails = {
       action: 'ARREARS_ADJUST',
@@ -562,6 +566,9 @@ router.put('/student/:id/adjust-arrears', allowRoles(...STAFF), async (req, res)
       previousYearArrears: newArrears,
       standardGradeDemand,
     });
+  } catch (err) {
+    console.error('[Adjust Arrears Error]', err);
+    res.status(500).json({ error: err.message || 'Failed to adjust previous arrears' });
   } finally {
     release();
   }
