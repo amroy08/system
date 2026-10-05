@@ -498,6 +498,75 @@ router.post('/', allowRoles(...STAFF), async (req, res) => {
   }
 });
 
+// Adjust or remove previous year arrears / old balance for a student
+router.put('/student/:id/adjust-arrears', allowRoles(...STAFF), async (req, res) => {
+  const student = await col('students').findOne({ _id: req.params.id, status: { $ne: 'deleted' } });
+  if (!student) return res.status(404).json({ error: 'Student not found' });
+
+  const release = await acquireKeyedLock(`fee:${student._id}`);
+  try {
+    const klass = await col('classes').findOne({ _id: student.classId });
+    const structures = await col('feeStructures').find({ status: 'active' });
+
+    // Resolve standard grade components without arrears
+    const allComponents = await calculateFeeStructureItems(student, klass);
+    const standardComponents = allComponents.filter(
+      (c) => !c.name.toLowerCase().includes('arrear') && !c.name.toLowerCase().includes('previous') && !c.name.toLowerCase().includes('old balance')
+    );
+    const standardGradeDemand = standardComponents.reduce((sum, c) => sum + Number(c.amount || 0), 0);
+
+    const newArrears = Math.max(0, Number(req.body.previousYearArrears) || 0);
+    const newTotalDemand = standardGradeDemand + newArrears;
+
+    const receipts = await col('feeReceipts').find({ studentId: student._id, status: { $ne: 'refunded' } });
+    const totalPaid = receipts.reduce((sum, r) => sum + (Number(r.amountPaid) || 0), 0);
+    const newOutstanding = Math.max(0, newTotalDemand - totalPaid);
+
+    const remarks = String(req.body.remarks || '').trim();
+
+    const updateFields = {
+      totalDemand: newTotalDemand,
+      outstanding: newOutstanding,
+      'importedWorkbook.oldBalance': newArrears,
+      'importedWorkbook.total': newTotalDemand,
+      'importedWorkbook.fees': standardGradeDemand,
+      'importedWorkbook.outstanding': newOutstanding,
+      'importedWorkbook.received': totalPaid,
+      arrearsAdjustedAt: new Date().toISOString(),
+      arrearsAdjustedBy: req.user.name || req.user.username,
+      arrearsAdjustmentNotes: remarks || undefined,
+    };
+
+    await col('students').updateOne({ _id: student._id }, { $set: updateFields });
+
+    req.auditDetails = {
+      action: 'ARREARS_ADJUST',
+      studentName: `${student.firstName} ${student.lastName || ''}`.trim(),
+      admissionNo: student.admissionNo,
+      previousDemand: student.totalDemand,
+      newTotalDemand,
+      previousArrears: student.importedWorkbook?.oldBalance || 0,
+      newArrears,
+      newOutstanding,
+    };
+
+    invalidateOutstandingCache();
+    invalidateReceiptsCache();
+
+    const updated = await col('students').findOne({ _id: student._id });
+    res.json({
+      message: 'Previous balance / arrears updated successfully',
+      student: updated,
+      totalDemand: newTotalDemand,
+      outstanding: newOutstanding,
+      previousYearArrears: newArrears,
+      standardGradeDemand,
+    });
+  } finally {
+    release();
+  }
+});
+
 router.put('/:id', allowRoles(...STAFF), async (req, res) => {
   res.status(409).json({ error: 'Financial receipts are immutable. Use a refund and issue a corrected receipt.' });
 });

@@ -4,6 +4,7 @@ import {
   GraduationCap, Plus, Eye, Wallet, CalendarCheck, Award, UsersRound, Pencil, Trash2,
   CreditCard, Printer, FileText, Receipt, Camera, FolderLock, MapPin, Phone, ShieldCheck,
   HeartPulse, User, BookOpen, Trophy, CheckCircle2, XCircle, ArrowLeft,
+  SlidersHorizontal, Check,
 } from 'lucide-react';
 import { api, errMsg } from '../api';
 import { useApp } from '../context/AppContextValue';
@@ -102,6 +103,76 @@ export default function Students() {
   const [confirmDel, setConfirmDel] = useState(null);
   const [params] = useSearchParams();
   const canWrite = ['admin', 'clerk', 'supervisor'].includes(user?.role);
+
+  const [arrearsModal, setArrearsModal] = useState(null);
+  const [savingArrears, setSavingArrears] = useState(false);
+
+  const openArrearsModal = async (student, totalPaidFallback = 0) => {
+    const sId = student?._id;
+    if (!sId) return;
+    const sName = `${student.firstName || ''} ${student.lastName || ''}`.trim() || student.admissionNo || '';
+    
+    let comp = null;
+    try {
+      const { data } = await api.get(`/fees/compute/${sId}`);
+      comp = data;
+    } catch (err) {
+      console.error('Failed to compute fee for student arrears modal', err);
+    }
+
+    let standardFee = 0;
+    let arrearsVal = 0;
+    const items = comp?.items || [];
+    for (const it of items) {
+      if (it.name.toLowerCase().includes('arrear') || it.name.toLowerCase().includes('previous') || it.name.toLowerCase().includes('old balance')) {
+        arrearsVal = Number(it.amount || 0);
+      } else {
+        standardFee += Number(it.amount || 0);
+      }
+    }
+    const tPaid = Number(comp?.totalPaid ?? totalPaidFallback ?? 0);
+
+    setArrearsModal({
+      studentId: sId,
+      studentName: sName,
+      standardGradeDemand: standardFee,
+      previousArrears: arrearsVal,
+      newArrears: arrearsVal,
+      totalPaid: tPaid,
+      remarks: '',
+    });
+  };
+
+  const saveArrearsAdjustment = async () => {
+    if (!arrearsModal?.studentId) return;
+    setSavingArrears(true);
+    try {
+      const payload = {
+        previousYearArrears: Number(arrearsModal.newArrears) || 0,
+        remarks: arrearsModal.remarks.trim() || 'Old balance / previous arrears adjusted in Students module',
+      };
+      const { data } = await api.put(`/fees/student/${arrearsModal.studentId}/adjust-arrears`, payload);
+      notify('Previous balance / arrears updated successfully');
+      
+      const sId = arrearsModal.studentId;
+      setArrearsModal(null);
+
+      if (modal?.type === 'fees' && (modal.data?.student?._id === sId || modal.student?._id === sId)) {
+        setModal((prev) => ({
+          ...prev,
+          data: {
+            ...prev.data,
+            student: data.student || { ...prev.data.student, totalDemand: data.totalDemand, outstanding: data.outstanding },
+          },
+        }));
+      }
+      load();
+    } catch (e) {
+      notify(errMsg(e), 'error');
+    } finally {
+      setSavingArrears(false);
+    }
+  };
 
   const load = () => api.get('/students').then(({ data }) => setRows(data));
   useEffect(() => { load(); }, []);
@@ -1283,6 +1354,32 @@ export default function Students() {
             onClose={() => setModal(null)}
             onBack={modal.fromView ? () => setModal({ type: 'view', data: modal.student || student }) : null}
           >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--txt-muted)' }}>Financial Summary & Dues</div>
+              {canWrite && (
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: 12,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    background: 'rgba(245, 158, 11, 0.1)',
+                    border: '1px solid rgba(245, 158, 11, 0.4)',
+                    color: '#b45309',
+                    borderRadius: 6,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => openArrearsModal(student, totalPaid)}
+                >
+                  <SlidersHorizontal size={13} /> Edit Old Balance (Arrears)
+                </button>
+              )}
+            </div>
+
             <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 16px', marginBottom: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, fontSize: 12 }}>
               <div>
                 <p style={{ margin: 0, color: 'var(--txt-muted)' }}>Current Grade Rate</p>
@@ -2002,6 +2099,110 @@ export default function Students() {
             catch (e) { notify(errMsg(e), 'error'); }
             setConfirmDel(null);
           }} />
+      )}
+
+      {arrearsModal && (
+        <Modal
+          title={`Edit Old Balance / Previous Arrears — ${arrearsModal.studentName}`}
+          icon={SlidersHorizontal}
+          size="sm"
+          onClose={() => setArrearsModal(null)}
+        >
+          <div style={{ padding: '4px 0 12px' }}>
+            <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--txt-muted)' }}>
+              Edit or remove previous year arrears. Total demand and remaining balance will update automatically.
+            </p>
+
+            <div style={{ background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: 8, padding: 12, marginBottom: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: '#92400e' }}>
+                  Previous Year Arrears ({settings.currency || '₹'})
+                </label>
+                <button
+                  type="button"
+                  className="btn btn-xs"
+                  onClick={() => setArrearsModal(prev => ({ ...prev, newArrears: 0 }))}
+                  style={{ fontSize: 11, background: '#fff', border: '1px solid #f59e0b', color: '#b45309', borderRadius: 4, padding: '2px 6px', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  ✕ Set to ₹0 (Clear Dues)
+                </button>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontWeight: 800, color: '#b45309', fontSize: 16 }}>{settings.currency || '₹'}</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={arrearsModal.newArrears}
+                  onChange={(e) => {
+                    const val = Math.max(0, Number(e.target.value) || 0);
+                    setArrearsModal(prev => ({ ...prev, newArrears: val }));
+                  }}
+                  style={{ width: '100%', fontSize: 16, fontFamily: 'monospace', fontWeight: 800, padding: '6px 10px', borderRadius: 6, border: '1.5px solid #f59e0b', color: '#b45309', background: '#fff' }}
+                />
+              </div>
+              <div style={{ fontSize: 11, color: '#b45309', marginTop: 4 }}>
+                Set to 0 if the student already paid previous year fees.
+              </div>
+            </div>
+
+            {/* Live impact summary */}
+            {(() => {
+              const cur = settings.currency || '₹';
+              const stdFee = Number(arrearsModal.standardGradeDemand) || 0;
+              const arr = Number(arrearsModal.newArrears) || 0;
+              const newTotal = stdFee + arr;
+              const paid = Number(arrearsModal.totalPaid) || 0;
+              const newBal = Math.max(0, newTotal - paid);
+
+              return (
+                <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginBottom: 14 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt-muted)', marginBottom: 6 }}>
+                    Live Balance Impact
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, textAlign: 'center' }}>
+                    <div>
+                      <div style={{ fontSize: 10, color: 'var(--txt-muted)' }}>Class Fee</div>
+                      <b style={{ fontSize: 13, fontFamily: 'monospace' }}>{cur}{stdFee.toLocaleString()}</b>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, color: 'var(--txt-muted)' }}>New Total Demand</div>
+                      <b style={{ fontSize: 13, fontFamily: 'monospace', color: 'var(--primary)' }}>{cur}{newTotal.toLocaleString()}</b>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, color: 'var(--txt-muted)' }}>New Balance Due</div>
+                      <b style={{ fontSize: 13, fontFamily: 'monospace', color: newBal > 0 ? '#dc2626' : '#16a34a' }}>{cur}{newBal.toLocaleString()}</b>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            <div style={{ marginBottom: 14 }}>
+              <input
+                type="text"
+                placeholder="Reason / Note (e.g. Previous dues cleared per school records)"
+                value={arrearsModal.remarks}
+                onChange={(e) => setArrearsModal(prev => ({ ...prev, remarks: e.target.value }))}
+                style={{ width: '100%', fontSize: 12, padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button type="button" className="btn btn-sm btn-gray" onClick={() => setArrearsModal(null)} disabled={savingArrears}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm btn-green"
+                disabled={savingArrears}
+                onClick={saveArrearsAdjustment}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 700 }}
+              >
+                <Check size={14} /> {savingArrears ? 'Saving...' : 'Save & Update'}
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
     </>
   );
