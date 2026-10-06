@@ -890,7 +890,7 @@ export default function Students() {
         <button className="act-purple" title="Linked parents" onClick={() => openQuick('parents', r)}><UsersRound size={15} /></button>
         <button className="act-view" title="ID Card" onClick={() => setModal({ type: 'idcard', data: r })}><CreditCard size={15} /></button>
         {canWrite && <button className="act-edit" title="Edit" onClick={() => openEdit(r)}><Pencil size={15} /></button>}
-        {user?.role === 'admin' && <button className="act-del" title="Delete" onClick={() => setConfirmDel(r)}><Trash2 size={15} /></button>}
+        {['admin', 'clerk'].includes(user?.role) && <button className="act-del" title="Delete" onClick={() => setConfirmDel(r)}><Trash2 size={15} /></button>}
       </div>
     )},
   ];

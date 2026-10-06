@@ -7,6 +7,7 @@ import { ensureParentUser, findParentByMobile } from '../utils/parentAccounts.js
 import { generateTemporaryPassword, isStrongPassword } from '../utils/credentials.js';
 import { teacherClassIds } from '../utils/accessScope.js';
 import { formatClass } from '../utils/classNames.js';
+import { invalidateOutstandingCache } from './fees.js';
 
 const router = Router();
 router.use(authRequired);
@@ -380,7 +381,7 @@ router.get('/:id/parents', async (req, res) => {
   res.json(parents);
 });
 
-router.delete('/:id', allowRoles('admin'), async (req, res) => {
+router.delete('/:id', allowRoles('admin', 'clerk'), async (req, res) => {
   const student = await col('students').findOne({ _id: req.params.id, status: { $ne: 'deleted' } });
   if (!student) return res.status(404).json({ error: 'Student not found' });
   const deletedAt = new Date().toISOString();
@@ -388,6 +389,8 @@ router.delete('/:id', allowRoles('admin'), async (req, res) => {
     status: 'deleted', deletedAt, deletedBy: req.user.name, deletedPreviousStatus: student.status,
   });
   await col('users').updateMany({ role: 'student', refId: req.params.id }, { status: 'deleted', deletedAt, deletedBy: req.user.name });
+  invalidateStudentsCache();
+  invalidateOutstandingCache();
   req.auditDetails = {
     action: 'STUDENT_DELETE',
     admissionNo: student.admissionNo,
