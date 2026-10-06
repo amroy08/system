@@ -5,7 +5,6 @@ import { getStoredFile } from './storageService.js';
 
 let transporter = null;
 
-// Initialize Transporter
 if (config.smtpHost && config.smtpUser && config.smtpPass) {
   transporter = nodemailer.createTransport({
     host: config.smtpHost,
@@ -15,6 +14,9 @@ if (config.smtpHost && config.smtpUser && config.smtpPass) {
       user: config.smtpUser,
       pass: config.smtpPass,
     },
+    connectionTimeout: 5000,
+    greetingTimeout: 5000,
+    socketTimeout: 8000,
   });
   console.log('[Email] SMTP transporter initialized');
 } else {

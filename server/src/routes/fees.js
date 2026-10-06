@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { waitUntil } from '@vercel/functions';
 import { col, nextSeq } from '../db/index.js';
 import { authRequired, allowRoles, STAFF } from '../middleware/auth.js';
 import { resolveEmailRecipients } from '../utils/emailRecipients.js';
@@ -487,14 +488,18 @@ router.post('/', allowRoles(...STAFF), async (req, res) => {
   invalidateReceiptsCache();    // new receipt appears in list
   res.status(201).json(doc);
 
-  // Queue and send email in background without blocking payment confirmation
-  setImmediate(async () => {
+  // Deliver email in background: waitUntil keeps Vercel serverless function alive after response
+  const emailPromise = (async () => {
     try {
       await queueReceiptEmail(doc, student, req.user.name);
     } catch (err) {
       console.error('[Receipt Email Background Error]', err);
     }
-  });
+  })();
+
+  if (typeof waitUntil === 'function') {
+    try { waitUntil(emailPromise); } catch { /* fallback to promise in non-vercel env */ }
+  }
   } finally {
     release();
   }
