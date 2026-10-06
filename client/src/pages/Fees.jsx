@@ -306,7 +306,7 @@ export default function Fees() {
     return <StudentParentFees />;
   }
 
-  const { students = [], classes = [] } = useLookups(['students', 'classes']);
+  const { students = [], classes = [], reload: reloadLookups } = useLookups(['students', 'classes']);
   const [rows, setRows] = useState([]);
   const [tab, setTab] = useState('all');
   const [selectedClassId, setSelectedClassId] = useState('');
@@ -605,14 +605,39 @@ export default function Fees() {
     return list;
   }, [rows, tab, selectedClassId, students]);
 
-  const openAdd = () => {
+  const resetPaymentForm = () => {
     setStudentId('');
     setSearchQuery('');
     setFormWing('');
     setFormClassId('');
     setShowDropdown(false);
     setComputed(null);
+    setPayModalFeeData(null);
+    setPayModalHistoryOpen(false);
+    setSplitEdited(false);
     setPay(createPaymentForm());
+  };
+
+  const closeReceiptModal = () => {
+    setModal(null);
+    resetPaymentForm();
+    load().catch(() => {});
+    reloadLookups();
+  };
+
+  const openAdd = () => {
+    resetPaymentForm();
+    setModal({ type: 'pay' });
+  };
+
+  const openAddForStudent = (s, klass) => {
+    resetPaymentForm();
+    setStudentId(s._id);
+    setSearchQuery(`${s.firstName} ${s.lastName || ''} — ${s.admissionNo}`);
+    setFormClassId(s.classId);
+    if (klass) {
+      setFormWing(getClassWing(klass.name));
+    }
     setModal({ type: 'pay' });
   };
 
@@ -650,6 +675,7 @@ export default function Fees() {
       setModal({ type: 'receipt', data });
       notify(`Payment recorded — ${data.receiptNo}`);
       load().catch(() => {});
+      reloadLookups();
     } catch (e) { notify(errMsg(e), 'error'); }
     finally {
       setRecordingPayment(false);
@@ -1030,15 +1056,7 @@ export default function Fees() {
                 <button 
                   className="act-btn-modern act-btn-pay" 
                   title="Record Payment" 
-                  onClick={() => {
-                    setStudentId(s._id);
-                    setSearchQuery(`${s.firstName} ${s.lastName || ''} — ${s.admissionNo}`);
-                    setFormClassId(s.classId);
-                    if (selectedClass) {
-                      setFormWing(getClassWing(selectedClass.name));
-                    }
-                    setModal({ type: 'pay' });
-                  }}
+                  onClick={() => openAddForStudent(s, selectedClass)}
                 >
                   <Plus size={13} /> Pay
                 </button>
@@ -1589,7 +1607,35 @@ export default function Fees() {
 
       {/* Receipt */}
       {modal?.type === 'receipt' && (
-        <Modal title="Fee Receipt" icon={Wallet} size="lg" onClose={() => setModal(null)}>
+        <Modal 
+          title="Fee Receipt" 
+          icon={Wallet} 
+          size="lg" 
+          onClose={closeReceiptModal}
+          footer={
+            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+              <button 
+                type="button" 
+                className="btn btn-green" 
+                onClick={() => {
+                  closeReceiptModal();
+                  openAdd();
+                }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              >
+                <Plus size={15} /> Collect Another Fee
+              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="button" className="btn btn-navy" onClick={printReceipt}>
+                  <Printer size={15} /> Print A4
+                </button>
+                <button type="button" className="btn btn-gray" onClick={closeReceiptModal}>
+                  Close
+                </button>
+              </div>
+            </div>
+          }
+        >
           <button className="btn btn-navy mb no-print" onClick={printReceipt}><Printer size={15} /> Print A4</button>
           <div id="receipt-print">
             <div className="receipt">
