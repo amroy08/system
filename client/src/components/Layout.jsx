@@ -5,8 +5,9 @@ import {
   BookOpen, UserCog, UserCheck, ClipboardList, ClipboardCheck, FileBadge, ShieldAlert,
   Award, Trophy, Wallet, Receipt, Landmark, LifeBuoy, MessageSquareWarning, FolderOpen,
   UsersRound, CircleUser, Settings, Megaphone, CalendarDays, CalendarRange,
-  NotebookPen, BookMarked, LogOut, ChevronLeft, ChevronRight, RefreshCw,
+  NotebookPen, BookMarked, LogOut, ChevronLeft, ChevronRight, ChevronDown, RefreshCw,
   Library, BadgeIndianRupee, Search, ArrowUpDown, Bell, Menu, DatabaseBackup, DownloadCloud,
+  FolderKanban, GraduationCap as AcademicIcon, Sparkles, Layers,
 } from 'lucide-react';
 import { useApp } from '../context/AppContextValue';
 import { api } from '../api';
@@ -16,12 +17,12 @@ import MobileBottomNav from './MobileBottomNav';
 import { usePwa } from './PwaInstallPrompt';
 
 const NAV = [
-  { section: 'Overview', items: [
+  { section: 'Overview', icon: LayoutDashboard, items: [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'clerk', 'supervisor', 'teacher'] },
     { to: '/portal', label: 'My Dashboard', icon: LayoutDashboard, roles: ['student', 'parent'] },
     { to: '/reports', label: 'Reports', icon: BarChart3, roles: ['admin', 'clerk', 'supervisor'] },
   ]},
-  { section: 'Records', items: [
+  { section: 'Records', icon: FolderKanban, items: [
     { to: '/admissions', label: 'Admissions', icon: UserPlus, roles: ['admin', 'clerk', 'supervisor'] },
     { to: '/students', label: 'Students', icon: GraduationCap, roles: ['admin', 'clerk', 'supervisor', 'teacher'] },
     { to: '/classes', label: 'Classes & Sections', icon: School, roles: ['admin', 'clerk', 'supervisor'] },
@@ -32,11 +33,7 @@ const NAV = [
     { to: '/teachers', label: 'Teachers', icon: UserCog, roles: ['admin', 'clerk', 'supervisor'] },
     { to: '/substitutes', label: 'Substitutes', icon: RefreshCw, roles: ['admin', 'clerk', 'supervisor'] },
   ]},
-  { section: 'Library', items: [
-    { to: '/library', label: 'Books Catalog', icon: Library, roles: ['admin', 'clerk', 'supervisor', 'teacher', 'student', 'parent'] },
-    { to: '/library-circulation', label: 'Issue / Return', icon: BookMarked, roles: ['admin', 'clerk', 'supervisor', 'teacher'] },
-  ]},
-  { section: 'Daily', items: [
+  { section: 'Daily', icon: CalendarRange, items: [
     { to: '/timetable', label: 'Timetable', icon: CalendarRange, roles: ['admin', 'clerk', 'supervisor', 'teacher', 'student', 'parent'] },
     { to: '/attendance', label: 'Attendance', icon: UserCheck, roles: ['admin', 'clerk', 'supervisor', 'teacher', 'student', 'parent'] },
     { to: '/notices', label: 'School Notices', icon: Megaphone, roles: ['admin', 'clerk', 'supervisor', 'teacher', 'student', 'parent'] },
@@ -47,7 +44,7 @@ const NAV = [
     { to: '/lesson-planning', label: 'Lesson Planning', icon: NotebookPen, roles: ['admin', 'supervisor', 'teacher'] },
     { to: '/logbook', label: 'Teaching Logbook', icon: BookMarked, roles: ['admin', 'supervisor', 'teacher'] },
   ]},
-  { section: 'Academic', items: [
+  { section: 'Academic', icon: AcademicIcon, items: [
     { to: '/exams', label: 'Exams', icon: ClipboardList, roles: ['admin', 'clerk', 'supervisor', 'teacher'] },
     { to: '/marks', label: 'Results / Marks', icon: Award, roles: ['admin', 'clerk', 'supervisor', 'teacher', 'student', 'parent'] },
     { to: '/hall-tickets', label: 'Hall Tickets', icon: FileBadge, roles: ['admin', 'clerk', 'supervisor', 'student', 'parent'] },
@@ -55,24 +52,28 @@ const NAV = [
     { to: '/conduct', label: 'Conduct', icon: Award, roles: ['admin', 'clerk', 'supervisor', 'teacher'] },
     { to: '/promotions', label: 'Promotions', icon: ArrowUpDown, roles: ['admin'] },
   ]},
-  { section: 'Finance', items: [
+  { section: 'Finance', icon: Wallet, items: [
     { to: '/fees', label: 'Fees Collection', icon: Wallet, roles: ['admin', 'clerk', 'supervisor', 'student', 'parent'] },
     { to: '/outstanding', label: 'Outstanding Dues', icon: Landmark, roles: ['admin', 'clerk', 'supervisor'] },
     { to: '/payroll', label: 'Payroll / Salary', icon: BadgeIndianRupee, roles: ['admin', 'clerk', 'supervisor', 'teacher'] },
     { to: '/daily-accounts', label: 'Daily Accounts', icon: Landmark, roles: ['admin', 'clerk', 'supervisor'] },
     { to: '/fee-structure', label: 'Fee Structure', icon: Receipt, roles: ['admin', 'clerk', 'supervisor'] },
   ]},
-  { section: 'Support', items: [
+  { section: 'Library', icon: Library, items: [
+    { to: '/library', label: 'Books Catalog', icon: Library, roles: ['admin', 'clerk', 'supervisor', 'teacher', 'student', 'parent'] },
+    { to: '/library-circulation', label: 'Issue / Return', icon: BookMarked, roles: ['admin', 'clerk', 'supervisor', 'teacher'] },
+  ]},
+  { section: 'Support', icon: LifeBuoy, items: [
     { to: '/helpdesk', label: 'Helpdesk', icon: LifeBuoy, roles: ['admin', 'clerk', 'supervisor', 'teacher', 'student', 'parent'], badgeKey: 'openTickets' },
     { to: '/complaints', label: 'Complaints', icon: MessageSquareWarning, roles: ['admin', 'clerk', 'supervisor', 'teacher', 'student', 'parent'], badgeKey: 'openComplaints' },
     { to: '/documents', label: 'Documents', icon: FolderOpen, roles: ['admin', 'clerk', 'supervisor', 'teacher', 'student', 'parent'] },
   ]},
-  { section: 'Administration', items: [
+  { section: 'Administration', icon: ShieldAlert, items: [
     { to: '/users', label: 'Users / Staff', icon: Users, roles: ['admin', 'clerk', 'supervisor'] },
     { to: '/audit-logs', label: 'Audit Logs', icon: ShieldAlert, roles: ['admin'] },
     { to: '/backups', label: 'System Backup', icon: DatabaseBackup, roles: ['admin'] },
   ]},
-  { section: 'Profile', items: [
+  { section: 'Profile', icon: CircleUser, items: [
     { to: '/account', label: 'My Account', icon: CircleUser, roles: ['admin', 'clerk', 'supervisor', 'teacher', 'student', 'parent'] },
     { to: '/settings', label: 'Settings', icon: Settings, roles: ['admin'] },
   ]},
@@ -105,6 +106,39 @@ export default function Layout() {
   const [cmdOpen, setCmdOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+
+  const [collapsedSections, setCollapsedSections] = useState(() => {
+    try {
+      const saved = localStorage.getItem('mvhs_sidebar_sections');
+      if (saved) return JSON.parse(saved);
+    } catch { /* ignore */ }
+    return {
+      'Library': true,
+      'Support': true,
+      'Administration': true,
+      'Profile': true,
+    };
+  });
+
+  const toggleSection = (sectionName) => {
+    setCollapsedSections((prev) => {
+      const next = { ...prev, [sectionName]: !prev[sectionName] };
+      try { localStorage.setItem('mvhs_sidebar_sections', JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  };
+
+  // Ensure the section containing the active route is open
+  useEffect(() => {
+    const activeSec = NAV.find((sec) => sec.items.some((i) => i.to === location.pathname));
+    if (activeSec && collapsedSections[activeSec.section]) {
+      setCollapsedSections((prev) => {
+        const next = { ...prev, [activeSec.section]: false };
+        try { localStorage.setItem('mvhs_sidebar_sections', JSON.stringify(next)); } catch { /* ignore */ }
+        return next;
+      });
+    }
+  }, [location.pathname]);
 
   const handleInstallApp = async () => {
     if (isIos) {
@@ -192,26 +226,52 @@ export default function Layout() {
           {NAV.map((sec) => {
             const items = sec.items.filter((i) => i.roles.includes(user?.role));
             if (!items.length) return null;
+
+            const isSectionCollapsed = !!collapsedSections[sec.section];
+            const hasActiveChild = items.some((i) => (i.to === '/' ? location.pathname === '/' : location.pathname.startsWith(i.to)));
+            const SecIcon = sec.icon || FolderKanban;
+
             return (
-              <div key={sec.section}>
-                <div className="nav-section-label">{sec.section}</div>
-                {items.map((i) => (
-                  <NavLink
-                    key={i.to}
-                    to={i.to}
-                    className={({ isActive }) => `nav-pill ${isActive ? 'active' : ''}`}
-                    end={i.to === '/'}
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <i.icon size={16} style={{ flexShrink: 0 }} />
-                    <span className="nav-label">
-                      {(['student', 'parent'].includes(user?.role) && i.to === '/fees') ? 'Fees & Receipts' : i.label}
-                    </span>
-                    {i.badgeKey && badges[i.badgeKey] > 0 && (
-                      <span className="nav-badge">{badges[i.badgeKey]}</span>
+              <div key={sec.section} className="nav-section-group" style={{ marginBottom: 4 }}>
+                <button
+                  type="button"
+                  className={`nav-section-label ${!isSectionCollapsed ? 'open' : ''}`}
+                  onClick={() => toggleSection(sec.section)}
+                  title={`${isSectionCollapsed ? 'Expand' : 'Collapse'} ${sec.section}`}
+                >
+                  <span className="nav-section-title">
+                    <SecIcon size={14} style={{ opacity: 0.8 }} />
+                    <span className="nav-label">{sec.section}</span>
+                    {hasActiveChild && isSectionCollapsed && (
+                      <span className="nav-section-badge nav-label">Active</span>
                     )}
-                  </NavLink>
-                ))}
+                  </span>
+                  <span className="nav-section-chevron nav-label">
+                    <ChevronRight size={13} />
+                  </span>
+                </button>
+
+                {!isSectionCollapsed && (
+                  <div className="nav-section-items">
+                    {items.map((i) => (
+                      <NavLink
+                        key={i.to}
+                        to={i.to}
+                        className={({ isActive }) => `nav-pill ${isActive ? 'active' : ''}`}
+                        end={i.to === '/'}
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <i.icon size={15} style={{ flexShrink: 0 }} />
+                        <span className="nav-label">
+                          {(['student', 'parent'].includes(user?.role) && i.to === '/fees') ? 'Fees & Receipts' : i.label}
+                        </span>
+                        {i.badgeKey && badges[i.badgeKey] > 0 && (
+                          <span className="nav-badge">{badges[i.badgeKey]}</span>
+                        )}
+                      </NavLink>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })}
