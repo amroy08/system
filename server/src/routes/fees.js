@@ -472,13 +472,6 @@ router.post('/', allowRoles(...STAFF), async (req, res) => {
       amount: amountPaid, mode: doc.mode, recordedBy: req.user.name, receiptId: doc._id,
     });
   }
-  // Send email receipt to parents immediately before serverless response
-  try {
-    await queueReceiptEmail(doc, student, req.user.name);
-  } catch (err) {
-    console.error('[Receipt Email Queue Error]', err);
-  }
-
   req.auditDetails = {
     action: 'FEE_PAYMENT',
     receiptNo: doc.receiptNo,
@@ -493,6 +486,15 @@ router.post('/', allowRoles(...STAFF), async (req, res) => {
   invalidateOutstandingCache(); // new receipt changes balances
   invalidateReceiptsCache();    // new receipt appears in list
   res.status(201).json(doc);
+
+  // Queue and send email in background without blocking payment confirmation
+  setImmediate(async () => {
+    try {
+      await queueReceiptEmail(doc, student, req.user.name);
+    } catch (err) {
+      console.error('[Receipt Email Background Error]', err);
+    }
+  });
   } finally {
     release();
   }

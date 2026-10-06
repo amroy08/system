@@ -53,11 +53,11 @@ export async function enqueueEmailEvent({ eventType, entityType, entityId, versi
     }
   }
   if (created.length) {
-    try {
-      await processEmailOutbox(20, { entityType, entityId, version });
-    } catch (error) {
-      console.error('[Email Outbox]', error);
-    }
+    setImmediate(() => {
+      processEmailOutbox(20, { entityType, entityId, version }).catch((error) => {
+        console.error('[Email Outbox Background]', error);
+      });
+    });
   }
   return { queuedCount: created.length, duplicateCount };
 }

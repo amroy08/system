@@ -646,9 +646,10 @@ export default function Fees() {
       setRecordingPayment(true);
       const idempotencyKey = pay.idempotencyKey;
       const { data } = await api.post('/fees', { studentId, ...pay, idempotencyKey }, { headers: { 'Idempotency-Key': idempotencyKey } });
+      setRows((prev) => [data, ...prev.filter((r) => r._id !== data._id)]);
       setModal({ type: 'receipt', data });
       notify(`Payment recorded — ${data.receiptNo}`);
-      load();
+      load().catch(() => {});
     } catch (e) { notify(errMsg(e), 'error'); }
     finally {
       setRecordingPayment(false);
