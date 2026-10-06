@@ -167,20 +167,38 @@ function sanitizeManualSplit(items, amountPaid, componentSummaries = []) {
 
 async function queueReceiptEmail(receipt, student, createdBy) {
   try {
-    const recipientResult = await resolveEmailRecipients({ parentIds: student.parentIds || [] });
+    let recipients = [];
+    const pIds = Array.isArray(student.parentIds) ? student.parentIds.filter(Boolean) : [];
+    if (pIds.length > 0) {
+      const recipientResult = await resolveEmailRecipients({ parentIds: pIds });
+      recipients = recipientResult.recipients || [];
+    }
+
+    // If no parent doc is linked but student has parentEmail on their profile, send directly to that email
+    if (recipients.length === 0 && student.parentEmail && student.parentEmail.includes('@')) {
+      recipients = [{ email: student.parentEmail.trim().toLowerCase(), recipientId: student._id, recipientType: 'parent' }];
+    }
+
+    if (recipients.length === 0) {
+      await col('feeReceipts').updateOne({ _id: receipt._id }, {
+        emailStatus: 'no-recipients',
+        emailRecipientCount: 0,
+      });
+      return;
+    }
+
     const queued = await enqueueEmailEvent({
       eventType: 'receipt',
       entityType: 'feeReceipt',
       entityId: receipt._id,
       version: receipt.createdAt,
-      recipients: recipientResult.recipients,
+      recipients,
       payload: receipt,
       createdBy,
     });
     await col('feeReceipts').updateOne({ _id: receipt._id }, {
       emailStatus: queued.queuedCount ? 'queued' : 'no-recipients',
       emailRecipientCount: queued.queuedCount,
-      emailSkipped: recipientResult.skipped,
     });
   } catch (err) {
     console.error('[Receipt Email Queue Error]', err);
@@ -332,26 +350,37 @@ router.post('/:id/email', allowRoles(...STAFF), async (req, res) => {
   if (!receipt) return res.status(404).json({ error: 'Receipt not found' });
   const student = await col('students').findOne({ _id: receipt.studentId, status: { $ne: 'deleted' } });
   if (!student) return res.status(404).json({ error: 'Student not found' });
-  const recipients = await resolveEmailRecipients({ parentIds: student.parentIds || [] });
+  let recipients = [];
+  const pIds = Array.isArray(student.parentIds) ? student.parentIds.filter(Boolean) : [];
+  if (pIds.length > 0) {
+    const res = await resolveEmailRecipients({ parentIds: pIds });
+    recipients = res.recipients || [];
+  }
+  if (recipients.length === 0 && student.parentEmail && student.parentEmail.includes('@')) {
+    recipients = [{ email: student.parentEmail.trim().toLowerCase(), recipientId: student._id, recipientType: 'parent' }];
+  }
+  if (recipients.length === 0) {
+    return res.json({ queuedCount: 0, duplicateCount: 0, message: 'No deliverable parent email linked' });
+  }
+
   const resendNumber = Number(receipt.emailResendCount || 0) + 1;
   const queued = await enqueueEmailEvent({
     eventType: 'receipt',
     entityType: 'feeReceipt',
     entityId: receipt._id,
     version: `${receipt.createdAt}:resend:${resendNumber}`,
-    recipients: recipients.recipients,
+    recipients,
     payload: receipt,
     createdBy: req.user.name,
   });
   await col('feeReceipts').updateOne({ _id: receipt._id }, {
     emailStatus: queued.queuedCount ? 'queued' : 'no-recipients',
     emailRecipientCount: queued.queuedCount,
-    emailSkipped: recipients.skipped,
     emailResendCount: resendNumber,
     emailResentBy: req.user.name,
     emailResentAt: new Date().toISOString(),
   });
-  res.json({ ...queued, skipped: recipients.skipped });
+  res.json(queued);
 });
 
 // Record a payment

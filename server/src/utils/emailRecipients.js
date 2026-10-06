@@ -27,14 +27,18 @@ function summarize(records) {
   return { recipients, eligibleCount: recipients.length, candidateCount: records.length, skipped };
 }
 
-export async function resolveEmailRecipients({ audience = 'parents', classIds = [], studentIds = [], parentIds = [] } = {}) {
+export async function resolveEmailRecipients({ audience = 'parents', classIds = [], studentIds = [], parentIds = null } = {}) {
   if (audience === 'teachers' || audience === 'staff') {
     const roles = audience === 'teachers' ? ['teacher'] : STAFF;
     const users = await col('users').find({ role: { $in: roles }, status: 'active' });
     return summarize(users.map((user) => ({ ...user, recipientType: 'user' })));
   }
 
-  if (parentIds.length) {
+  // If specific parentIds are provided, resolve ONLY those parents
+  if (Array.isArray(parentIds)) {
+    if (!parentIds.length) {
+      return summarize([]);
+    }
     const parents = await col('parents').find({ _id: { $in: [...new Set(parentIds)] }, status: 'active' });
     return summarize(parents);
   }
@@ -51,8 +55,8 @@ export async function resolveEmailRecipients({ audience = 'parents', classIds = 
   }
 
   if (students.length || studentIds.length || classIds.length || audience === 'students' || audience === 'class') {
-    const parentIds = [...new Set(students.flatMap((student) => student.parentIds || []))];
-    const parents = parentIds.length ? await col('parents').find({ _id: { $in: parentIds }, status: 'active' }) : [];
+    const pIds = [...new Set(students.flatMap((student) => student.parentIds || []))];
+    const parents = pIds.length ? await col('parents').find({ _id: { $in: pIds }, status: 'active' }) : [];
     return { ...summarize(parents), studentCount: students.length };
   }
 
