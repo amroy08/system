@@ -2843,6 +2843,198 @@ body {
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1) !important;
 }
 
+/* ── Outstanding Dues Professional & Mobile Redesign ───────── */
+.outstanding-wrapper {
+  padding: 24px;
+}
+
+.outstanding-header-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
+}
+
+.outstanding-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+  margin-bottom: 18px;
+}
+
+.outstanding-kpi-item {
+  padding: 18px 20px;
+  border-radius: 14px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.outstanding-kpi-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -4px rgba(15, 23, 42, 0.08);
+}
+
+.outstanding-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
+  margin-bottom: 18px;
+}
+
+/* Mobile-only Defaulter Cards */
+.outstanding-mobile-cards {
+  display: none;
+}
+
+.defaulter-card {
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  padding: 16px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.defaulter-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.defaulter-student-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.defaulter-meta-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.defaulter-details-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+
+.defaulter-detail-cell {
+  display: flex;
+  flex-direction: column;
+}
+
+.defaulter-detail-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.defaulter-detail-value {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-top: 2px;
+}
+
+.defaulter-guardian-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  color: #475569;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(241, 245, 249, 0.6);
+}
+
+.defaulter-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+@media (max-width: 900px) {
+  .outstanding-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .outstanding-wrapper {
+    padding: 12px 10px 40px !important;
+  }
+  .outstanding-header-card {
+    padding: 14px !important;
+  }
+  .outstanding-header-card h2 {
+    font-size: 17px !important;
+  }
+  .outstanding-kpi-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+  .outstanding-filter-bar {
+    padding: 12px !important;
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+  .outstanding-filter-bar select {
+    width: 100% !important;
+  }
+  .dues-filter-toggle-group {
+    display: flex !important;
+    width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .dues-filter-toggle-group button {
+    flex: 1 0 auto !important;
+    white-space: nowrap !important;
+    padding: 7px 10px !important;
+    font-size: 11px !important;
+  }
+  /* On mobile switch table to cards view for superior thumb usability */
+  .outstanding-desktop-table {
+    display: none !important;
+  }
+  .outstanding-mobile-cards {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+}
+
 /* ── Shimmer Skeleton Loaders ──────────────────────────────── */
 @keyframes toastSlideIn {
   from { opacity: 0; transform: translateY(-14px) scale(0.96); }

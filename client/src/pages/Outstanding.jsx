@@ -248,94 +248,91 @@ export default function Outstanding() {
   ];
 
   return (
-    <div className="space-y-6" style={{ padding: '24px' }}>
+    <div className="outstanding-wrapper">
       {/* Header */}
-      <div className="glass-card" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '16px', padding: '20px 24px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.7)', boxShadow: '0 8px 32px rgba(31, 38, 135, 0.04)' }}>
+      <div className="outstanding-header-card">
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'linear-gradient(135deg, rgba(37,99,235,0.1), rgba(30,58,138,0.05))', display: 'flex', alignItems: 'center', justifyCentert: 'center', border: '1px solid rgba(37,99,235,0.15)', justifyContent: 'center' }}>
-            <Landmark size={24} className="txt-primary" />
+          <div style={{ width: '46px', height: '46px', borderRadius: '12px', background: 'linear-gradient(135deg, rgba(37,99,235,0.12), rgba(30,58,138,0.06))', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(37,99,235,0.2)', flexShrink: 0 }}>
+            <Landmark size={22} className="txt-primary" />
           </div>
           <div>
-            <h2 style={{ fontSize: '20px', fontWeight: '800', letterSpacing: '-0.02em', color: 'var(--txt)', margin: 0 }}>
+            <h2 style={{ fontSize: '19px', fontWeight: '800', letterSpacing: '-0.02em', color: 'var(--txt)', margin: 0 }}>
               Outstanding Fee Dues &amp; Arrears
             </h2>
-            <p style={{ fontSize: '12.5px', color: 'var(--txt-muted)', marginTop: '2px', fontWeight: '500' }}>
-              Track student unpaid balances, validate parent contacts, and dispatch bulk reminders.
+            <p style={{ fontSize: '12px', color: 'var(--txt-muted)', marginTop: '2px', fontWeight: '500' }}>
+              Track student unpaid balances, validate parent contacts, and dispatch WhatsApp reminders.
             </p>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', width: 'auto' }}>
           {selectedIds.length > 0 && (
             <button
               onClick={startBulkDispatch}
               className="btn btn-green"
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '700', padding: '10px 20px', borderRadius: '10px', boxShadow: '0 4px 12px rgba(22, 163, 74, 0.25)', border: 'none', cursor: 'pointer' }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: '700', padding: '9px 18px', borderRadius: '10px', boxShadow: '0 4px 12px rgba(22, 163, 74, 0.25)', border: 'none', cursor: 'pointer', fontSize: '13px' }}
             >
-              <Send size={14} /> Prepare WhatsApp Reminders ({selectedIds.length})
+              <Send size={14} /> Send WhatsApp Reminders ({selectedIds.length})
             </button>
           )}
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="kpi-grid">
+      {/* Summary KPI Cards */}
+      <div className="outstanding-kpi-grid">
         {/* KPI Card 1 */}
-        <div className="kpi-card" style={{ background: 'linear-gradient(135deg, rgba(254,247,237,0.85), rgba(254,242,242,0.65))', border: '1px solid rgba(251,146,60,0.22)', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: '-10px', right: '-10px', width: '80px', height: '80px', background: 'rgba(249,115,22,0.04)', borderRadius: '50%' }}></div>
-          <div className="kpi-top-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-            <div className="kpi-icon" style={{ background: 'rgba(249,115,22,0.1)', borderColor: 'rgba(249,115,22,0.25)', color: '#ea580c' }}>
+        <div className="outstanding-kpi-item" style={{ background: 'linear-gradient(135deg, #fffbf5, #fef2f2)', border: '1px solid rgba(251,146,60,0.25)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(249,115,22,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ea580c' }}>
               <Landmark size={18} />
             </div>
-            <span style={{ fontSize: '10px', fontWeight: '700', background: 'rgba(234,88,12,0.1)', color: '#c2410c', padding: '2px 8px', borderRadius: '20px' }}>Pending Ledger</span>
+            <span style={{ fontSize: '10.5px', fontWeight: '700', background: 'rgba(234,88,12,0.1)', color: '#c2410c', padding: '3px 8px', borderRadius: '20px' }}>Pending Ledger</span>
           </div>
-          <div className="kpi-body" style={{ marginTop: '14px', width: '100%' }}>
-            <div className="kpi-value" style={{ fontSize: '26px', fontWeight: '900', letterSpacing: '-0.02em', color: '#1e293b' }}>
+          <div style={{ marginTop: '14px' }}>
+            <div style={{ fontSize: '24px', fontWeight: '900', letterSpacing: '-0.02em', color: '#1e293b' }}>
               {cur}{totalUncollected.toLocaleString()}
             </div>
-            <div className="kpi-label" style={{ fontWeight: '600', color: '#475569', fontSize: '12px', marginTop: '2px' }}>Total Outstanding Balance</div>
-            <div style={{ fontSize: '11px', color: '#ea580c', marginTop: '6px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ fontWeight: '600', color: '#475569', fontSize: '12px', marginTop: '2px' }}>Total Outstanding Balance</div>
+            <div style={{ fontSize: '11px', color: '#ea580c', marginTop: '6px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '5px' }}>
               <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ea580c' }}></span>
               Across {defaultersOnly.length} Defaulters
             </div>
           </div>
         </div>
-        
+
         {/* KPI Card 2 */}
-        <div className="kpi-card" style={{ background: 'linear-gradient(135deg, rgba(240,253,244,0.85), rgba(236,252,254,0.65))', border: '1px solid rgba(22,163,74,0.22)', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: '-10px', right: '-10px', width: '80px', height: '80px', background: 'rgba(22,163,74,0.04)', borderRadius: '50%' }}></div>
-          <div className="kpi-top-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-            <div className="kpi-icon" style={{ background: 'rgba(22,163,74,0.1)', borderColor: 'rgba(22,163,74,0.25)', color: '#15803d' }}>
+        <div className="outstanding-kpi-item" style={{ background: 'linear-gradient(135deg, #f0fdf4, #ecfeff)', border: '1px solid rgba(22,163,74,0.25)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(22,163,74,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16a34a' }}>
               <CheckCircle2 size={18} />
             </div>
-            <span style={{ fontSize: '10px', fontWeight: '700', background: 'rgba(22,163,74,0.1)', color: '#166534', padding: '2px 8px', borderRadius: '20px' }}>Reminders Queue</span>
+            <span style={{ fontSize: '10.5px', fontWeight: '700', background: 'rgba(22,163,74,0.1)', color: '#166534', padding: '3px 8px', borderRadius: '20px' }}>Selected Queue</span>
           </div>
-          <div className="kpi-body" style={{ marginTop: '14px', width: '100%' }}>
-            <div className="kpi-value" style={{ fontSize: '26px', fontWeight: '900', letterSpacing: '-0.02em', color: '#1e293b' }}>
-              {selectedIds.length} <span style={{ fontSize: '15px', fontWeight: '500', color: '#64748b' }}>Students</span>
+          <div style={{ marginTop: '14px' }}>
+            <div style={{ fontSize: '24px', fontWeight: '900', letterSpacing: '-0.02em', color: '#1e293b' }}>
+              {selectedIds.length} <span style={{ fontSize: '14px', fontWeight: '500', color: '#64748b' }}>Students</span>
             </div>
-            <div className="kpi-label" style={{ fontWeight: '600', color: '#475569', fontSize: '12px', marginTop: '2px' }}>Selected for Reminders</div>
-            <div style={{ fontSize: '11px', color: '#166534', marginTop: '6px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ fontWeight: '600', color: '#475569', fontSize: '12px', marginTop: '2px' }}>Selected for Reminders</div>
+            <div style={{ fontSize: '11px', color: '#166534', marginTop: '6px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '5px' }}>
               <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#16a34a' }}></span>
-              Ready for parent validation
+              Ready for parent WhatsApp
             </div>
           </div>
         </div>
 
         {/* KPI Card 3 */}
-        <div className="kpi-card" style={{ background: 'linear-gradient(135deg, rgba(254,242,242,0.85), rgba(255,241,242,0.65))', border: '1px solid rgba(220,38,38,0.22)', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: '-10px', right: '-10px', width: '80px', height: '80px', background: 'rgba(220,38,38,0.04)', borderRadius: '50%' }}></div>
-          <div className="kpi-top-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-            <div className="kpi-icon" style={{ background: 'rgba(220,38,38,0.1)', borderColor: 'rgba(220,38,38,0.25)', color: '#dc2626' }}>
+        <div className="outstanding-kpi-item" style={{ background: 'linear-gradient(135deg, #fef2f2, #fff1f2)', border: '1px solid rgba(220,38,38,0.25)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(220,38,38,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626' }}>
               <AlertCircle size={18} />
             </div>
-            <span style={{ fontSize: '10px', fontWeight: '700', background: 'rgba(220,38,38,0.1)', color: '#991b1b', padding: '2px 8px', borderRadius: '20px' }}>High Risk</span>
+            <span style={{ fontSize: '10.5px', fontWeight: '700', background: 'rgba(220,38,38,0.1)', color: '#991b1b', padding: '3px 8px', borderRadius: '20px' }}>Critical</span>
           </div>
-          <div className="kpi-body" style={{ marginTop: '14px', width: '100%' }}>
-            <div className="kpi-value" style={{ fontSize: '26px', fontWeight: '900', letterSpacing: '-0.02em', color: '#1e293b' }}>
-              {filtered.filter((o) => o.outstandingAmount >= 5000).length} <span style={{ fontSize: '15px', fontWeight: '500', color: '#64748b' }}>Students</span>
+          <div style={{ marginTop: '14px' }}>
+            <div style={{ fontSize: '24px', fontWeight: '900', letterSpacing: '-0.02em', color: '#1e293b' }}>
+              {filtered.filter((o) => o.outstandingAmount >= 5000).length} <span style={{ fontSize: '14px', fontWeight: '500', color: '#64748b' }}>Students</span>
             </div>
-            <div className="kpi-label" style={{ fontWeight: '600', color: '#475569', fontSize: '12px', marginTop: '2px' }}>Critical Defaulters</div>
-            <div style={{ fontSize: '11px', color: '#b91c1c', marginTop: '6px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ fontWeight: '600', color: '#475569', fontSize: '12px', marginTop: '2px' }}>High Arrears Defaulters</div>
+            <div style={{ fontSize: '11px', color: '#b91c1c', marginTop: '6px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '5px' }}>
               <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#dc2626' }}></span>
               Dues over {cur}5,000
             </div>
@@ -344,17 +341,17 @@ export default function Outstanding() {
       </div>
 
       {/* Filter Bar */}
-      <div className="filter-card" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '16px', padding: '16px 20px', borderRadius: '12px', border: '1px solid rgba(226,232,240,0.8)', background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(8px)' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0,0,0,0.03)', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(226,232,240,0.6)' }}>
-            <Filter size={14} style={{ color: 'var(--txt-muted)' }} />
-            <span style={{ fontSize: '11.5px', fontWeight: '700', color: 'var(--txt-muted)', textTransform: 'uppercase', letterSpacing: '0.02em' }}>Filters</span>
+      <div className="outstanding-filter-bar">
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px', flex: '1 1 auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(241,245,249,0.8)', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(226,232,240,0.8)' }}>
+            <Filter size={13} style={{ color: 'var(--txt-muted)' }} />
+            <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--txt-muted)', textTransform: 'uppercase' }}>Filter</span>
           </div>
-          
+
           <select
             value={gradeFilter}
             onChange={(e) => setGradeFilter(e.target.value)}
-            style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: '#fff', color: 'var(--txt)', fontWeight: '600', fontSize: '13px', outline: 'none', cursor: 'pointer', transition: 'all 0.2s' }}
+            style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--border)', background: '#fff', color: 'var(--txt)', fontWeight: '600', fontSize: '13px', outline: 'none', cursor: 'pointer', minWidth: '180px' }}
           >
             <option value="ALL">All Grades / Standards</option>
             {classes.map((c) => (
@@ -363,41 +360,41 @@ export default function Outstanding() {
           </select>
 
           {/* Dues Filter Toggle Group */}
-          <div style={{ display: 'inline-flex', background: 'rgba(241, 245, 249, 0.8)', border: '1px solid var(--border)', padding: '3px', borderRadius: '10px', gap: '2px' }}>
+          <div className="dues-filter-toggle-group" style={{ display: 'inline-flex', background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '3px', borderRadius: '10px', gap: '2px' }}>
             <button
               onClick={() => setDuesFilter('DEFAULTERS')}
-              style={{ border: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', transition: 'all 0.2s', background: duesFilter === 'DEFAULTERS' ? 'linear-gradient(135deg, #2563eb, #1e40af)' : 'transparent', color: duesFilter === 'DEFAULTERS' ? '#fff' : 'var(--txt-muted)' }}
+              style={{ border: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: '7px', fontSize: '12px', fontWeight: '700', transition: 'all 0.15s', background: duesFilter === 'DEFAULTERS' ? '#2563eb' : 'transparent', color: duesFilter === 'DEFAULTERS' ? '#fff' : '#64748b' }}
             >
-              ⚠️ Unpaid Only
+              Unpaid Only
             </button>
             <button
               onClick={() => setDuesFilter('OVER_5K')}
-              style={{ border: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', transition: 'all 0.2s', background: duesFilter === 'OVER_5K' ? 'linear-gradient(135deg, #2563eb, #1e40af)' : 'transparent', color: duesFilter === 'OVER_5K' ? '#fff' : 'var(--txt-muted)' }}
+              style={{ border: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: '7px', fontSize: '12px', fontWeight: '700', transition: 'all 0.15s', background: duesFilter === 'OVER_5K' ? '#2563eb' : 'transparent', color: duesFilter === 'OVER_5K' ? '#fff' : '#64748b' }}
             >
               &gt; {cur}5,000
             </button>
             <button
               onClick={() => setDuesFilter('OVER_10K')}
-              style={{ border: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', transition: 'all 0.2s', background: duesFilter === 'OVER_10K' ? 'linear-gradient(135deg, #2563eb, #1e40af)' : 'transparent', color: duesFilter === 'OVER_10K' ? '#fff' : 'var(--txt-muted)' }}
+              style={{ border: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: '7px', fontSize: '12px', fontWeight: '700', transition: 'all 0.15s', background: duesFilter === 'OVER_10K' ? '#2563eb' : 'transparent', color: duesFilter === 'OVER_10K' ? '#fff' : '#64748b' }}
             >
               &gt; {cur}10,000
             </button>
             <button
               onClick={() => setDuesFilter('ALL')}
-              style={{ border: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', transition: 'all 0.2s', background: duesFilter === 'ALL' ? 'linear-gradient(135deg, #2563eb, #1e40af)' : 'transparent', color: duesFilter === 'ALL' ? '#fff' : 'var(--txt-muted)' }}
+              style={{ border: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: '7px', fontSize: '12px', fontWeight: '700', transition: 'all 0.15s', background: duesFilter === 'ALL' ? '#2563eb' : 'transparent', color: duesFilter === 'ALL' ? '#fff' : '#64748b' }}
             >
-              All Records
+              All
             </button>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ fontSize: '12.5px', fontWeight: '700', color: 'var(--txt-muted)' }}>{filtered.length} Students Listed</span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', width: 'auto' }}>
+          <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--txt-muted)' }}>{filtered.length} Students</span>
           {defaultersOnly.length > 0 && (
             <button
               onClick={toggleSelectAll}
               className="btn btn-sm btn-gray"
-              style={{ fontSize: '12px', fontWeight: '700', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }}
+              style={{ fontSize: '12px', fontWeight: '700', padding: '7px 14px', borderRadius: '8px', cursor: 'pointer' }}
             >
               {selectedIds.length === defaultersOnly.length ? 'Deselect All' : 'Select All Defaulters'}
             </button>
@@ -405,22 +402,129 @@ export default function Outstanding() {
         </div>
       </div>
 
-      {/* Outstandings Table */}
+      {/* Outstandings Data Presentation */}
       {loading ? (
-        <div className="glass-card" style={{ padding: '64px', textAlign: 'center', borderRadius: '16px', border: '1px solid rgba(226,232,240,0.8)', background: '#fff' }}>
+        <div className="card" style={{ padding: '64px', textAlign: 'center', borderRadius: '16px', background: '#fff' }}>
           <div style={{ display: 'inline-flex', width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(37,99,235,0.06)', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
-            <Loader2 className="animate-spin" style={{ color: 'var(--primary)' }} size={24} />
+            <Loader2 className="animate-spin txt-primary" size={24} />
           </div>
-          <p style={{ fontWeight: '700', fontSize: '14.5px', color: 'var(--txt)' }}>Loading Outstanding Ledger...</p>
-          <p style={{ fontSize: '12px', color: 'var(--txt-muted)', marginTop: '4px' }}>Compiling demands, waivers, and collection history</p>
+          <p style={{ fontWeight: '700', fontSize: '15px', color: 'var(--txt)' }}>Loading Outstanding Ledger...</p>
+          <p style={{ fontSize: '12px', color: 'var(--txt-muted)', marginTop: '4px' }}>Compiling student demands and fee receipts</p>
         </div>
       ) : (
-        <DataTable
-          columns={columns}
-          rows={filtered}
-          title="Outstanding Fee Dues Report"
-          exportName={`Outstanding_Fees_${gradeFilter}_${new Date().toISOString().slice(0,10)}`}
-        />
+        <>
+          {/* Desktop Table View */}
+          <div className="outstanding-desktop-table">
+            <DataTable
+              columns={columns}
+              rows={filtered}
+              title="Outstanding Fee Dues Report"
+              exportName={`Outstanding_Fees_${gradeFilter}_${new Date().toISOString().slice(0,10)}`}
+            />
+          </div>
+
+          {/* Mobile-Optimized Feed View (Visible on Mobile screens) */}
+          <div className="outstanding-mobile-cards">
+            {filtered.length === 0 ? (
+              <div className="card" style={{ padding: '32px', textAlign: 'center', background: '#fff' }}>
+                <p className="muted small">No students found matching the selected filter criteria.</p>
+              </div>
+            ) : (
+              filtered.map((r) => {
+                const guardians = r.guardianOptions || [];
+                const isSelected = selectedIds.includes(r.id);
+                return (
+                  <div key={r.id} className="defaulter-card" style={{ borderColor: isSelected ? 'var(--primary)' : 'rgba(226, 232, 240, 0.95)' }}>
+                    <div className="defaulter-card-top">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        {r.outstandingAmount > 0 && (
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleSelectOne(r.id)}
+                            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                            aria-label={`Select ${r.studentName}`}
+                          />
+                        )}
+                        <div>
+                          <div className="defaulter-student-name">{r.studentName}</div>
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '2px' }}>
+                            <span className="defaulter-meta-badge">{r.grade} - {r.section}</span>
+                            <span style={{ fontSize: '11px', color: 'var(--txt-muted)', fontFamily: 'monospace' }}>GR: {r.grNumber}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        {r.outstandingAmount > 0 ? (
+                          <span style={{ fontSize: '14px', fontWeight: '800', color: '#ea580c', background: '#fff7ed', border: '1px solid rgba(251,146,60,0.3)', padding: '4px 10px', borderRadius: '8px' }}>
+                            Due {cur}{r.outstandingAmount.toLocaleString()}
+                          </span>
+                        ) : (
+                          <Badge value="Settled" color="bg-solid-green" />
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="defaulter-details-grid">
+                      <div className="defaulter-detail-cell">
+                        <span className="defaulter-detail-label">Total Fee</span>
+                        <span className="defaulter-detail-value">{cur}{r.totalDemand.toLocaleString()}</span>
+                      </div>
+                      <div className="defaulter-detail-cell">
+                        <span className="defaulter-detail-label">Paid</span>
+                        <span className="defaulter-detail-value txt-green">{cur}{r.paidAmount.toLocaleString()}</span>
+                      </div>
+                      <div className="defaulter-detail-cell">
+                        <span className="defaulter-detail-label">Balance</span>
+                        <span className="defaulter-detail-value" style={{ color: r.outstandingAmount > 0 ? '#ea580c' : '#16a34a' }}>
+                          {cur}{r.outstandingAmount.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="defaulter-guardian-box">
+                      {guardians.length === 0 ? (
+                        <span style={{ color: '#ef4444', fontWeight: '600' }}>No parent phone linked</span>
+                      ) : guardians.length === 1 ? (
+                        <>
+                          <span><b>{guardians[0].name}</b> ({guardians[0].relation})</span>
+                          <span className="mono" style={{ fontWeight: '600' }}>{guardians[0].mobile}</span>
+                        </>
+                      ) : (
+                        <select
+                          value={guardianSelections[r.id] || guardians[0].parentId}
+                          onChange={(e) => setGuardianSelections((curSel) => ({ ...curSel, [r.id]: e.target.value }))}
+                          style={{ width: '100%', fontSize: '12px', border: '1px solid var(--border)', borderRadius: '6px', padding: '4px 8px' }}
+                        >
+                          {guardians.map((g) => (
+                            <option key={g.parentId} value={g.parentId}>{g.name} ({g.relation}) — {g.mobile}</option>
+                          ))}
+                          <option value="all">All linked guardians</option>
+                        </select>
+                      )}
+                    </div>
+
+                    <div className="defaulter-card-actions">
+                      {r.outstandingAmount > 0 && guardians.length > 0 ? (
+                        <button
+                          onClick={() => sendSingleWhatsApp(r)}
+                          className="btn btn-green"
+                          style={{ width: '100%', padding: '9px 12px', fontSize: '12.5px', fontWeight: '700', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                        >
+                          <Send size={13} /> Send WhatsApp Reminder
+                        </button>
+                      ) : (
+                        <div style={{ textAlign: 'center', width: '100%', fontSize: '12px', color: 'var(--txt-muted)', fontStyle: 'italic' }}>
+                          {r.outstandingAmount > 0 ? 'Cannot send (Missing phone)' : 'All dues cleared'}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </>
       )}
 
 
