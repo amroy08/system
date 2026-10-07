@@ -248,8 +248,8 @@ router.get('/', allowRoles(...STAFF), async (req, res) => {
   res.json(result);
 });
 
-// Get outstanding dues for all active students
-router.get('/outstanding', allowRoles(...STAFF), async (req, res) => {
+// Get outstanding dues for all active students (accessible by Admin, Clerk, Supervisor, Teacher)
+router.get('/outstanding', allowRoles(...STAFF, 'teacher'), async (req, res) => {
   try {
     const now = Date.now();
     if (outstandingCache && now - outstandingCacheAt < OUTSTANDING_CACHE_MS) {

@@ -54,7 +54,7 @@ const NAV = [
   ]},
   { section: 'Finance', icon: Wallet, items: [
     { to: '/fees', label: 'Fees Collection', icon: Wallet, roles: ['admin', 'clerk', 'supervisor', 'student', 'parent'] },
-    { to: '/outstanding', label: 'Outstanding Dues', icon: Landmark, roles: ['admin', 'clerk', 'supervisor'] },
+    { to: '/outstanding', label: 'Outstanding Dues', icon: Landmark, roles: ['admin', 'clerk', 'supervisor', 'teacher'] },
     { to: '/payroll', label: 'Payroll / Salary', icon: BadgeIndianRupee, roles: ['admin', 'clerk', 'supervisor'] },
     { to: '/daily-accounts', label: 'Daily Accounts', icon: Landmark, roles: ['admin', 'clerk', 'supervisor'] },
     { to: '/fee-structure', label: 'Fee Structure', icon: Receipt, roles: ['admin', 'clerk', 'supervisor'] },
