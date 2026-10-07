@@ -170,16 +170,34 @@ export default function Timetable() {
                           <td key={day}>
                             {canWrite ? (
                               <div className="timetable-cell-editor">
-                                <select value={cell?.subjectId || ''}
-                                  onChange={(e) => setCell(day, slot, e.target.value || null, cell?.teacherId)}>
+                                <select
+                                  value={
+                                    cell?.subjectId && subjects.some((s) => s._id === cell.subjectId)
+                                      ? cell.subjectId
+                                      : subjects.find((s) => s.name.toLowerCase() === (cell?.subjectName || '').toLowerCase())?._id || ''
+                                  }
+                                  onChange={(e) => setCell(day, slot, e.target.value || null, cell?.teacherId)}
+                                >
                                   <option value="">Free</option>
+                                  {cell?.subjectName && cell.subjectName !== 'Free' && !subjects.some((s) => s._id === cell.subjectId || s.name.toLowerCase() === cell.subjectName.toLowerCase()) && (
+                                    <option value={cell.subjectId || cell.subjectName}>{cell.subjectName}</option>
+                                  )}
                                   {subjects.filter((s) => !s.classIds?.length || s.classIds.includes(classId)).map((s) => (
                                     <option key={s._id} value={s._id}>{s.name}</option>
                                   ))}
                                 </select>
-                                <select value={cell?.teacherId || ''}
-                                  onChange={(e) => setCell(day, slot, cell?.subjectId, e.target.value || null)}>
+                                <select
+                                  value={
+                                    cell?.teacherId && teachers.some((t) => t._id === cell.teacherId)
+                                      ? cell.teacherId
+                                      : teachers.find((t) => t.fullName?.toLowerCase() === (cell?.teacherName || '').toLowerCase())?._id || ''
+                                  }
+                                  onChange={(e) => setCell(day, slot, cell?.subjectId, e.target.value || null)}
+                                >
                                   <option value="">— teacher —</option>
+                                  {cell?.teacherName && !teachers.some((t) => t._id === cell.teacherId || t.fullName?.toLowerCase() === cell.teacherName.toLowerCase()) && (
+                                    <option value={cell.teacherId || cell.teacherName}>{cell.teacherName}</option>
+                                  )}
                                   {teachers.map((t) => <option key={t._id} value={t._id}>{t.fullName}</option>)}
                                 </select>
                               </div>
