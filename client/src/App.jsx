@@ -67,6 +67,11 @@ function AdminOnly({ children }) {
   return user?.role === 'admin' ? children : <Navigate to="/" replace />;
 }
 
+function StaffOnly({ children }) {
+  const { user } = useApp();
+  return ['admin', 'clerk', 'supervisor'].includes(user?.role) ? children : <Navigate to="/" replace />;
+}
+
 function RoleHome() {
   const { user } = useApp();
   if (['student', 'parent'].includes(user?.role)) return <Navigate to="/portal" replace />;
@@ -115,7 +120,7 @@ export default function App() {
             <Route path="/conduct" element={<Conduct />} />
             <Route path="/activities" element={<Activities />} />
             <Route path="/fees" element={<Fees />} />
-            <Route path="/payroll" element={<Payroll />} />
+            <Route path="/payroll" element={<StaffOnly><Payroll /></StaffOnly>} />
             <Route path="/daily-accounts" element={<DailyAccounts />} />
             <Route path="/fee-structure" element={<FeeStructure />} />
             <Route path="/promotions" element={<Promotions />} />

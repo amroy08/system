@@ -62,8 +62,8 @@ async function ensureSalaryLedger(slip, paidOn, mode, recordedBy) {
   }
 }
 
-// Staff can see their own slips; admin/clerk see all
-router.get('/', allowRoles(...STAFF, 'teacher'), async (req, res) => {
+// Only admin, clerk, and supervisor can access payroll
+router.get('/', allowRoles(...STAFF), async (req, res) => {
   const isStaff = ['admin', 'clerk', 'supervisor'].includes(req.user.role);
   const query = isStaff ? { _deleted: { $ne: true } } : { staffId: req.user.id, _deleted: { $ne: true } };
   if (req.query.month) query.month = req.query.month;
