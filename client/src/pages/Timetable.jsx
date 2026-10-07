@@ -8,7 +8,8 @@ import { Field } from '../components/ui';
 import { formatClass } from '../utils/classNames';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-const SLOTS = [
+
+const SECONDARY_SLOTS = [
   { no: 1, start: '07:30', end: '08:10' },
   { no: 2, start: '08:10', end: '08:45' },
   { no: 3, start: '08:45', end: '09:20' },
@@ -19,6 +20,19 @@ const SLOTS = [
   { no: 8, start: '12:00', end: '12:30' },
   { no: 9, start: '12:30', end: '13:00' },
   { no: 10, start: '13:00', end: '13:30' },
+];
+
+const PRIMARY_SLOTS = [
+  { no: 1, start: '09:30', end: '10:05' },
+  { no: 2, start: '10:05', end: '10:35' },
+  { no: 3, start: '10:35', end: '11:05' },
+  { no: 4, start: '11:20', end: '11:55' },
+  { no: 5, start: '11:55', end: '12:25' },
+  { no: 6, start: '12:25', end: '12:55' },
+  { no: 7, start: '01:20', end: '01:50' },
+  { no: 8, start: '01:50', end: '02:20' },
+  { no: 9, start: '02:20', end: '02:50' },
+  { no: 10, start: '02:50', end: '03:20' },
 ];
 
 export default function Timetable() {
@@ -74,6 +88,8 @@ export default function Timetable() {
 
   const printIt = () => window.print();
   const selectedClass = classes.find((item) => item._id === classId);
+  const isPrimary = selectedClass && /^(grade [1-4]|std [1-4]|primary)/i.test(selectedClass.name);
+  const currentSlots = isPrimary ? PRIMARY_SLOTS : SECONDARY_SLOTS;
 
   return (
     <div className="academic-workspace timetable-workspace">
@@ -101,6 +117,12 @@ export default function Timetable() {
               {classes.map((c) => <option key={c._id} value={c._id}>{formatClass(c)}</option>)}
             </select>
           </Field>
+          {selectedClass && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, justifyContent: 'center', fontSize: 13 }}>
+              <div>Class Teacher: <b>{selectedClass.classTeacher || 'Not assigned'}</b></div>
+              {isPrimary && <div style={{ color: 'var(--primary)', fontWeight: 600 }}>Primary Timing: 09:30 AM – 03:20 PM (Assembly 09:20 AM)</div>}
+            </div>
+          )}
         </div>
       </div>
 
@@ -117,8 +139,17 @@ export default function Timetable() {
             <div>
               <span className="academic-eyebrow">Current schedule</span>
               <h3>{selectedClass ? formatClass(selectedClass, false) : 'Selected class'}</h3>
+              <p className="small muted">
+                Class Teacher: <b>{selectedClass?.classTeacher || '—'}</b>
+                {isPrimary && <span> · Assembling Time: <b>09:20 – 09:30 AM</b></span>}
+              </p>
             </div>
-            <div className="academic-context-tags"><span>Monday–Friday</span><span>10 periods</span>{dirty && <span className="is-warning">Unsaved changes</span>}</div>
+            <div className="academic-context-tags">
+              <span>Monday–Friday</span>
+              <span>10 periods</span>
+              {isPrimary ? <span>Short Break + Recess</span> : <span>1 recess</span>}
+              {dirty && <span className="is-warning">Unsaved changes</span>}
+            </div>
           </div>
           <div className="table-wrap">
             <table className="data-table timetable-grid-table">
@@ -129,7 +160,7 @@ export default function Timetable() {
                 </tr>
               </thead>
               <tbody>
-                {SLOTS.map((slot, idx) => (
+                {currentSlots.map((slot, idx) => (
                   <Fragment key={slot.no}>
                     <tr>
                       <td><span className="period-number">P{slot.no}</span><div className="period-time">{slot.start} – {slot.end}</div></td>
@@ -164,8 +195,27 @@ export default function Timetable() {
                         );
                       })}
                     </tr>
-                    {idx === 4 && (
-                      <tr key="recess" className="timetable-recess-row">
+                    {/* Primary School Short Break after Period 3 */}
+                    {isPrimary && idx === 2 && (
+                      <tr key="short-break" className="timetable-recess-row" style={{ background: '#fffbeb' }}>
+                        <td><b style={{ color: '#b45309' }}>Short Break</b></td>
+                        <td colSpan={5} style={{ textAlign: 'center', color: '#b45309', fontWeight: 600 }}>
+                          <span>Break</span> 11:05 AM – 11:20 AM
+                        </td>
+                      </tr>
+                    )}
+                    {/* Primary School Lunch Recess after Period 6 */}
+                    {isPrimary && idx === 5 && (
+                      <tr key="recess-primary" className="timetable-recess-row" style={{ background: '#f0fdf4' }}>
+                        <td><b style={{ color: '#15803d' }}>Recess</b></td>
+                        <td colSpan={5} style={{ textAlign: 'center', color: '#15803d', fontWeight: 600 }}>
+                          <span>Lunch Break</span> 12:55 PM – 01:20 PM
+                        </td>
+                      </tr>
+                    )}
+                    {/* Secondary School Recess after Period 5 */}
+                    {!isPrimary && idx === 4 && (
+                      <tr key="recess-secondary" className="timetable-recess-row">
                         <td><b>Recess</b></td>
                         <td colSpan={5}>
                           <span>Break</span> 10:30 – 11:00
