@@ -342,7 +342,7 @@ router.post('/whatsapp-reminders/prepared', allowRoles(...STAFF), async (req, re
 router.get('/:id', async (req, res) => {
   const doc = await col('feeReceipts').findOne({ _id: req.params.id });
   if (!doc) return res.status(404).json({ error: 'Receipt not found' });
-  const student = await col('students').findOne({ _id: doc.studentId, status: { $ne: 'deleted' } });
+  const student = await col('students').findOne({ _id: doc.studentId, ...PAYING_STUDENT_QUERY });
   if (!student || !mayReadStudent(req, student)) return res.status(404).json({ error: 'Receipt not found' });
   res.json(doc);
 });
@@ -350,7 +350,7 @@ router.get('/:id', async (req, res) => {
 router.post('/:id/email', allowRoles(...STAFF), async (req, res) => {
   const receipt = await col('feeReceipts').findOne({ _id: req.params.id });
   if (!receipt) return res.status(404).json({ error: 'Receipt not found' });
-  const student = await col('students').findOne({ _id: receipt.studentId, status: { $ne: 'deleted' } });
+  const student = await col('students').findOne({ _id: receipt.studentId, ...PAYING_STUDENT_QUERY });
   if (!student) return res.status(404).json({ error: 'Student not found' });
   let recipients = [];
   const pIds = Array.isArray(student.parentIds) ? student.parentIds.filter(Boolean) : [];
