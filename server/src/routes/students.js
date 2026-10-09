@@ -398,15 +398,19 @@ router.post('/:id/restore', allowRoles('admin', 'clerk'), async (req, res) => {
     : 'active';
   const now = new Date().toISOString();
   await col('students').updateOne({ _id: req.params.id }, {
-    status: restoredStatus,
-    restoredAt: now,
-    restoredBy: req.user.name,
+    $set: {
+      status: restoredStatus,
+      restoredAt: now,
+      restoredBy: req.user.name,
+    },
     $unset: { deletedAt: '', deletedBy: '', deletedPreviousStatus: '' },
   });
   await col('users').updateMany({ role: 'student', refId: req.params.id }, {
-    status: 'active',
-    restoredAt: now,
-    restoredBy: req.user.name,
+    $set: {
+      status: 'active',
+      restoredAt: now,
+      restoredBy: req.user.name,
+    },
     $unset: { deletedAt: '', deletedBy: '' },
   });
   invalidateStudentsCache();

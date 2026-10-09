@@ -63,16 +63,32 @@ class MongoCollection {
   }
 
   async updateOne(query, changes) {
+    let updateDoc;
+    const hasOperators = Object.keys(changes || {}).some((k) => k.startsWith('$'));
+    if (hasOperators) {
+      updateDoc = { ...changes };
+      updateDoc.$set = { ...(updateDoc.$set || {}), updatedAt: new Date().toISOString() };
+    } else {
+      updateDoc = { $set: { ...changes, updatedAt: new Date().toISOString() } };
+    }
     const res = await this.col.findOneAndUpdate(
       normalizeMongoQuery(query),
-      { $set: { ...changes, updatedAt: new Date().toISOString() } },
+      updateDoc,
       { returnDocument: 'after' }
     );
     return res;
   }
 
   async updateMany(query, changes) {
-    const res = await this.col.updateMany(normalizeMongoQuery(query), { $set: { ...changes, updatedAt: new Date().toISOString() } });
+    let updateDoc;
+    const hasOperators = Object.keys(changes || {}).some((k) => k.startsWith('$'));
+    if (hasOperators) {
+      updateDoc = { ...changes };
+      updateDoc.$set = { ...(updateDoc.$set || {}), updatedAt: new Date().toISOString() };
+    } else {
+      updateDoc = { $set: { ...changes, updatedAt: new Date().toISOString() } };
+    }
+    const res = await this.col.updateMany(normalizeMongoQuery(query), updateDoc);
     return res.modifiedCount;
   }
 
