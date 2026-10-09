@@ -544,6 +544,9 @@ export default function DeletedStudents() {
       {/* Restore Confirmation Dialog */}
       {restoreTarget && (
         <Confirm
+          title="Restore Student?"
+          yesLabel="Yes, Restore"
+          danger={false}
           message={`Restore student "${restoreTarget.firstName} ${restoreTarget.lastName || ''}" (${restoreTarget.admissionNo}) back into active ERP classes? Their attendance roster and student login will be reactivated.`}
           onNo={() => setRestoreTarget(null)}
           onYes={handleRestore}
