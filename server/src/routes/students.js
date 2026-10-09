@@ -153,6 +153,14 @@ router.get('/fee-preview', allowRoles(...STAFF), async (req, res) => {
   });
 });
 
+// Get all deleted students (for Deleted Students tab)
+router.get('/deleted-records', allowRoles(...STAFF), async (req, res) => {
+  const query = { status: 'deleted' };
+  if (req.query.classId) query.classId = req.query.classId;
+  const docs = await col('students').find(query, { sort: { deletedAt: -1, admissionNo: 1 } });
+  res.json(docs.map((s) => publicStudent(s, req.user.role)));
+});
+
 router.get('/:id', async (req, res) => {
   const doc = await col('students').findOne({ _id: req.params.id, status: { $ne: 'deleted' } });
   if (!doc) return res.status(404).json({ error: 'Student not found' });
@@ -379,14 +387,6 @@ router.get('/:id/parents', async (req, res) => {
   if (!student || !(await mayReadStudent(req, student))) return res.status(404).json({ error: 'Student not found' });
   const parents = await col('parents').find({ _id: { $in: student.parentIds || [] }, status: 'active' });
   res.json(parents);
-});
-
-// Get all deleted students (for Deleted Students tab)
-router.get('/deleted-records', allowRoles(...STAFF), async (req, res) => {
-  const query = { status: 'deleted' };
-  if (req.query.classId) query.classId = req.query.classId;
-  const docs = await col('students').find(query, { sort: { deletedAt: -1, admissionNo: 1 } });
-  res.json(docs.map((s) => publicStudent(s, req.user.role)));
 });
 
 // Restore deleted student back to ERP
