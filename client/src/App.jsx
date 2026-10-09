@@ -10,6 +10,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Reports = lazy(() => import('./pages/Reports'));
 const Admissions = lazy(() => import('./pages/Admissions'));
 const Students = lazy(() => import('./pages/Students'));
+const DeletedStudents = lazy(() => import('./pages/DeletedStudents'));
 const Classes = lazy(() => import('./pages/Classes'));
 const Parents = lazy(() => import('./pages/Parents'));
 const Assets = lazy(() => import('./pages/Assets'));
@@ -96,6 +97,7 @@ export default function App() {
             <Route path="/reports" element={<Reports />} />
             <Route path="/admissions" element={<Admissions />} />
             <Route path="/students" element={<Students />} />
+            <Route path="/deleted-students" element={<StaffOnly><DeletedStudents /></StaffOnly>} />
             <Route path="/classes" element={<Classes />} />
             <Route path="/parents" element={<Parents />} />
             <Route path="/assets" element={<Assets />} />

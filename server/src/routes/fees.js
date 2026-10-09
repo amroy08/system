@@ -20,8 +20,10 @@ import { formatClass } from '../utils/classNames.js';
 
 const router = Router();
 router.use(authRequired);
-const PAYING_STUDENT_STATUSES = ['active', 'passed-out'];
+const PAYING_STUDENT_STATUSES = ['active', 'passed-out', 'deleted'];
 const PAYING_STUDENT_QUERY = { status: { $in: PAYING_STUDENT_STATUSES } };
+const OUTSTANDING_STUDENT_STATUSES = ['active', 'passed-out'];
+const OUTSTANDING_STUDENT_QUERY = { status: { $in: OUTSTANDING_STUDENT_STATUSES } };
 const ACTIVE_CLASS_QUERY = { _deleted: { $ne: true }, status: { $ne: 'archived' } };
 
 // 30-second cache for outstanding dues (invalidated on new receipt)
@@ -256,7 +258,7 @@ router.get('/outstanding', allowRoles(...STAFF, 'teacher'), async (req, res) => 
       return res.json(outstandingCache);
     }
     const [students, receipts, classes, parents] = await Promise.all([
-      col('students').find(PAYING_STUDENT_QUERY, { projection: OUTSTANDING_STUDENT_PROJECTION }),
+      col('students').find(OUTSTANDING_STUDENT_QUERY, { projection: OUTSTANDING_STUDENT_PROJECTION }),
       col('feeReceipts').find({ status: { $in: ['paid', 'partial', 'unpaid'] } }, {
         projection: { _id: 1, studentId: 1, amountPaid: 1, discount: 1, lateFee: 1, status: 1 },
       }),

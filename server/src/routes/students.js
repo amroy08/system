@@ -381,6 +381,61 @@ router.get('/:id/parents', async (req, res) => {
   res.json(parents);
 });
 
+// Get all deleted students (for Deleted Students tab)
+router.get('/deleted-records', allowRoles(...STAFF), async (req, res) => {
+  const query = { status: 'deleted' };
+  if (req.query.classId) query.classId = req.query.classId;
+  const docs = await col('students').find(query, { sort: { deletedAt: -1, admissionNo: 1 } });
+  res.json(docs.map((s) => publicStudent(s, req.user.role)));
+});
+
+// Restore deleted student back to ERP
+router.post('/:id/restore', allowRoles('admin', 'clerk'), async (req, res) => {
+  const student = await col('students').findOne({ _id: req.params.id, status: 'deleted' });
+  if (!student) return res.status(404).json({ error: 'Deleted student not found' });
+  const restoredStatus = student.deletedPreviousStatus && student.deletedPreviousStatus !== 'deleted'
+    ? student.deletedPreviousStatus
+    : 'active';
+  const now = new Date().toISOString();
+  await col('students').updateOne({ _id: req.params.id }, {
+    status: restoredStatus,
+    restoredAt: now,
+    restoredBy: req.user.name,
+    $unset: { deletedAt: '', deletedBy: '', deletedPreviousStatus: '' },
+  });
+  await col('users').updateMany({ role: 'student', refId: req.params.id }, {
+    status: 'active',
+    restoredAt: now,
+    restoredBy: req.user.name,
+    $unset: { deletedAt: '', deletedBy: '' },
+  });
+  invalidateStudentsCache();
+  invalidateOutstandingCache();
+  req.auditDetails = {
+    action: 'STUDENT_RESTORE',
+    admissionNo: student.admissionNo,
+    studentName: `${student.firstName} ${student.lastName || ''}`.trim(),
+    classId: student.classId,
+  };
+  res.json({ ok: true, student: { ...student, status: restoredStatus } });
+});
+
+// Permanently delete student (Super Admin / Admin only)
+router.delete('/:id/permanent', allowRoles('admin'), async (req, res) => {
+  const student = await col('students').findOne({ _id: req.params.id, status: 'deleted' });
+  if (!student) return res.status(404).json({ error: 'Deleted student not found' });
+  await col('students').deleteOne({ _id: req.params.id });
+  await col('users').deleteMany({ role: 'student', refId: req.params.id });
+  invalidateStudentsCache();
+  invalidateOutstandingCache();
+  req.auditDetails = {
+    action: 'STUDENT_PERMANENT_DELETE',
+    admissionNo: student.admissionNo,
+    studentName: `${student.firstName} ${student.lastName || ''}`.trim(),
+  };
+  res.json({ ok: true });
+});
+
 router.delete('/:id', allowRoles('admin', 'clerk'), async (req, res) => {
   const student = await col('students').findOne({ _id: req.params.id, status: { $ne: 'deleted' } });
   if (!student) return res.status(404).json({ error: 'Student not found' });

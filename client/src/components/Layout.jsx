@@ -7,7 +7,7 @@ import {
   UsersRound, CircleUser, Settings, Megaphone, CalendarDays, CalendarRange,
   NotebookPen, BookMarked, LogOut, ChevronLeft, ChevronRight, ChevronDown, RefreshCw,
   Library, BadgeIndianRupee, Search, ArrowUpDown, Bell, Menu, DatabaseBackup, DownloadCloud,
-  FolderKanban, GraduationCap as AcademicIcon, Sparkles, Layers,
+  FolderKanban, GraduationCap as AcademicIcon, Sparkles, Layers, UserX,
 } from 'lucide-react';
 import { useApp } from '../context/AppContextValue';
 import { api } from '../api';
@@ -25,6 +25,7 @@ const NAV = [
   { section: 'Records', icon: FolderKanban, items: [
     { to: '/admissions', label: 'Admissions', icon: UserPlus, roles: ['admin', 'clerk', 'supervisor'] },
     { to: '/students', label: 'Students', icon: GraduationCap, roles: ['admin', 'clerk', 'supervisor', 'teacher'] },
+    { to: '/deleted-students', label: 'Deleted Students', icon: UserX, roles: ['admin', 'clerk', 'supervisor'] },
     { to: '/classes', label: 'Classes & Sections', icon: School, roles: ['admin', 'clerk', 'supervisor'] },
     { to: '/parents', label: 'Parents', icon: UsersRound, roles: ['admin', 'clerk', 'supervisor'] },
     { to: '/assets', label: 'Assets', icon: Package, roles: ['admin', 'clerk', 'supervisor'] },
