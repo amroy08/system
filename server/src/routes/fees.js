@@ -521,20 +521,15 @@ router.post('/', allowRoles(...STAFF), async (req, res) => {
 
   invalidateOutstandingCache(); // new receipt changes balances
   invalidateReceiptsCache();    // new receipt appears in list
-  res.status(201).json(doc);
 
-  // Deliver email in background: waitUntil keeps Vercel serverless function alive after response
-  const emailPromise = (async () => {
-    try {
-      await queueReceiptEmail(doc, student, req.user.name);
-    } catch (err) {
-      console.error('[Receipt Email Background Error]', err);
-    }
-  })();
-
-  if (typeof waitUntil === 'function') {
-    try { waitUntil(emailPromise); } catch { /* fallback to promise in non-vercel env */ }
+  // Send receipt email before closing response to guarantee delivery on serverless environments
+  try {
+    await queueReceiptEmail(doc, student, req.user.name);
+  } catch (err) {
+    console.error('[Receipt Email Delivery Error]', err);
   }
+
+  res.status(201).json(doc);
   } finally {
     release();
   }
