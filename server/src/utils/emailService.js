@@ -9,14 +9,18 @@ if (config.smtpHost && config.smtpUser && config.smtpPass) {
   transporter = nodemailer.createTransport({
     host: config.smtpHost,
     port: config.smtpPort,
-    secure: config.smtpPort === 465, // True for 465, false for other ports
+    secure: config.smtpPort === 465, // True for 465 (SSL), false for 587 (TLS)
     auth: {
       user: config.smtpUser,
       pass: config.smtpPass,
     },
-    connectionTimeout: 5000,
-    greetingTimeout: 5000,
-    socketTimeout: 8000,
+    tls: {
+      rejectUnauthorized: true,
+      servername: config.smtpHost,
+    },
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 20000,
   });
   console.log('[Email] SMTP transporter initialized');
 } else {
