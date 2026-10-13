@@ -3,7 +3,7 @@ import { waitUntil } from '@vercel/functions';
 import { col, nextSeq } from '../db/index.js';
 import { authRequired, allowRoles, STAFF } from '../middleware/auth.js';
 import { resolveEmailRecipients } from '../utils/emailRecipients.js';
-import { enqueueEmailEvent } from '../utils/emailOutbox.js';
+import { enqueueEmailEvent, processEmailOutbox } from '../utils/emailOutbox.js';
 import { summarizeStudentFees } from '../utils/studentFees.js';
 import {
   allocateFeePayment,
@@ -202,6 +202,10 @@ async function queueReceiptEmail(receipt, student, createdBy) {
       emailStatus: queued.queuedCount ? 'queued' : 'no-recipients',
       emailRecipientCount: queued.queuedCount,
     });
+
+    if (queued.queuedCount) {
+      await processEmailOutbox(20, { entityType: 'feeReceipt', entityId: receipt._id, version: receipt.createdAt });
+    }
   } catch (err) {
     console.error('[Receipt Email Queue Error]', err);
     await col('feeReceipts').updateOne({ _id: receipt._id }, {
