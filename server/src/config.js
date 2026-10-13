@@ -44,7 +44,7 @@ export const config = {
   smtpHost: process.env.SMTP_HOST || 'smtp.hostinger.com',
   smtpPort: parseInt(process.env.SMTP_PORT || '465', 10),
   smtpUser: process.env.SMTP_USER || 'noreply@mvhighschoolerp.in',
-  smtpPass: process.env.SMTP_PASS || 'Amroy@2026',
+  smtpPass: process.env.SMTP_PASS || '3nx1-rbff-inv0-iifk',
   emailFrom: process.env.EMAIL_FROM || '"M.V HIGH SCHOOL" <noreply@mvhighschoolerp.in>',
   appUrl,
   corsOrigins: configuredOrigins,
