@@ -2148,24 +2148,42 @@ html.dark .public-section h2 { color:var(--txt); }
     position:fixed; top:0; left:0;
     height:100vh;
     height:100dvh;
-    width:280px !important;
+    width:290px !important;
+    max-width:85vw !important;
     transform:translateX(-100%);
     transition:transform .3s cubic-bezier(0.16,1,0.3,1);
-    z-index:1003;
+    z-index:1050;
     box-shadow:0 10px 40px rgba(0,0,0,0.35);
     display:flex;
     flex-direction:column;
-    background:var(--glass-bg-strong);
+    background:rgba(255, 255, 255, 0.98) !important;
+    backdrop-filter:blur(24px) saturate(180%);
+    -webkit-backdrop-filter:blur(24px) saturate(180%);
+    overflow:hidden;
+  }
+
+  html.dark .sidebar-shell {
+    background:rgba(15, 23, 42, 0.98) !important;
   }
 
   .sidebar-shell.mobile-open {
     transform:translateX(0);
   }
 
+  .sidebar-shell .sidebar-brand {
+    padding-top: max(16px, env(safe-area-inset-top));
+    padding-left: 18px;
+    padding-right: 18px;
+    display: flex !important;
+    align-items: center;
+    position: relative;
+  }
+
   .sidebar-shell .sidebar-nav {
     flex: 1 1 auto;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    padding: 10px 14px;
   }
 
   .sidebar-shell .sidebar-foot {
@@ -2175,13 +2193,44 @@ html.dark .public-section h2 { color:var(--txt); }
     flex-shrink: 0;
   }
 
-  /* Force display sidebar texts inside drawer */
+  /* Force display sidebar texts inside drawer, overriding desktop collapsed state */
+  .app-shell.collapsed .sidebar-shell {
+    width: 290px !important;
+    max-width: 85vw !important;
+  }
+  .app-shell.collapsed .sidebar-shell .nav-label,
+  .app-shell.collapsed .sidebar-shell .nav-section-label,
+  .app-shell.collapsed .sidebar-shell .school-block,
+  .app-shell.collapsed .sidebar-shell .sidebar-brand-text,
   .sidebar-shell .nav-label,
   .sidebar-shell .nav-section-label,
   .sidebar-shell .school-block,
   .sidebar-shell .sidebar-brand-text {
-    display:block !important;
+    display: flex !important;
   }
+  .sidebar-shell .sidebar-brand-text {
+    display: block !important;
+  }
+
+  .sidebar-close-btn {
+    margin-left: auto;
+    background: rgba(241, 245, 249, 0.9);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--txt);
+    cursor: pointer;
+  }
+  html.dark .sidebar-close-btn {
+    background: rgba(30, 41, 59, 0.9);
+  }
+
+  .desktop-only { display: none !important; }
+  .mobile-only { display: flex !important; }
 
   /* Hide sidebar desktop collapse toggle inside mobile drawer */
   .sidebar-shell .collapse-btn {
@@ -2638,19 +2687,70 @@ body {
   .row-actions button { width:40px; height:40px; }
   .attachment-action,.attachment-remove { min-width:40px; min-height:40px; }
 
-  .modal-overlay { align-items:flex-end; padding:0; overflow:hidden; }
+  .modal-overlay {
+    align-items:flex-end;
+    padding:0;
+    overflow:hidden;
+    z-index:2000 !important; /* Always above mobile-bottom-nav (999) and sidebar (1050) */
+  }
   .modal,.modal.modal-lg,.modal.modal-sm {
-    width:100%; max-width:none; max-height:100dvh; margin:0;
-    border-radius:18px 18px 0 0; display:flex; flex-direction:column;
+    width:100%;
+    max-width:none;
+    max-height:92vh;
+    max-height:92dvh;
+    height:auto;
+    margin:0;
+    border-radius:22px 22px 0 0;
+    display:flex;
+    flex-direction:column;
+    background:rgba(255,255,255,0.98);
+    box-shadow:0 -10px 40px rgba(0,0,0,0.3);
+    overflow:hidden;
   }
-  .modal-head { min-height:56px; padding:12px 15px; border-radius:18px 18px 0 0; flex:0 0 auto; }
-  .modal-head .x { width:40px; height:40px; flex:0 0 40px; }
-  .modal-body { min-height:0; max-height:none; padding:15px; overflow:auto; overscroll-behavior:contain; }
+  html.dark .modal,
+  html.dark .modal.modal-lg,
+  html.dark .modal.modal-sm {
+    background:rgba(15,23,42,0.98);
+  }
+  .modal-head {
+    min-height:56px;
+    padding:14px 18px;
+    border-radius:22px 22px 0 0;
+    flex:0 0 auto;
+    border-bottom:1px solid var(--border);
+  }
+  .modal-head .x { width:38px; height:38px; flex:0 0 38px; border-radius:10px; }
+  .modal-body {
+    flex:1 1 auto;
+    min-height:0;
+    max-height:none;
+    padding:18px 16px;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
+  }
   .modal-foot {
-    flex:0 0 auto; padding:11px 14px max(11px,env(safe-area-inset-bottom));
-    position:sticky; bottom:0; border-radius:0;
+    flex:0 0 auto;
+    padding:12px 16px calc(14px + env(safe-area-inset-bottom, 0px)) !important;
+    background:rgba(255,255,255,0.96);
+    border-top:1px solid var(--border);
+    position:relative;
+    bottom:0;
+    left:0;
+    right:0;
+    display:flex;
+    gap:10px;
+    z-index:10;
+    box-shadow:0 -4px 16px rgba(0,0,0,0.06);
   }
-  .modal-foot .btn { min-height:42px; }
+  html.dark .modal-foot {
+    background:rgba(15,23,42,0.96);
+  }
+  .modal-foot .btn {
+    min-height:44px;
+    font-size:14px;
+    font-weight:600;
+  }
   .form-grid { gap:11px !important; }
   .field input,.field select,.field textarea { font-size:16px; }
   .multi-check-grid { grid-template-columns:1fr; max-height:190px; }

@@ -208,8 +208,11 @@ export default function Layout() {
             <div className="brand-name">{settings.schoolName || 'MVHS ERP'}</div>
             <div className="brand-sub">School Management</div>
           </div>
-          <button className="collapse-btn" onClick={() => setCollapsed(!collapsed)} title={collapsed ? 'Expand' : 'Collapse'}>
+          <button className="collapse-btn desktop-only" onClick={() => setCollapsed(!collapsed)} title={collapsed ? 'Expand' : 'Collapse'}>
             {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+          </button>
+          <button className="sidebar-close-btn mobile-only" onClick={() => setMobileMenuOpen(false)} title="Close menu" aria-label="Close menu">
+            <X size={18} />
           </button>
         </div>
 
