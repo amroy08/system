@@ -7,7 +7,7 @@ import {
   UsersRound, CircleUser, Settings, Megaphone, CalendarDays, CalendarRange,
   NotebookPen, BookMarked, LogOut, ChevronLeft, ChevronRight, ChevronDown, RefreshCw,
   Library, BadgeIndianRupee, Search, ArrowUpDown, Bell, Menu, DatabaseBackup, DownloadCloud,
-  FolderKanban, GraduationCap as AcademicIcon, Sparkles, Layers, UserX,
+  FolderKanban, GraduationCap as AcademicIcon, Sparkles, Layers, UserX, X,
 } from 'lucide-react';
 import { useApp } from '../context/AppContextValue';
 import { api } from '../api';
